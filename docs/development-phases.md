@@ -1,0 +1,416 @@
+# Development Phases
+
+## How To Use This Document
+
+- each phase has a manual status section
+- when a phase starts, change its status to `IN_PROGRESS`
+- when a phase is done and verified, change its status to `DONE`
+- after marking a phase complete, update the related documents listed in that phase
+
+Status values to use:
+
+- `TODO`
+- `IN_PROGRESS`
+- `BLOCKED`
+- `DONE`
+
+## Latest Verification
+
+Verified on `2026-04-18` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
+
+- `python3 -m compileall server/app` -> passed
+- `python3 server/scripts/e2e_api_flow.py --phase phase1` -> passed
+- `python3 server/scripts/e2e_api_flow.py --phase phase2` -> passed
+- `python3 server/scripts/e2e_api_flow.py --phase phase3` -> passed
+- `python3 server/scripts/e2e_api_flow.py --phase full` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml up migrate --build` -> applied `20260418_02_entity_seen_timestamps`
+- `docker compose -f deploy/compose/docker-compose.prod.yml config` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest` -> passed
+- `npm run build` in `web/` -> passed
+- `docker compose -p phase9check -f deploy/compose/docker-compose.prod.yml up -d postgres rabbitmq redis minio migrate` -> migration succeeded in clean volumes
+- OpenRouter free-model fallback was verified with `python3 server/scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
+- OpenRouter text extraction persistence was verified in Docker with completed `ai_jobs`, `relations`, `events.location_text`, and `merge_candidates` records
+- multimodal ingest smoke verification passed for image, audio, and video uploads with locally generated derivative text persisted through `asset_derivatives.normalized_text`
+- local OCR and ASR fallback was verified in Docker after rebuilding `api` and `worker` with `ffmpeg`, `tesseract`, and `vosk`
+- `curl -I http://localhost:3000` -> `200 OK`
+
+## Phase 0: Foundation and Conventions
+
+Status: `DONE`
+
+Goal:
+
+- establish repository structure, documentation baseline, and engineering rules
+
+Work items:
+
+- create `web/`, `server/`, and `deploy/`
+- initialize README, AGENTS, and core docs
+- finalize architecture, API, database, deployment, and migration rules
+
+Completion criteria:
+
+- repo structure exists
+- docs baseline exists
+- development and migration rules are agreed
+
+Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/architecture.md`
+- `docs/development-phases.md`
+
+## Phase 1: Backend Bootstrap and Auth
+
+Status: `DONE`
+
+Goal:
+
+- establish FastAPI foundation and username/password login
+
+Work items:
+
+- initialize FastAPI app structure
+- add config, logging, database session management, and health endpoints
+- create `users` model and first Alembic migration
+- implement password hashing and JWT auth
+- add `auth/login`, `auth/logout`, and `auth/me`
+- add initial backend tests
+
+Completion criteria:
+
+- FastAPI app boots inside Docker
+- login flow works
+- first migration applies cleanly
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/migration-guide.md`
+- `docs/development-phases.md`
+
+## Phase 2: Raw Asset Ingestion
+
+Status: `DONE`
+
+Goal:
+
+- support text, image, audio, and video input with raw asset persistence
+
+Work items:
+
+- integrate MinIO client
+- create `raw_assets` and `asset_derivatives` migrations
+- add asset upload API
+- support original text storage
+- store file metadata and object keys
+- persist normalized derivative text for multimodal assets
+- add local OCR and ASR fallback for image, audio, and video parsing
+- add asset listing and detail APIs
+
+Completion criteria:
+
+- raw assets are stored safely
+- metadata can be queried
+- original text and file-based assets are both supported
+- image, audio, and video uploads can generate derivative text for downstream extraction
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/deployment.md`
+- `docs/development-phases.md`
+
+## Phase 3: Async Pipeline and Job Tracking
+
+Status: `DONE`
+
+Goal:
+
+- introduce Celery, RabbitMQ, and tracked async processing
+
+Work items:
+
+- configure Celery app
+- connect RabbitMQ broker
+- add `ai_jobs` migration and job repository/service
+- create worker container and task queue wiring
+- add job status and retry APIs
+
+Completion criteria:
+
+- jobs can be enqueued and consumed
+- job status is queryable
+- failed jobs can be retried
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/deployment.md`
+- `docs/migration-guide.md`
+- `docs/development-phases.md`
+
+## Phase 4: Note Canonicalization and Extraction Persistence
+
+Status: `DONE`
+
+Goal:
+
+- create notes and persist extraction results safely
+
+Work items:
+
+- create `notes`, `note_chunks`, and `extraction_runs`
+- implement note creation from asset
+- persist raw extraction JSON
+- normalize extraction results before final writes
+- add reprocess endpoint
+
+Completion criteria:
+
+- note creation starts async processing
+- extraction results are stored and replayable
+- reprocessing flow exists
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/ai-extraction-format.md`
+- `docs/development-phases.md`
+
+## Phase 5: Entity, Event, Relation, and Timeline Graph
+
+Status: `DONE`
+
+Goal:
+
+- implement the knowledge graph core
+
+Work items:
+
+- create `entities`, `events`, `event_entities`, `relations`, `note_entities`, `note_events`, `timeline_items`, and `extraction_evidence`
+- implement entity extraction and event extraction persistence
+- implement event-centric relation building
+- implement timeline projection generation
+- build entity, event, and timeline query APIs
+
+Completion criteria:
+
+- people index can be built from stored entities
+- event pages can show linked entities
+- timeline is queryable from projection data
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/ai-extraction-format.md`
+- `docs/development-phases.md`
+
+## Phase 6: Search, Embeddings, and Merge Candidates
+
+Status: `DONE`
+
+Goal:
+
+- add similarity recall and duplicate candidate workflows
+
+Work items:
+
+- create `embeddings` and `merge_candidates`
+- generate note, chunk, entity, or event embeddings
+- add similarity search endpoint
+- generate duplicate candidates for entity and event review
+
+Completion criteria:
+
+- similar content can be queried
+- merge candidates are persisted for later review
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/migration-guide.md`
+- `docs/development-phases.md`
+
+## Phase 7: Stylized Story Views
+
+Status: `DONE`
+
+Goal:
+
+- turn structured knowledge into stylized presentation views
+
+Work items:
+
+- create `style_views`
+- implement structured `style_payload` handling
+- generate chunibyo-style note and entity story views
+- add story view APIs
+
+Completion criteria:
+
+- note and entity story views are queryable
+- stylized output remains separate from canonical knowledge
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/ai-extraction-format.md`
+- `docs/development-phases.md`
+
+## Phase 8: Frontend MVP
+
+Status: `DONE`
+
+Goal:
+
+- build the first usable product surface
+
+Work items:
+
+- initialize Next.js app
+- add login page
+- add inbox and library pages
+- add note detail page
+- add people page
+- add events page
+- add timeline page
+- add story view pages
+
+Completion criteria:
+
+- the MVP flow works end to end in Docker
+- user can log in, upload content, wait for processing, and browse results
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/architecture.md`
+- `docs/api-contract.md`
+- `docs/deployment.md`
+- `docs/development-phases.md`
+
+## Phase 9: Hardening and Release Readiness
+
+Status: `DONE`
+
+Goal:
+
+- make the system maintainable and release-ready
+
+Work items:
+
+- improve test coverage
+- validate migration workflow in clean environments
+- add better logging and failure visibility
+- document backup, restore, and operational steps
+- validate production compose setup
+
+Current verified progress:
+
+- pytest regression suite added for health, extractor behavior, and full API flow
+- API request logging with request IDs is active
+- worker task lifecycle logging is active after worker restart
+- production compose file now validates with `docker compose ... config`
+- backup and restore runbook exists in `docs/operations.md`
+
+Completion criteria:
+
+- core flows are covered by tests
+- deployment steps are documented and repeatable
+- release checklist exists
+
+Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/deployment.md`
+- `docs/migration-guide.md`
+- `docs/development-phases.md`
+
+## Phase 10: Architecture Hardening And Contract Cleanup
+
+Status: `DONE`
+
+Goal:
+
+- reduce future feature cost by hardening internal boundaries and public API conventions
+
+Work items:
+
+- introduce shared pagination and response helpers
+- centralize repeated API serialization logic
+- move search aggregation into a dedicated service
+- introduce generic job dispatch entry points
+- correct graph-facing timestamp modeling issues
+- produce an architecture review and iteration plan
+
+Completion criteria:
+
+- key list endpoints return consistent pagination metadata
+- route files are thinner and rely more on services/helpers
+- at least one schema-level modeling issue is corrected through migration
+- architecture review and target direction are documented
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/architecture.md`
+- `docs/architecture-review.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/development-phases.md`
+
+## Phase 11: Entity And Event Review Workflow
+
+Status: `DONE`
+
+Goal:
+
+- add the first operational review workflow so extracted entities and events can be accepted, rejected, merged, and audited
+
+Work items:
+
+- add review queue APIs
+- add accept and reject review actions
+- implement entity merge and event merge logic
+- add alias confirmation support
+- add review audit logging
+- build review queue and review context pages
+- add phase-specific e2e validation
+
+Completion criteria:
+
+- merge candidates can be reviewed in API and web UI
+- accepted merges update dependent graph records consistently
+- rejected candidates remain auditable
+- review workflow is covered by e2e
+
+Implementation notes:
+
+- review queue APIs are live under `/api/v1/review`
+- entity merge, event merge, alias confirmation, and audit logging are implemented
+- web review pages are available at `/review`, `/review/entities/[id]`, and `/review/events/[id]`
+- verification now includes `server/scripts/e2e_review_flow.py` in addition to the existing full API e2e
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/development-phases.md`
+- `docs/phase-11-review-workflow-plan.md`

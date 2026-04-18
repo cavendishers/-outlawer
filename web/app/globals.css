@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-paper: #f7f0e6;
+  --color-white: #fffdf8;
+  --color-neon: #d8ff19;
+  --color-aqua: #80d6ef;
+  --color-peach: #ffc3a5;
+  --color-gold: #f4d35e;
+  --color-mint: #b8e7c8;
+  --color-ember: #f17c67;
+  --color-ink: #0b0b0b;
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.font-display {
+  font-family: var(--font-display), sans-serif;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.single-line-clamp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+Visual token contract
+- paper: default reading and content surface
+- white: inset cards, input fields, tags, graph canvases
+- neon: app chrome, primary CTA, a single spotlight block per view
+- aqua: metadata, info panels, secondary system guidance
+- peach: narrative, relationship, story-oriented sections
+- gold: time anchors, chronology, milestone emphasis
+- mint: success, processed, completion states
+- ember: error, risk, destructive or suspicious states
+- ink: text, border, shadow, structural separators
+*/
+
+@layer components {
+  .surface-default {
+    @apply bg-paper;
+  }
+
+  .surface-info {
+    @apply bg-aqua;
+  }
+
+  .surface-story {
+    @apply bg-peach;
+  }
+
+  .surface-signal {
+    @apply bg-neon;
+  }
+
+  .surface-time {
+    @apply bg-gold;
+  }
+
+  .surface-success {
+    @apply bg-mint;
+  }
+
+  .surface-danger {
+    @apply bg-ember;
+  }
+
+  .surface-inset {
+    @apply bg-white;
+  }
+
+  .brutal-chip {
+    @apply border-2 border-ink bg-white px-2 py-1 text-xs font-black uppercase tracking-[0.12em];
+  }
+
+  .brutal-input {
+    @apply border-4 border-ink bg-white px-4 py-3 shadow-brutal;
+  }
+
+  .brutal-action {
+    @apply inline-flex border-4 border-ink px-4 py-3 font-black shadow-brutal transition-transform hover:-translate-y-1;
+  }
+
+  .brutal-action-primary {
+    @apply bg-neon;
+  }
+
+  .brutal-action-secondary {
+    @apply bg-white;
+  }
+
+  .brutal-action-info {
+    @apply bg-aqua;
+  }
+}

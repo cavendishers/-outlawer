@@ -1,0 +1,8 @@
+pyproject.toml
+app/__init__.py
+app/main.py
+outlawer_server.egg-info/PKG-INFO
+outlawer_server.egg-info/SOURCES.txt
+outlawer_server.egg-info/dependency_links.txt
+outlawer_server.egg-info/requires.txt
+outlawer_server.egg-info/top_level.txt

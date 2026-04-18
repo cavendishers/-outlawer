@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: outlawer-server
+Version: 0.1.0
+Summary: Backend for the Outlawer online knowledge base
+Requires-Python: >=3.12
+Requires-Dist: alembic==1.16.5
+Requires-Dist: celery[rabbitmq]==5.5.3
+Requires-Dist: fastapi==0.116.1
+Requires-Dist: greenlet==3.2.4
+Requires-Dist: httpx==0.28.1
+Requires-Dist: minio==7.2.18
+Requires-Dist: pgvector==0.4.1
+Requires-Dist: psycopg[binary]==3.2.10
+Requires-Dist: pydantic-settings==2.10.1
+Requires-Dist: pwdlib[argon2]==0.2.1
+Requires-Dist: PyJWT==2.10.1
+Requires-Dist: python-multipart==0.0.20
+Requires-Dist: redis==6.4.0
+Requires-Dist: sqlalchemy==2.0.43
+Requires-Dist: uvicorn[standard]==0.35.0
+Provides-Extra: dev
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: pytest-asyncio==1.1.0; extra == "dev"
