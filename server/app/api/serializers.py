@@ -65,6 +65,7 @@ def serialize_entity(entity: Entity) -> dict:
         "display_name": entity.display_name,
         "description": entity.description,
         "aliases": entity.alias_json,
+        "status": entity.status,
         "confidence_score": entity.confidence_score,
         "first_seen_at": isoformat(entity.first_seen_at),
         "last_seen_at": isoformat(entity.last_seen_at),

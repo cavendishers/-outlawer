@@ -156,6 +156,16 @@ export default function EntityReviewPage() {
             <p className="mt-4 text-lg font-bold leading-relaxed">
               {context?.entity.description ?? "这里用于校对人物别名、时间线片段，以及与其他同名节点的合并决策。"}
             </p>
+            {context ? (
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href={`/curation/entities/${context.entity.id}`} className="brutal-action brutal-action-primary text-lg">
+                  进入校对台
+                </Link>
+                <Link href={`/story/entity/${context.entity.id}`} className="brutal-action brutal-action-secondary text-lg">
+                  查看人物故事页
+                </Link>
+              </div>
+            ) : null}
           </Panel>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">

@@ -85,6 +85,16 @@ export default function EntityStoryPage() {
             <p className="mt-4 text-lg font-bold leading-relaxed">
               {entity?.description ?? "该角色的设定注释尚未补齐，先从故事视图读取它的气场。"}
             </p>
+            {entity ? (
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href={`/curation/entities/${entity.id}`} className="brutal-action brutal-action-primary text-lg">
+                  进入校对台
+                </Link>
+                <Link href={`/review/entities/${entity.id}`} className="brutal-action brutal-action-info text-lg">
+                  查看审核页
+                </Link>
+              </div>
+            ) : null}
           </Panel>
 
           <Panel className="p-6" tone="info">

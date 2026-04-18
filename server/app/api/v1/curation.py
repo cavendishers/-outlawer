@@ -7,6 +7,49 @@ from app.services import curation_service
 router = APIRouter()
 
 
+@router.get("/entities/{entity_id}")
+def get_entity_curation_context(entity_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    try:
+        return ok(curation_service.get_entity_curation_context(db, user_id=user.id, entity_id=entity_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/entities/{entity_id}")
+def update_entity(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+    try:
+        return ok(curation_service.update_entity(db, user_id=user.id, entity_id=entity_id, payload=payload))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/entities/{entity_id}/aliases")
+def add_entity_alias(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+    try:
+        return ok(
+            curation_service.add_entity_alias(
+                db,
+                user_id=user.id,
+                entity_id=entity_id,
+                alias=payload.get("alias") or "",
+                alias_type=payload.get("alias_type"),
+            )
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/entities/{entity_id}/aliases/{alias_id}")
+def remove_entity_alias(entity_id: str, alias_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    try:
+        return ok(curation_service.remove_entity_alias(db, user_id=user.id, entity_id=entity_id, alias_id=alias_id))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/events/{event_id}")
 def get_event_curation_context(event_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:

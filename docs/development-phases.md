@@ -16,7 +16,7 @@ Status values to use:
 
 ## Latest Verification
 
-Verified on `2026-04-18` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
+Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
 
 - `python3 -m compileall server/app` -> passed
 - `python3 server/scripts/e2e_api_flow.py --phase phase1` -> passed
@@ -34,6 +34,8 @@ Verified on `2026-04-18` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - local OCR and ASR fallback was verified in Docker after rebuilding `api` and `worker` with `ffmpeg`, `tesseract`, and `vosk`
 - `curl -I http://localhost:3000` -> `200 OK`
 - `python3 -m compileall server/app server/tests server/scripts` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 
 ## Phase 0: Foundation and Conventions
@@ -450,3 +452,36 @@ Documents to update manually after completion:
 - `docs/development-phases.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/phase-12-event-curation-plan.md`
+
+## Phase 13: Entity Curation And Alias Governance
+
+Status: `DONE`
+
+Goal:
+
+- add the second manual graph curation workflow so person/entity records can be corrected without rerunning extraction
+
+Work items:
+
+- add entity curation context API
+- add entity field update API
+- add trusted alias add/remove APIs
+- build entity curation page in the web app
+- link story and review entry points into the entity curation workflow
+- add phase-specific e2e validation
+
+Completion criteria:
+
+- an entity can be manually corrected in the UI and API
+- alias governance updates entity search/display data consistently
+- story and review pages can route into the entity curation workflow
+- entity curation workflow is covered by e2e
+
+Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`

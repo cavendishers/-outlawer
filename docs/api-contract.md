@@ -163,6 +163,10 @@ Responsibilities:
 
 ### Curation
 
+- `GET /api/v1/curation/entities/{entity_id}`
+- `PATCH /api/v1/curation/entities/{entity_id}`
+- `POST /api/v1/curation/entities/{entity_id}/aliases`
+- `DELETE /api/v1/curation/entities/{entity_id}/aliases/{alias_id}`
 - `GET /api/v1/curation/events/{event_id}`
 - `PATCH /api/v1/curation/events/{event_id}`
 - `POST /api/v1/curation/events/{event_id}/participants`
@@ -172,6 +176,9 @@ Responsibilities:
 
 Responsibilities:
 
+- return an entity-oriented curation context with aliases, related events, and timeline fragments
+- update canonical entity fields without touching raw source material
+- manage trusted entity aliases through `entity_aliases`
 - return an event-oriented graph curation context for manual editing
 - update canonical event fields without touching raw source material
 - manage event participants through `event_entities`

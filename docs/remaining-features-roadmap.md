@@ -10,7 +10,7 @@ It is intended to answer one question clearly:
 
 ## Current Snapshot
 
-Current status as of `2026-04-18`:
+Current status as of `2026-04-19`:
 
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
@@ -93,11 +93,17 @@ Delivered in the first slice:
 - web event curation page
 - dedicated curation e2e
 
+Delivered in the second slice:
+
+- entity curation API
+- entity field correction for canonical name, display name, description, type, status, and seen timestamps
+- trusted alias add/remove flow for entity governance
+- web entity curation page
+- dedicated entity curation e2e
+
 Still missing:
 
-- entity editor
 - relation edit-in-place beyond create/delete
-- manual canonical field editing for entities
 - broader graph canvas editing
 
 Suggested deliverables:
