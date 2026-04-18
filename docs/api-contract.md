@@ -161,6 +161,23 @@ Responsibilities:
 - expose review-oriented entity and event context for web moderation flows
 - preserve auditable review actions through `review_actions`
 
+### Curation
+
+- `GET /api/v1/curation/events/{event_id}`
+- `PATCH /api/v1/curation/events/{event_id}`
+- `POST /api/v1/curation/events/{event_id}/participants`
+- `DELETE /api/v1/curation/events/{event_id}/participants/{entity_id}`
+- `POST /api/v1/curation/events/{event_id}/relations`
+- `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}`
+
+Responsibilities:
+
+- return an event-oriented graph curation context for manual editing
+- update canonical event fields without touching raw source material
+- manage event participants through `event_entities`
+- manage extra graph links through `relations`
+- keep timeline projection fields in sync when an event is manually corrected
+
 ### Jobs
 
 - `GET /api/v1/jobs`

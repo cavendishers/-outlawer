@@ -14,12 +14,13 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `11` are implemented and verified.
+- Phase `0` through Phase `12` are implemented and verified.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.
 - Use [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py) as the baseline API e2e verification flow.
 - Use [`server/scripts/e2e_review_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_review_flow.py) for entity/event review workflow verification.
+- Use [`server/scripts/e2e_curation_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_curation_flow.py) for event curation workflow verification.
 - Use [`docs/operations.md`](/Users/hongan/Documents/fxxk/docs/operations.md) for backup, restore, migration reset, and release smoke steps.
 
 ## Repository Structure

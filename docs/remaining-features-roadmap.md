@@ -34,7 +34,7 @@ Current status as of `2026-04-18`:
 | Raw asset preservation | `DONE` | MinIO-backed storage and raw reads available |
 | AI-assisted organization and categorization | `PARTIAL` | extraction and normalization exist, but governance workflows are incomplete |
 | Person extraction | `PARTIAL` | core extraction works, but alias/merge/governance is still weak |
-| Event extraction | `PARTIAL` | core extraction works, but event curation workflows are missing |
+| Event extraction | `PARTIAL` | core extraction works and first event curation flow exists, but broader graph editing is still incomplete |
 | Similarity and association | `DONE` | similarity search, merge candidates, and review flows are available |
 | Person index | `DONE` | people page and entity detail flow available |
 | Timeline | `DONE` | timeline page and timeline projections available |
@@ -77,20 +77,28 @@ Verification:
 
 Status:
 
-- `TODO`
+- `PARTIAL`
 
 Why it matters:
 
 - the current graph is mostly generated and displayed
 - without manual editing, the graph cannot become a reliable long-term knowledge base
 
-What is missing:
+Delivered in the first slice:
 
-- manual relation create/edit/delete
-- manual event participant edits
-- manual time correction
-- manual location correction
-- manual canonical title/description correction
+- event curation API
+- event field correction for title, summary, description, time, location, and status
+- participant add/remove for events
+- relation add/remove for event-centered graph maintenance
+- web event curation page
+- dedicated curation e2e
+
+Still missing:
+
+- entity editor
+- relation edit-in-place beyond create/delete
+- manual canonical field editing for entities
+- broader graph canvas editing
 
 Suggested deliverables:
 

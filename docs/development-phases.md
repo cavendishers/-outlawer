@@ -33,6 +33,8 @@ Verified on `2026-04-18` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - multimodal ingest smoke verification passed for image, audio, and video uploads with locally generated derivative text persisted through `asset_derivatives.normalized_text`
 - local OCR and ASR fallback was verified in Docker after rebuilding `api` and `worker` with `ffmpeg`, `tesseract`, and `vosk`
 - `curl -I http://localhost:3000` -> `200 OK`
+- `python3 -m compileall server/app server/tests server/scripts` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 
 ## Phase 0: Foundation and Conventions
 
@@ -414,3 +416,37 @@ Documents to update manually after completion:
 - `docs/database-design.md`
 - `docs/development-phases.md`
 - `docs/phase-11-review-workflow-plan.md`
+
+## Phase 12: Event Curation And Graph Editing Slice
+
+Status: `DONE`
+
+Goal:
+
+- add the first manual graph curation workflow so events can be corrected and graph links can be maintained without re-running extraction
+
+Work items:
+
+- add event curation context API
+- add event field update API
+- add participant add/remove APIs
+- add relation add/remove APIs for event-centered graph maintenance
+- build event curation page in the web app
+- add phase-specific e2e validation
+
+Completion criteria:
+
+- an event can be manually corrected in the UI and API
+- participant changes update graph join data consistently
+- relation changes are reflected in the curation context
+- timeline projection stays aligned with edited event fields
+- curation workflow is covered by e2e
+
+Documents to update manually after completion:
+
+- `README.md`
+- `docs/api-contract.md`
+- `docs/database-design.md`
+- `docs/development-phases.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/phase-12-event-curation-plan.md`

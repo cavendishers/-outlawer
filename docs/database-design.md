@@ -239,6 +239,7 @@ Notes:
 - use this for generalized graph edges
 - keep high-frequency relationship shapes in dedicated join tables when needed
 - recommended `source_type` and `target_type`: note, entity, event
+- manual graph curation may add or remove non-extraction relations here without changing raw source material
 
 Recommended first-pass `relation_type` values:
 
@@ -306,6 +307,7 @@ Notes:
 
 - this is a projection table for fast timeline rendering
 - it should be regenerated when the event interpretation changes
+- manual event curation should keep `title`, `summary`, `display_time`, `sort_time`, and `time_precision` aligned with the edited event
 
 ### embeddings
 

@@ -119,14 +119,32 @@ export default function EventDetailPage() {
           <Panel className="p-6" tone="info">
             <p className="text-sm font-black uppercase tracking-[0.16em]">来源卷宗</p>
             {event?.source_note_id ? (
-              <Link
-                href={`/notes/${event.source_note_id}`}
-                className="brutal-action brutal-action-secondary mt-4 text-lg"
-              >
-                {event.source_note_title ?? "查看来源笔记"}
-              </Link>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href={`/notes/${event.source_note_id}`}
+                  className="brutal-action brutal-action-secondary text-lg"
+                >
+                  {event.source_note_title ?? "查看来源笔记"}
+                </Link>
+                <Link
+                  href={`/curation/events/${event.id}`}
+                  className="brutal-action brutal-action-primary text-lg"
+                >
+                  进入校对台
+                </Link>
+              </div>
             ) : (
-              <p className="mt-4 text-base font-bold">当前事件未绑定来源卷宗。</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <p className="text-base font-bold">当前事件未绑定来源卷宗。</p>
+                {event ? (
+                  <Link
+                    href={`/curation/events/${event.id}`}
+                    className="brutal-action brutal-action-primary text-lg"
+                  >
+                    进入校对台
+                  </Link>
+                ) : null}
+              </div>
             )}
           </Panel>
         </section>

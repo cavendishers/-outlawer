@@ -85,6 +85,7 @@ def serialize_event(event: Event) -> dict:
         "end_time": isoformat(event.end_time),
         "time_precision": event.time_precision,
         "time_text": event.time_text,
+        "timeline_sort_time": isoformat(event.timeline_sort_time),
         "location_text": event.location_text,
         "source_note_id": event.source_note_id,
         "confidence_score": event.confidence_score,

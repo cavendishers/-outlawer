@@ -195,12 +195,20 @@ export default function EventReviewPage() {
             </div>
 
             {context?.event.source_note_id ? (
-              <Link
-                href={`/notes/${context.event.source_note_id}`}
-                className="brutal-action brutal-action-secondary mt-6"
-              >
-                查看来源卷宗
-              </Link>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={`/notes/${context.event.source_note_id}`}
+                  className="brutal-action brutal-action-secondary"
+                >
+                  查看来源卷宗
+                </Link>
+                <Link
+                  href={`/curation/events/${context.event.id}`}
+                  className="brutal-action brutal-action-primary"
+                >
+                  进入校对台
+                </Link>
+              </div>
             ) : null}
           </Panel>
 
