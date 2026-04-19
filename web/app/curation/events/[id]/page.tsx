@@ -126,6 +126,7 @@ export default function EventCurationPage() {
     related_id: "",
     relation_type: "related_to",
   });
+  const [editingRelationId, setEditingRelationId] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -280,22 +281,58 @@ export default function EventCurationPage() {
     if (!eventId || !relationForm.related_id) return;
     setBusy("relation");
     try {
-      await apiFetch(`/curation/events/${eventId}/relations`, {
-        method: "POST",
-        body: JSON.stringify(relationForm),
-      });
+      await apiFetch(
+        editingRelationId ? `/curation/events/${eventId}/relations/${editingRelationId}` : `/curation/events/${eventId}/relations`,
+        {
+          method: editingRelationId ? "PATCH" : "POST",
+          body: JSON.stringify(relationForm),
+        }
+      );
       await refreshContext();
       startTransition(() => {
-        setMessage("图谱关系已写入。");
+        setEditingRelationId("");
+        setRelationForm({
+          direction: "outgoing",
+          related_type: "event",
+          related_id: "",
+          relation_type: "related_to",
+        });
+        setMessage(editingRelationId ? "图谱关系已更新。" : "图谱关系已写入。");
         setError("");
       });
     } catch (err) {
       startTransition(() => {
-        setError(err instanceof Error ? err.message : "图谱关系保存失败");
+        setError(err instanceof Error ? err.message : editingRelationId ? "图谱关系更新失败" : "图谱关系保存失败");
       });
     } finally {
       setBusy("");
     }
+  }
+
+  function beginRelationEdit(relation: EventCurationContext["relations"][number]) {
+    startTransition(() => {
+      setEditingRelationId(relation.id);
+      setRelationForm({
+        direction: relation.direction,
+        related_type: relation.peer.object_type,
+        related_id: relation.peer.id,
+        relation_type: relation.relation_type,
+      });
+      setMessage("");
+      setError("");
+    });
+  }
+
+  function cancelRelationEdit() {
+    startTransition(() => {
+      setEditingRelationId("");
+      setRelationForm({
+        direction: "outgoing",
+        related_type: "event",
+        related_id: "",
+        relation_type: "related_to",
+      });
+    });
   }
 
   async function removeRelation(relationId: string) {
@@ -305,6 +342,15 @@ export default function EventCurationPage() {
       await apiFetch(`/curation/events/${eventId}/relations/${relationId}`, { method: "DELETE" });
       await refreshContext();
       startTransition(() => {
+        if (editingRelationId === relationId) {
+          setEditingRelationId("");
+          setRelationForm({
+            direction: "outgoing",
+            related_type: "event",
+            related_id: "",
+            relation_type: "related_to",
+          });
+        }
         setMessage("图谱关系已删除。");
         setError("");
       });
@@ -543,7 +589,16 @@ export default function EventCurationPage() {
 
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <Panel className="p-6" tone="story">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">新增图谱关系</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black uppercase tracking-[0.16em]">
+                {editingRelationId ? "编辑图谱关系" : "新增图谱关系"}
+              </p>
+              {editingRelationId ? (
+                <button type="button" onClick={cancelRelationEdit} className="brutal-action brutal-action-secondary text-sm">
+                  取消编辑
+                </button>
+              ) : null}
+            </div>
             <form className="mt-5 space-y-4" onSubmit={handleRelationSubmit}>
               <div className="grid gap-4 md:grid-cols-2">
                 <select
@@ -594,7 +649,7 @@ export default function EventCurationPage() {
                 disabled={busy === "relation"}
                 className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
-                写入图谱关系
+                {editingRelationId ? "保存关系修改" : "写入图谱关系"}
               </button>
             </form>
           </Panel>
@@ -618,6 +673,13 @@ export default function EventCurationPage() {
                     <Link href={relation.peer.href} className="brutal-action brutal-action-secondary text-sm">
                       查看对象
                     </Link>
+                    <button
+                      type="button"
+                      className="brutal-action brutal-action-info text-sm"
+                      onClick={() => beginRelationEdit(relation)}
+                    >
+                      编辑关系
+                    </button>
                     <button
                       type="button"
                       disabled={busy === `relation-${relation.id}`}

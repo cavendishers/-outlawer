@@ -39,15 +39,15 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `13` are implemented and verified in Docker.
+- Phase `0` through Phase `14` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
 - Reprocessing preserves extraction history through `extraction_runs` and rewrites canonical projections conservatively.
 - Unified search is available in the web app for note keywords, entity hits, event hits, and note-to-note similarity recall.
 - Review workflow is available in the web app for merge-candidate filtering, accept/reject decisions, alias confirmation, and audited entity/event merges.
-- Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations.
-- Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, and trusted aliases.
+- Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
+- Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, trusted aliases, and entity-centered graph relations.
 
 ## Quick Start
 

@@ -37,6 +37,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 
 ## Phase 0: Foundation and Conventions
 
@@ -476,6 +477,38 @@ Completion criteria:
 - alias governance updates entity search/display data consistently
 - story and review pages can route into the entity curation workflow
 - entity curation workflow is covered by e2e
+
+Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 14: Relation Governance And Entity-Centered Graph Editing
+
+Status: `DONE`
+
+Goal:
+
+- let curated graph relations be edited in place and maintained from both event and entity entry points
+
+Work items:
+
+- add shared relation update service logic for curation workflows
+- add entity-centered relation add/update/remove APIs
+- add event relation update API
+- extend event and entity curation pages with relation edit-in-place interactions
+- add phase-specific e2e validation for relation editing
+
+Completion criteria:
+
+- event curation can edit an existing relation without deleting and recreating it manually
+- entity curation can add, edit, and remove graph relations
+- participant links remain governed separately from generic relation editing
+- relation governance is covered by e2e
 
 Documents to update manually after completion:
 

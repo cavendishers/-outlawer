@@ -45,17 +45,20 @@ def get_entity_curation_context(db: Session, *, user_id: str, entity_id: str) ->
     entity = get_owned_entity(db, user_id=user_id, entity_id=entity_id)
     aliases = build_entity_aliases(db, entity.id)
     related_events = build_entity_related_events(db, user_id=user_id, entity_id=entity.id)
+    relations = build_relations_for_owner(db, user_id=user_id, owner_type="entity", owner_id=entity.id)
     note_count = int(db.scalar(select(func.count()).select_from(NoteEntity).where(NoteEntity.entity_id == entity.id)) or 0)
 
     return {
         "entity": serialize_entity(entity),
         "aliases": aliases,
         "related_events": related_events,
+        "relations": relations,
         "timeline_fragments": get_timeline_fragments_for_entity(db, user_id, entity.id),
         "stats": {
             "alias_count": len(aliases),
             "related_event_count": len(related_events),
             "related_note_count": note_count,
+            "relation_count": len(relations),
         },
     }
 
@@ -183,7 +186,7 @@ def get_event_curation_context(db: Session, *, user_id: str, event_id: str) -> d
     event = get_owned_event(db, user_id=user_id, event_id=event_id)
     source_note = db.get(Note, event.source_note_id) if event.source_note_id else None
     participants = build_participants(db, event.id)
-    relations = build_relations(db, user_id=user_id, event_id=event.id)
+    relations = build_relations_for_owner(db, user_id=user_id, owner_type="event", owner_id=event.id)
 
     return {
         "event": {
@@ -312,75 +315,354 @@ def upsert_event_relation(
     related_id: str,
     relation_type: str,
 ) -> dict[str, Any]:
-    event = get_owned_event(db, user_id=user_id, event_id=event_id)
-    normalized_direction = clean_required_string(direction, "Direction is required")
-    normalized_relation_type = clean_required_string(relation_type, "Relation type is required")
-    if normalized_direction not in {"outgoing", "incoming"}:
-        raise ValueError("Direction must be outgoing or incoming")
+    get_owned_event(db, user_id=user_id, event_id=event_id)
+    return upsert_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="event",
+        owner_id=event_id,
+        direction=direction,
+        related_type=related_type,
+        related_id=related_id,
+        relation_type=relation_type,
+    )
 
-    related_summary = get_owned_object_summary(db, user_id=user_id, object_type=related_type, object_id=related_id)
-    if related_summary is None:
-        raise ValueError("Related object not found")
-    if related_type == "event" and related_id == event.id:
-        raise ValueError("Cannot create a self-relation")
 
-    if normalized_direction == "outgoing":
-        source_type = "event"
-        source_id = event.id
-        target_type = related_type
-        target_id = related_id
-    else:
-        source_type = related_type
-        source_id = related_id
-        target_type = "event"
-        target_id = event.id
+def update_event_relation(
+    db: Session,
+    *,
+    user_id: str,
+    event_id: str,
+    relation_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    get_owned_event(db, user_id=user_id, event_id=event_id)
+    return update_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="event",
+        owner_id=event_id,
+        relation_id=relation_id,
+        payload=payload,
+    )
+
+
+def remove_event_relation(db: Session, *, user_id: str, event_id: str, relation_id: str) -> dict[str, Any]:
+    get_owned_event(db, user_id=user_id, event_id=event_id)
+    return remove_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="event",
+        owner_id=event_id,
+        relation_id=relation_id,
+    )
+
+
+def upsert_entity_relation(
+    db: Session,
+    *,
+    user_id: str,
+    entity_id: str,
+    direction: str,
+    related_type: str,
+    related_id: str,
+    relation_type: str,
+) -> dict[str, Any]:
+    get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+    return upsert_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="entity",
+        owner_id=entity_id,
+        direction=direction,
+        related_type=related_type,
+        related_id=related_id,
+        relation_type=relation_type,
+    )
+
+
+def update_entity_relation(
+    db: Session,
+    *,
+    user_id: str,
+    entity_id: str,
+    relation_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+    return update_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="entity",
+        owner_id=entity_id,
+        relation_id=relation_id,
+        payload=payload,
+    )
+
+
+def remove_entity_relation(db: Session, *, user_id: str, entity_id: str, relation_id: str) -> dict[str, Any]:
+    get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+    return remove_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type="entity",
+        owner_id=entity_id,
+        relation_id=relation_id,
+    )
+
+
+def upsert_relation_for_owner(
+    db: Session,
+    *,
+    user_id: str,
+    owner_type: str,
+    owner_id: str,
+    direction: str,
+    related_type: str,
+    related_id: str,
+    relation_type: str,
+) -> dict[str, Any]:
+    relation_shape = resolve_relation_shape(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        direction=direction,
+        related_type=related_type,
+        related_id=related_id,
+        relation_type=relation_type,
+    )
 
     relation = db.scalar(
         select(Relation).where(
             Relation.user_id == user_id,
-            Relation.source_type == source_type,
-            Relation.source_id == source_id,
-            Relation.relation_type == normalized_relation_type,
-            Relation.target_type == target_type,
-            Relation.target_id == target_id,
+            Relation.source_type == relation_shape["source_type"],
+            Relation.source_id == relation_shape["source_id"],
+            Relation.relation_type == relation_shape["relation_type"],
+            Relation.target_type == relation_shape["target_type"],
+            Relation.target_id == relation_shape["target_id"],
         )
     )
     if relation is None:
         relation = Relation(
             user_id=user_id,
-            source_type=source_type,
-            source_id=source_id,
-            relation_type=normalized_relation_type,
-            target_type=target_type,
-            target_id=target_id,
+            source_type=relation_shape["source_type"],
+            source_id=relation_shape["source_id"],
+            relation_type=relation_shape["relation_type"],
+            target_type=relation_shape["target_type"],
+            target_id=relation_shape["target_id"],
             evidence_count=1,
             meta_json={"source": "curation"},
         )
     else:
         relation.meta_json = {"source": "curation"}
     db.add(relation)
+    db.flush()
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="relation",
+        target_id=relation.id,
+        action_type="add_relation",
+        status_before=None,
+        status_after=relation.relation_type,
+        payload_json={"owner_type": owner_type, "owner_id": owner_id, **relation_shape},
+    )
     db.commit()
     db.refresh(relation)
+    return serialize_relation_item_for_owner(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        relation=relation,
+    ) or {"id": relation.id}
 
-    return serialize_relation_item(db, user_id=user_id, event_id=event.id, relation=relation)
+
+def update_relation_for_owner(
+    db: Session,
+    *,
+    user_id: str,
+    owner_type: str,
+    owner_id: str,
+    relation_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    relation = get_owned_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        relation_id=relation_id,
+    )
+    current_shape = relation_shape_for_owner(owner_type=owner_type, owner_id=owner_id, relation=relation)
+    next_shape = resolve_relation_shape(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        direction=payload.get("direction") or current_shape["direction"],
+        related_type=payload.get("related_type") or current_shape["related_type"],
+        related_id=payload.get("related_id") or current_shape["related_id"],
+        relation_type=payload.get("relation_type") or relation.relation_type,
+    )
+
+    previous_relation_type = relation.relation_type
+    relation.source_type = next_shape["source_type"]
+    relation.source_id = next_shape["source_id"]
+    relation.target_type = next_shape["target_type"]
+    relation.target_id = next_shape["target_id"]
+    relation.relation_type = next_shape["relation_type"]
+    relation.meta_json = {"source": "curation"}
+    db.add(relation)
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="relation",
+        target_id=relation.id,
+        action_type="update_relation",
+        status_before=previous_relation_type,
+        status_after=relation.relation_type,
+        payload_json={
+            "owner_type": owner_type,
+            "owner_id": owner_id,
+            "previous": current_shape,
+            "next": next_shape,
+        },
+    )
+    db.commit()
+    db.refresh(relation)
+    return serialize_relation_item_for_owner(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        relation=relation,
+    ) or {"id": relation.id}
 
 
-def remove_event_relation(db: Session, *, user_id: str, event_id: str, relation_id: str) -> dict[str, Any]:
-    event = get_owned_event(db, user_id=user_id, event_id=event_id)
-    relation = db.get(Relation, relation_id)
-    if (
-        relation is None
-        or relation.user_id != user_id
-        or not (
-            (relation.source_type == "event" and relation.source_id == event.id)
-            or (relation.target_type == "event" and relation.target_id == event.id)
-        )
-    ):
-        raise ValueError("Relation not found")
-
+def remove_relation_for_owner(
+    db: Session,
+    *,
+    user_id: str,
+    owner_type: str,
+    owner_id: str,
+    relation_id: str,
+) -> dict[str, Any]:
+    relation = get_owned_relation_for_owner(
+        db,
+        user_id=user_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        relation_id=relation_id,
+    )
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="relation",
+        target_id=relation.id,
+        action_type="remove_relation",
+        status_before=relation.relation_type,
+        status_after=None,
+        payload_json={"owner_type": owner_type, "owner_id": owner_id},
+    )
     db.delete(relation)
     db.commit()
     return {"relation_id": relation_id, "status": "removed"}
+
+
+def resolve_relation_shape(
+    db: Session,
+    *,
+    user_id: str,
+    owner_type: str,
+    owner_id: str,
+    direction: str,
+    related_type: str,
+    related_id: str,
+    relation_type: str,
+) -> dict[str, str]:
+    normalized_direction = clean_required_string(direction, "Direction is required")
+    normalized_related_type = clean_required_string(related_type, "Related type is required")
+    normalized_related_id = clean_required_string(related_id, "Related object is required")
+    normalized_relation_type = clean_required_string(relation_type, "Relation type is required")
+    if normalized_direction not in {"outgoing", "incoming"}:
+        raise ValueError("Direction must be outgoing or incoming")
+    if normalized_related_type not in {"entity", "event", "note"}:
+        raise ValueError("Related type must be entity, event, or note")
+    if normalized_related_type == owner_type and normalized_related_id == owner_id:
+        raise ValueError("Cannot create a self-relation")
+    if get_owned_object_summary(db, user_id=user_id, object_type=normalized_related_type, object_id=normalized_related_id) is None:
+        raise ValueError("Related object not found")
+
+    if normalized_direction == "outgoing":
+        return {
+            "direction": normalized_direction,
+            "related_type": normalized_related_type,
+            "related_id": normalized_related_id,
+            "relation_type": normalized_relation_type,
+            "source_type": owner_type,
+            "source_id": owner_id,
+            "target_type": normalized_related_type,
+            "target_id": normalized_related_id,
+        }
+    return {
+        "direction": normalized_direction,
+        "related_type": normalized_related_type,
+        "related_id": normalized_related_id,
+        "relation_type": normalized_relation_type,
+        "source_type": normalized_related_type,
+        "source_id": normalized_related_id,
+        "target_type": owner_type,
+        "target_id": owner_id,
+    }
+
+
+def relation_shape_for_owner(*, owner_type: str, owner_id: str, relation: Relation) -> dict[str, str]:
+    if relation.source_type == owner_type and relation.source_id == owner_id:
+        return {
+            "direction": "outgoing",
+            "related_type": relation.target_type,
+            "related_id": relation.target_id,
+            "relation_type": relation.relation_type,
+            "source_type": relation.source_type,
+            "source_id": relation.source_id,
+            "target_type": relation.target_type,
+            "target_id": relation.target_id,
+        }
+    if relation.target_type == owner_type and relation.target_id == owner_id:
+        return {
+            "direction": "incoming",
+            "related_type": relation.source_type,
+            "related_id": relation.source_id,
+            "relation_type": relation.relation_type,
+            "source_type": relation.source_type,
+            "source_id": relation.source_id,
+            "target_type": relation.target_type,
+            "target_id": relation.target_id,
+        }
+    raise ValueError("Relation does not belong to owner")
+
+
+def get_owned_relation_for_owner(
+    db: Session,
+    *,
+    user_id: str,
+    owner_type: str,
+    owner_id: str,
+    relation_id: str,
+) -> Relation:
+    relation = db.get(Relation, relation_id)
+    if relation is None or relation.user_id != user_id:
+        raise ValueError("Relation not found")
+    if is_hidden_participant_relation(relation):
+        raise ValueError("Participant relation must be maintained from the participant editor")
+    if not (
+        (relation.source_type == owner_type and relation.source_id == owner_id)
+        or (relation.target_type == owner_type and relation.target_id == owner_id)
+    ):
+        raise ValueError("Relation not found")
+    return relation
 
 
 def get_owned_event(db: Session, *, user_id: str, event_id: str) -> Event:
@@ -470,14 +752,14 @@ def build_entity_related_events(db: Session, *, user_id: str, entity_id: str) ->
     return items
 
 
-def build_relations(db: Session, *, user_id: str, event_id: str) -> list[dict[str, Any]]:
+def build_relations_for_owner(db: Session, *, user_id: str, owner_type: str, owner_id: str) -> list[dict[str, Any]]:
     rows = db.scalars(
         select(Relation)
         .where(
             Relation.user_id == user_id,
             or_(
-                (Relation.source_type == "event") & (Relation.source_id == event_id),
-                (Relation.target_type == "event") & (Relation.target_id == event_id),
+                (Relation.source_type == owner_type) & (Relation.source_id == owner_id),
+                (Relation.target_type == owner_type) & (Relation.target_id == owner_id),
             ),
         )
         .order_by(Relation.created_at.asc())
@@ -485,28 +767,29 @@ def build_relations(db: Session, *, user_id: str, event_id: str) -> list[dict[st
     return [
         item
         for row in rows
-        if (item := serialize_relation_item(db, user_id=user_id, event_id=event_id, relation=row)) is not None
+        if (item := serialize_relation_item_for_owner(db, user_id=user_id, owner_type=owner_type, owner_id=owner_id, relation=row)) is not None
     ]
 
 
-def serialize_relation_item(
+def serialize_relation_item_for_owner(
     db: Session,
     *,
     user_id: str,
-    event_id: str,
+    owner_type: str,
+    owner_id: str,
     relation: Relation,
 ) -> dict[str, Any] | None:
-    if relation.source_type == "entity" and relation.target_type == "event" and relation.target_id == event_id:
-        return None
-    if relation.source_type == "event" and relation.target_type == "entity" and relation.source_id == event_id:
+    if is_hidden_participant_relation(relation):
         return None
 
-    if relation.source_type == "event" and relation.source_id == event_id:
+    if relation.source_type == owner_type and relation.source_id == owner_id:
         direction = "outgoing"
         peer = get_owned_object_summary(db, user_id=user_id, object_type=relation.target_type, object_id=relation.target_id)
-    else:
+    elif relation.target_type == owner_type and relation.target_id == owner_id:
         direction = "incoming"
         peer = get_owned_object_summary(db, user_id=user_id, object_type=relation.source_type, object_id=relation.source_id)
+    else:
+        return None
 
     if peer is None:
         return None
@@ -523,6 +806,13 @@ def serialize_relation_item(
         "meta": relation.meta_json,
         "created_at": isoformat(relation.created_at),
     }
+
+
+def is_hidden_participant_relation(relation: Relation) -> bool:
+    if {relation.source_type, relation.target_type} != {"entity", "event"}:
+        return False
+    meta_source = relation.meta_json.get("source") if isinstance(relation.meta_json, dict) else None
+    return meta_source == "curation_participant" or relation.relation_type == "participates_in"
 
 
 def get_owned_object_summary(

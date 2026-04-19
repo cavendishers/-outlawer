@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models.entity import Entity, EntityAlias, EventEntity
+from app.models.entity import Entity, EntityAlias, EventEntity, Relation
 from app.models.event import Event
 from app.models.note import Note
 from app.models.user import User
@@ -54,7 +54,20 @@ def seed_entity_curation_fixture(username: str) -> dict[str, str]:
             first_seen_at=original_time,
             last_seen_at=original_time,
         )
-        db.add(entity)
+        peer_entity = Entity(
+            user_id=user.id,
+            entity_type="person",
+            canonical_name=f"同伴李四-{suffix}",
+            display_name=f"同伴李四-{suffix}",
+            description="用于人物关系治理验证的关联实体。",
+            alias_json=[],
+            normalized_name=normalize_name(f"同伴李四-{suffix}"),
+            status="active",
+            confidence_score=0.76,
+            first_seen_at=original_time,
+            last_seen_at=original_time,
+        )
+        db.add_all([entity, peer_entity])
         db.flush()
 
         event = Event(
@@ -89,7 +102,9 @@ def seed_entity_curation_fixture(username: str) -> dict[str, str]:
 
         return {
             "user_id": user.id,
+            "note_id": note.id,
             "entity_id": entity.id,
+            "peer_entity_id": peer_entity.id,
             "event_id": event.id,
             "updated_display_name": f"校对张三-{suffix}",
             "updated_canonical_name": f"张三-{suffix}",
@@ -97,7 +112,7 @@ def seed_entity_curation_fixture(username: str) -> dict[str, str]:
         }
 
 
-def verify_database_state(ids: dict[str, str], alias_id: str) -> None:
+def verify_database_state(ids: dict[str, str], alias_id: str, relation_id: str) -> None:
     with SessionLocal() as db:
         entity = db.get(Entity, ids["entity_id"])
         assert entity is not None
@@ -112,6 +127,9 @@ def verify_database_state(ids: dict[str, str], alias_id: str) -> None:
 
         alias = db.get(EntityAlias, alias_id)
         assert alias is None
+
+        relation = db.get(Relation, relation_id)
+        assert relation is None
 
 
 def main() -> None:
@@ -134,6 +152,7 @@ def main() -> None:
     assert context["entity"]["id"] == ids["entity_id"]
     assert context["stats"]["related_event_count"] == 1
     assert len(context["timeline_fragments"]) == 1
+    assert context["stats"]["relation_count"] == 0
 
     updated = assert_ok(
         client.patch(
@@ -168,6 +187,42 @@ def main() -> None:
     assert any(item["id"] == alias["id"] for item in refreshed["aliases"])
     assert refreshed["entity"]["display_name"] == ids["updated_display_name"]
 
+    relation = assert_ok(
+        client.post(
+            f"{args.base_url}/curation/entities/{ids['entity_id']}/relations",
+            headers=headers,
+            json={
+                "direction": "outgoing",
+                "related_type": "entity",
+                "related_id": ids["peer_entity_id"],
+                "relation_type": "supports",
+            },
+        )
+    )
+    assert relation["relation_type"] == "supports"
+    assert relation["peer"]["id"] == ids["peer_entity_id"]
+
+    updated_relation = assert_ok(
+        client.patch(
+            f"{args.base_url}/curation/entities/{ids['entity_id']}/relations/{relation['id']}",
+            headers=headers,
+            json={
+                "direction": "incoming",
+                "related_type": "note",
+                "related_id": ids["note_id"],
+                "relation_type": "documents",
+            },
+        )
+    )
+    assert updated_relation["id"] == relation["id"]
+    assert updated_relation["direction"] == "incoming"
+    assert updated_relation["relation_type"] == "documents"
+    assert updated_relation["peer"]["id"] == ids["note_id"]
+
+    relation_context = assert_ok(client.get(f"{args.base_url}/curation/entities/{ids['entity_id']}", headers=headers))
+    assert relation_context["stats"]["relation_count"] == 1
+    assert any(item["id"] == relation["id"] and item["relation_type"] == "documents" for item in relation_context["relations"])
+
     removed = assert_ok(
         client.delete(
             f"{args.base_url}/curation/entities/{ids['entity_id']}/aliases/{alias['id']}",
@@ -179,8 +234,20 @@ def main() -> None:
     final_context = assert_ok(client.get(f"{args.base_url}/curation/entities/{ids['entity_id']}", headers=headers))
     assert not any(item["id"] == alias["id"] for item in final_context["aliases"])
     assert final_context["stats"]["related_event_count"] == 1
+    assert final_context["stats"]["relation_count"] == 1
 
-    verify_database_state(ids, alias["id"])
+    removed_relation = assert_ok(
+        client.delete(
+            f"{args.base_url}/curation/entities/{ids['entity_id']}/relations/{relation['id']}",
+            headers=headers,
+        )
+    )
+    assert removed_relation["status"] == "removed"
+
+    final_graph = assert_ok(client.get(f"{args.base_url}/curation/entities/{ids['entity_id']}", headers=headers))
+    assert final_graph["stats"]["relation_count"] == 0
+
+    verify_database_state(ids, alias["id"], relation["id"])
     print("Entity curation flow e2e passed")
 
 

@@ -161,7 +161,7 @@ def seed_curation_fixture(username: str) -> dict[str, str]:
         }
 
 
-def verify_database_state(ids: dict[str, str]) -> None:
+def verify_database_state(ids: dict[str, str], relation_id: str) -> None:
     with SessionLocal() as db:
         event = db.get(Event, ids["event_id"])
         assert event is not None
@@ -181,16 +181,7 @@ def verify_database_state(ids: dict[str, str]) -> None:
         )
         assert removed_participant is None
 
-        removed_relation = db.scalar(
-            select(Relation).where(
-                Relation.user_id == ids["user_id"],
-                Relation.source_type == "event",
-                Relation.source_id == event.id,
-                Relation.relation_type == "occurs_before",
-                Relation.target_type == "event",
-                Relation.target_id == ids["related_event_id"],
-            )
-        )
+        removed_relation = db.get(Relation, relation_id)
         assert removed_relation is None
 
 
@@ -261,9 +252,26 @@ def main() -> None:
     assert relation["relation_type"] == "occurs_before"
     assert relation["peer"]["id"] == ids["related_event_id"]
 
+    updated_relation = assert_ok(
+        client.patch(
+            f"{args.base_url}/curation/events/{ids['event_id']}/relations/{relation['id']}",
+            headers=headers,
+            json={
+                "direction": "incoming",
+                "related_type": "note",
+                "related_id": ids["note_id"],
+                "relation_type": "documents",
+            },
+        )
+    )
+    assert updated_relation["id"] == relation["id"]
+    assert updated_relation["direction"] == "incoming"
+    assert updated_relation["relation_type"] == "documents"
+    assert updated_relation["peer"]["id"] == ids["note_id"]
+
     refreshed = assert_ok(client.get(f"{args.base_url}/curation/events/{ids['event_id']}", headers=headers))
     assert any(item["id"] == ids["entity_b_id"] for item in refreshed["participants"])
-    assert any(item["id"] == relation["id"] for item in refreshed["relations"])
+    assert any(item["id"] == relation["id"] and item["relation_type"] == "documents" for item in refreshed["relations"])
 
     removed_relation = assert_ok(
         client.delete(f"{args.base_url}/curation/events/{ids['event_id']}/relations/{relation['id']}", headers=headers)
@@ -279,7 +287,7 @@ def main() -> None:
     assert not any(item["id"] == ids["entity_b_id"] for item in final_context["participants"])
     assert not any(item["id"] == relation["id"] for item in final_context["relations"])
 
-    verify_database_state(ids)
+    verify_database_state(ids, relation["id"])
     print("Curation flow e2e passed")
 
 

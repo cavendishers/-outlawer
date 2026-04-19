@@ -101,9 +101,15 @@ Delivered in the second slice:
 - web entity curation page
 - dedicated entity curation e2e
 
+Delivered in the third slice:
+
+- relation edit-in-place for curated graph links
+- entity-centered relation add/update/remove workflow
+- event curation relation updates without delete-and-recreate in the UI flow
+- dedicated e2e coverage for mixed entity/event relation editing
+
 Still missing:
 
-- relation edit-in-place beyond create/delete
 - broader graph canvas editing
 
 Suggested deliverables:

@@ -109,28 +109,27 @@ sequenceDiagram
 - `DONE`: People index, library, event pages, timeline/global graph view, note detail, and story views.
 - `DONE`: Chunibyo-style note and entity story views stored separately from canonical data.
 - `DONE`: Merge review queue with accept/reject, entity merge, event merge, alias confirmation, and audit history.
-- `DONE`: Event curation page and API for event fields, participants, and event-centered relation add/remove.
-- `DONE`: Entity curation page and API for canonical/display fields, type, status, seen timestamps, and alias governance.
+- `DONE`: Event curation page and API for event fields, participants, and event-centered relation add/update/remove.
+- `DONE`: Entity curation page and API for canonical/display fields, type, status, seen timestamps, alias governance, and entity-centered relation maintenance.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `HIGH`: Broader relation editing. Event-centered relation create/delete exists, but relation edit-in-place and entity-centered graph maintenance are not complete.
-2. `HIGH`: Multimodal quality upgrade. Image/audio/video ingestion works, but semantic understanding is still MVP-grade, especially video scene-level extraction.
-3. `HIGH`: Extraction replay and version comparison. Reprocessing exists, but side-by-side extraction diffs, controlled projection replay, and rollback decisions are not complete.
-4. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
-5. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
-6. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
-7. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
-8. `LOW`: Plugin and integration system for external importers and third-party sync.
-9. `LOW`: Mobile-first ingestion and browsing experience.
+1. `HIGH`: Multimodal quality upgrade. Image/audio/video ingestion works, but semantic understanding is still MVP-grade, especially video scene-level extraction.
+2. `HIGH`: Extraction replay and version comparison. Reprocessing exists, but side-by-side extraction diffs, controlled projection replay, and rollback decisions are not complete.
+3. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
+4. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
+5. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
+6. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
+7. `LOW`: Plugin and integration system for external importers and third-party sync.
+8. `LOW`: Mobile-first ingestion and browsing experience.
 
 ## Next Development Direction
 
-The next implementation slice should expand manual relation governance so the graph can be curated from both event and entity entry points instead of only adding or deleting event-centered links. The expected scope is:
+The next implementation slice should upgrade multimodal understanding quality so image, audio, and especially video ingestion can produce stronger graph material before human review. The expected scope is:
 
-- expose relation edit-in-place APIs
-- support entity-centered graph maintenance alongside event-centered maintenance
-- make relation semantics editable without deleting and recreating records
-- add a broader graph curation surface that can pivot across entity, event, and note context
-- add e2e verification for mixed entity/event graph edits
+- improve video scene segmentation and frame batching
+- strengthen image semantic extraction beyond OCR-only signals
+- improve audio speaker/context extraction
+- version multimodal prompts and normalize richer derivative payloads
+- add confidence and source attribution for multimodal extraction output

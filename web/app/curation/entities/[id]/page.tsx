@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FormEvent, startTransition, useEffect, useState } from "react";
+import { FormEvent, startTransition, useEffect, useMemo, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
 import { Panel } from "@/components/panel";
@@ -38,6 +38,22 @@ type EntityCurationContext = {
     role: string | null;
     relation_type: string | null;
   }>;
+  relations: Array<{
+    id: string;
+    direction: string;
+    relation_type: string;
+    peer: {
+      id: string;
+      object_type: string;
+      label: string;
+      subtitle: string | null;
+      href: string;
+    };
+    source_type: string;
+    source_id: string;
+    target_type: string;
+    target_id: string;
+  }>;
   timeline_fragments: Array<{
     event_id: string;
     title: string;
@@ -56,8 +72,39 @@ type EntityCurationContext = {
     alias_count: number;
     related_event_count: number;
     related_note_count: number;
+    relation_count: number;
   };
 };
+
+type EntityOption = {
+  id: string;
+  display_name: string;
+  entity_type: string;
+};
+
+type EventOption = {
+  id: string;
+  title: string;
+  time_text: string | null;
+  event_type: string | null;
+};
+
+type NoteOption = {
+  id: string;
+  title: string;
+  primary_time: string | null;
+  status: string;
+};
+
+const relationTypeOptions = [
+  "related_to",
+  "supports",
+  "blocks",
+  "source_of",
+  "located_in",
+  "member_of",
+  "mentions",
+];
 
 function toInputDateTime(value: string | null): string {
   if (!value) return "";
@@ -68,6 +115,9 @@ export default function EntityCurationPage() {
   const params = useParams<{ id: string }>();
   const entityId = params?.id;
   const [context, setContext] = useState<EntityCurationContext | null>(null);
+  const [entities, setEntities] = useState<EntityOption[]>([]);
+  const [events, setEvents] = useState<EventOption[]>([]);
+  const [notes, setNotes] = useState<NoteOption[]>([]);
   const [entityForm, setEntityForm] = useState({
     entity_type: "person",
     canonical_name: "",
@@ -78,16 +128,31 @@ export default function EntityCurationPage() {
     last_seen_at: "",
   });
   const [aliasInput, setAliasInput] = useState("");
+  const [relationForm, setRelationForm] = useState({
+    direction: "outgoing",
+    related_type: "entity",
+    related_id: "",
+    relation_type: "related_to",
+  });
+  const [editingRelationId, setEditingRelationId] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!entityId) return;
-    apiFetch<EntityCurationContext>(`/curation/entities/${entityId}`)
-      .then((data) => {
+    Promise.all([
+      apiFetch<EntityCurationContext>(`/curation/entities/${entityId}`),
+      apiFetch<{ items: EntityOption[] }>("/entities?page_size=100"),
+      apiFetch<{ items: EventOption[] }>("/events?page_size=100"),
+      apiFetch<{ items: NoteOption[] }>("/notes?page_size=100"),
+    ])
+      .then(([data, entityData, eventData, noteData]) => {
         startTransition(() => {
           setContext(data);
+          setEntities(entityData.items);
+          setEvents(eventData.items);
+          setNotes(noteData.items);
           setEntityForm({
             entity_type: data.entity.entity_type,
             canonical_name: data.entity.canonical_name,
@@ -107,6 +172,27 @@ export default function EntityCurationPage() {
         });
       });
   }, [entityId]);
+
+  const relatedOptions = useMemo(() => {
+    if (relationForm.related_type === "event") {
+      return events.map((event) => ({
+        id: event.id,
+        label: [event.time_text, event.event_type, event.title].filter(Boolean).join(" / "),
+      }));
+    }
+    if (relationForm.related_type === "note") {
+      return notes.map((note) => ({
+        id: note.id,
+        label: [note.primary_time?.slice(0, 10), note.title].filter(Boolean).join(" / "),
+      }));
+    }
+    return entities
+      .filter((entity) => entity.id !== entityId)
+      .map((entity) => ({
+        id: entity.id,
+        label: `${entity.display_name} / ${entity.entity_type}`,
+      }));
+  }, [entities, entityId, events, notes, relationForm.related_type]);
 
   async function refreshContext() {
     if (!entityId) return;
@@ -193,6 +279,93 @@ export default function EntityCurationPage() {
     }
   }
 
+  async function handleRelationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!entityId || !relationForm.related_id) return;
+    setBusy("relation");
+    try {
+      await apiFetch(
+        editingRelationId ? `/curation/entities/${entityId}/relations/${editingRelationId}` : `/curation/entities/${entityId}/relations`,
+        {
+          method: editingRelationId ? "PATCH" : "POST",
+          body: JSON.stringify(relationForm),
+        }
+      );
+      await refreshContext();
+      startTransition(() => {
+        setEditingRelationId("");
+        setRelationForm({
+          direction: "outgoing",
+          related_type: "entity",
+          related_id: "",
+          relation_type: "related_to",
+        });
+        setMessage(editingRelationId ? "人物关系已更新。" : "人物关系已写入。");
+        setError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setError(err instanceof Error ? err.message : editingRelationId ? "人物关系更新失败" : "人物关系保存失败");
+      });
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function beginRelationEdit(relation: EntityCurationContext["relations"][number]) {
+    startTransition(() => {
+      setEditingRelationId(relation.id);
+      setRelationForm({
+        direction: relation.direction,
+        related_type: relation.peer.object_type,
+        related_id: relation.peer.id,
+        relation_type: relation.relation_type,
+      });
+      setMessage("");
+      setError("");
+    });
+  }
+
+  function cancelRelationEdit() {
+    startTransition(() => {
+      setEditingRelationId("");
+      setRelationForm({
+        direction: "outgoing",
+        related_type: "entity",
+        related_id: "",
+        relation_type: "related_to",
+      });
+    });
+  }
+
+  async function removeRelation(relationId: string) {
+    if (!entityId || !window.confirm("确认删除这条人物关系吗？")) return;
+    setBusy(`relation-${relationId}`);
+    try {
+      await apiFetch(`/curation/entities/${entityId}/relations/${relationId}`, { method: "DELETE" });
+      await refreshContext();
+      startTransition(() => {
+        if (editingRelationId === relationId) {
+          setEditingRelationId("");
+          setRelationForm({
+            direction: "outgoing",
+            related_type: "entity",
+            related_id: "",
+            relation_type: "related_to",
+          });
+        }
+        setMessage("人物关系已删除。");
+        setError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setError(err instanceof Error ? err.message : "删除人物关系失败");
+      });
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <AuthGate>
       <main className="space-y-6">
@@ -207,7 +380,7 @@ export default function EntityCurationPage() {
             </p>
           </Panel>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
             <Panel className="p-5" tone="info">
               <p className="text-xs font-black uppercase tracking-[0.16em]">关联事件</p>
               <p className="mt-3 text-5xl font-black">{context?.stats.related_event_count ?? 0}</p>
@@ -218,6 +391,10 @@ export default function EntityCurationPage() {
               <p className="mt-3 text-sm font-bold leading-relaxed">
                 同步影响人物页、搜索与后续审核判断。
               </p>
+            </Panel>
+            <Panel className="p-5" tone="story">
+              <p className="text-xs font-black uppercase tracking-[0.16em]">图谱关系</p>
+              <p className="mt-3 text-5xl font-black">{context?.stats.relation_count ?? 0}</p>
             </Panel>
           </div>
         </section>
@@ -392,6 +569,119 @@ export default function EntityCurationPage() {
 
             <div className="mt-6 text-sm font-bold leading-relaxed">
               别名只会更新实体档案与检索线索，不会覆盖原始卷宗。人物故事页仍然使用独立的衍生视图。
+            </div>
+          </Panel>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <Panel className="p-6" tone="story">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black uppercase tracking-[0.16em]">
+                {editingRelationId ? "编辑人物关系" : "新增人物关系"}
+              </p>
+              {editingRelationId ? (
+                <button type="button" onClick={cancelRelationEdit} className="brutal-action brutal-action-secondary text-sm">
+                  取消编辑
+                </button>
+              ) : null}
+            </div>
+            <form className="mt-5 space-y-4" onSubmit={handleRelationSubmit}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <select
+                  value={relationForm.direction}
+                  onChange={(event) => setRelationForm((current) => ({ ...current, direction: event.target.value }))}
+                  className="brutal-input w-full text-base"
+                >
+                  <option value="outgoing">当前人物指向对象</option>
+                  <option value="incoming">对象指向当前人物</option>
+                </select>
+                <select
+                  value={relationForm.related_type}
+                  onChange={(event) =>
+                    setRelationForm((current) => ({ ...current, related_type: event.target.value, related_id: "" }))
+                  }
+                  className="brutal-input w-full text-base"
+                >
+                  <option value="entity">实体</option>
+                  <option value="event">事件</option>
+                  <option value="note">卷宗</option>
+                </select>
+              </div>
+              <select
+                value={relationForm.related_id}
+                onChange={(event) => setRelationForm((current) => ({ ...current, related_id: event.target.value }))}
+                className="brutal-input w-full text-base"
+              >
+                <option value="">选择关联对象</option>
+                {relatedOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={relationForm.relation_type}
+                onChange={(event) => setRelationForm((current) => ({ ...current, relation_type: event.target.value }))}
+                className="brutal-input w-full text-base"
+              >
+                {relationTypeOptions.map((relationType) => (
+                  <option key={relationType} value={relationType}>
+                    {relationType}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                disabled={busy === "relation"}
+                className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {editingRelationId ? "保存关系修改" : "写入人物关系"}
+              </button>
+            </form>
+          </Panel>
+
+          <Panel className="p-6" tone="default">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">当前图谱关系</p>
+            <div className="mt-5 space-y-4">
+              {(context?.relations ?? []).map((relation) => (
+                <Panel key={relation.id} className="p-5" tone="default">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em]">
+                        {relation.direction === "outgoing" ? "人物 -> 对象" : "对象 -> 人物"}
+                      </p>
+                      <p className="mt-3 text-2xl font-black">{relation.peer.label}</p>
+                      <p className="mt-2 text-sm font-bold">{relation.relation_type}</p>
+                    </div>
+                    <span className="brutal-chip">{relation.peer.object_type}</span>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link href={relation.peer.href} className="brutal-action brutal-action-secondary text-sm">
+                      查看对象
+                    </Link>
+                    <button
+                      type="button"
+                      className="brutal-action brutal-action-info text-sm"
+                      onClick={() => beginRelationEdit(relation)}
+                    >
+                      编辑关系
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy === `relation-${relation.id}`}
+                      className="brutal-action border-ember bg-ember text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => removeRelation(relation.id)}
+                    >
+                      删除关系
+                    </button>
+                  </div>
+                </Panel>
+              ))}
+              {context && context.relations.length === 0 ? (
+                <div className="surface-inset border-4 border-dashed border-ink p-5 text-base font-bold">
+                  当前人物还没有额外图谱关系。事件挂接会在时间线和关联事件里单独展示。
+                </div>
+              ) : null}
             </div>
           </Panel>
         </section>

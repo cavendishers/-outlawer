@@ -167,11 +167,15 @@ Responsibilities:
 - `PATCH /api/v1/curation/entities/{entity_id}`
 - `POST /api/v1/curation/entities/{entity_id}/aliases`
 - `DELETE /api/v1/curation/entities/{entity_id}/aliases/{alias_id}`
+- `POST /api/v1/curation/entities/{entity_id}/relations`
+- `PATCH /api/v1/curation/entities/{entity_id}/relations/{relation_id}`
+- `DELETE /api/v1/curation/entities/{entity_id}/relations/{relation_id}`
 - `GET /api/v1/curation/events/{event_id}`
 - `PATCH /api/v1/curation/events/{event_id}`
 - `POST /api/v1/curation/events/{event_id}/participants`
 - `DELETE /api/v1/curation/events/{event_id}/participants/{entity_id}`
 - `POST /api/v1/curation/events/{event_id}/relations`
+- `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}`
 - `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}`
 
 Responsibilities:
@@ -179,10 +183,11 @@ Responsibilities:
 - return an entity-oriented curation context with aliases, related events, and timeline fragments
 - update canonical entity fields without touching raw source material
 - manage trusted entity aliases through `entity_aliases`
+- manage entity-centered graph links through `relations`
 - return an event-oriented graph curation context for manual editing
 - update canonical event fields without touching raw source material
 - manage event participants through `event_entities`
-- manage extra graph links through `relations`
+- manage extra graph links through `relations`, including edit-in-place updates
 - keep timeline projection fields in sync when an event is manually corrected
 
 ### Jobs
