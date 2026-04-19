@@ -41,11 +41,12 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `16` are implemented and verified in Docker.
+- Phase `0` through Phase `17` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
 - Reprocessing preserves extraction history through `extraction_runs` and rewrites canonical projections conservatively.
+- Note detail now surfaces extraction run history and a latest diff snapshot to support safer reprocessing review.
 - Unified search is available in the web app for note keywords, entity hits, event hits, and note-to-note similarity recall.
 - Review workflow is available in the web app for merge-candidate filtering, accept/reject decisions, alias confirmation, and audited entity/event merges.
 - Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
@@ -110,7 +111,7 @@ Verified on `2026-04-19`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head`
 - `npm run build` in `web/`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py tests/services/test_local_media_service.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py`

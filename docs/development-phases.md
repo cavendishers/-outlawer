@@ -38,7 +38,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
 
 ## Phase 0: Foundation and Conventions
 
@@ -579,6 +579,38 @@ Documents updated manually after completion:
 
 - `README.md`
 - `AGENTS.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 17: Extraction Run History And Diff Review Slice
+
+Status: `DONE`
+
+Goal:
+
+- make reprocessing safer by exposing extraction run history and side-by-side diff review before later replay controls are added
+
+Work items:
+
+- add note-scoped extraction run list and detail APIs
+- add note-scoped extraction run compare API
+- normalize extraction payloads into stable diff sections for summary, entities, events, relations, similarity hints, and style payloads
+- surface recent extraction run history and latest diff snapshot in the note detail page
+- extend service tests and full API e2e coverage for extraction history and compare flows
+
+Completion criteria:
+
+- a note exposes its extraction run history through the API
+- any two extraction runs for the same note can be compared through a stable diff payload
+- the note detail page can display recent run metadata and a latest diff snapshot
+- automated verification covers diff logic and note-scoped extraction run APIs
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
 - `docs/current-system-overview.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/development-phases.md`

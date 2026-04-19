@@ -103,6 +103,7 @@ sequenceDiagram
 - `DONE`: Image OCR, audio transcription, and video derivative text fallback using local tools.
 - `DONE`: Async job tracking and retry flow through Celery and RabbitMQ.
 - `DONE`: Note canonicalization, extraction-run persistence, and reprocessing entry point.
+- `DONE`: Extraction run history, per-run summary retrieval, and side-by-side diff snapshots for note reprocessing review.
 - `DONE`: Entity, event, relation, note-link, timeline, and extraction-evidence persistence.
 - `DONE`: OpenRouter text extraction with free-model fallback batching and local heuristic fallback.
 - `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing with optional OpenRouter enhancement and source attribution snippets.
@@ -118,7 +119,7 @@ sequenceDiagram
 ## Unimplemented Or Partial Capabilities By Priority
 
 1. `HIGH`: Multimodal quality upgrade is still incomplete. The pipeline now preserves local parsing, AI enhancement, source attribution, and video scene evidence together, but image semantics and speaker/context extraction are still MVP-grade.
-2. `HIGH`: Extraction replay and version comparison. Reprocessing exists, but side-by-side extraction diffs, controlled projection replay, and rollback decisions are not complete.
+2. `HIGH`: Extraction replay and version comparison. Run history and side-by-side extraction diffs now exist, but controlled projection replay and rollback decisions are not complete.
 3. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
 4. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
 5. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
@@ -133,4 +134,4 @@ The next implementation slice should continue multimodal understanding quality w
 - strengthen image semantic extraction beyond OCR-only signals
 - improve audio speaker/context extraction
 - version multimodal prompts and normalize richer derivative payloads
-- add extraction comparison and replay controls before applying new projections
+- add selective projection replay and rollback controls before applying new projections

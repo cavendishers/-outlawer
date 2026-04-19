@@ -180,16 +180,20 @@ Why it matters:
 
 What is missing:
 
-- extractor version comparison
-- side-by-side extraction diff
 - selective projection replay
 - rollback/replace decision workflow
 
+Delivered in the first replay slice:
+
+- note APIs now expose extraction run history and single-run summaries
+- note APIs now expose side-by-side diff snapshots between any two runs of the same note
+- note detail UI now shows recent extraction runs and the latest diff snapshot
+- full API e2e now verifies extraction run list/detail/compare endpoints
+
 Suggested deliverables:
 
-- extraction run diff API
-- extraction comparison UI
 - replay with selected extractor version
+- projection apply/rollback decision workflow
 
 Acceptance target:
 

@@ -8,6 +8,12 @@ from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
+from app.services.extraction_run_service import (
+    compare_extraction_runs,
+    get_extraction_run,
+    list_extraction_runs,
+    serialize_extraction_run,
+)
 from app.services.job_dispatcher import dispatch_job
 
 router = APIRouter()
@@ -70,6 +76,44 @@ def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dic
     if not note or note.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     return ok(serialize_note(note))
+
+
+@router.get("/{note_id}/extraction-runs")
+def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    runs = list_extraction_runs(db, user_id=user.id, note_id=note.id)
+    return ok({"items": [serialize_extraction_run(run) for run in runs], "total": len(runs)})
+
+
+@router.get("/{note_id}/extraction-runs/compare")
+def compare_note_extraction_runs(
+    note_id: str,
+    base_run_id: str,
+    candidate_run_id: str,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    base_run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=base_run_id)
+    candidate_run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=candidate_run_id)
+    if not base_run or not candidate_run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
+    return ok(compare_extraction_runs(base_run, candidate_run))
+
+
+@router.get("/{note_id}/extraction-runs/{run_id}")
+def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
+    return ok(serialize_extraction_run(run))
 
 
 @router.post("/{note_id}/reprocess")

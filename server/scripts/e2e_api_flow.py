@@ -88,6 +88,20 @@ def main() -> None:
         print("Phase 3 e2e passed")
         return
 
+    extraction_runs = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
+    assert extraction_runs["items"], extraction_runs
+    first_run_id = extraction_runs["items"][0]["id"]
+    extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{first_run_id}", headers=headers))
+    assert extraction_run["summary"]["event_count"] >= 1
+    extraction_compare = assert_ok(
+        client.get(
+            f"{args.base_url}/notes/{note_id}/extraction-runs/compare",
+            headers=headers,
+            params={"base_run_id": first_run_id, "candidate_run_id": first_run_id},
+        )
+    )
+    assert extraction_compare["diff"]["changed"] is False
+
     second_asset = assert_ok(
         client.post(
             f"{args.base_url}/assets/upload",
