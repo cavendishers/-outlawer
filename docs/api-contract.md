@@ -85,6 +85,7 @@ Responsibilities:
 - `GET /api/v1/notes/{note_id}/extraction-runs`
 - `GET /api/v1/notes/{note_id}/extraction-runs/{run_id}`
 - `GET /api/v1/notes/{note_id}/extraction-runs/compare?base_run_id=...&candidate_run_id=...`
+- `GET /api/v1/notes/{note_id}/replay-actions`
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply`
 - `POST /api/v1/notes/{note_id}/reprocess`
 
@@ -96,6 +97,7 @@ Responsibilities:
 - preserve extraction history through `extraction_runs`
 - expose extraction run history, run summaries, and side-by-side diff snapshots
 - apply a selected historical extraction run back into the current note projection
+- expose replay audit history for automatic and manual projection-apply actions
 - return paginated note collections for library-style UIs
 
 ### Entities

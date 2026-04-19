@@ -14,7 +14,9 @@ from app.services.extraction_run_service import (
     compare_extraction_runs,
     get_extraction_run,
     list_extraction_runs,
+    list_note_replay_actions,
     resolve_applied_run_id,
+    serialize_replay_action,
     serialize_extraction_run,
 )
 from app.services.job_dispatcher import dispatch_job
@@ -122,8 +124,23 @@ def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depen
     return ok(serialize_extraction_run(run, applied_run_id=applied_run_id))
 
 
+@router.get("/{note_id}/replay-actions")
+def list_note_replay_action_log(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    actions = list_note_replay_actions(db, user_id=user.id, note_id=note.id)
+    return ok({"items": [serialize_replay_action(action) for action in actions], "total": len(actions)})
+
+
 @router.post("/{note_id}/extraction-runs/{run_id}/apply")
-def apply_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+def apply_note_extraction_run(
+    note_id: str,
+    run_id: str,
+    db: DbSession,
+    payload: dict | None = None,
+    user=Depends(get_current_user),
+) -> dict:
     note = db.get(Note, note_id)
     if not note or note.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
@@ -137,12 +154,14 @@ def apply_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Dep
     text = get_asset_text(asset, db)
     if not text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No text available for replay")
+    operator_note = str((payload or {}).get("note") or "").strip() or None
     projection_result = apply_extraction_run_projection(
         db,
         note=note,
         asset=asset,
         run=run,
         text=text,
+        operator_note=operator_note,
     )
     db.commit()
     db.refresh(note)
@@ -161,6 +180,7 @@ def apply_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Dep
                 "relation_count": projection_result.relation_count,
                 "similarity_hint_count": projection_result.similarity_hint_count,
             },
+            "replay_actions": [serialize_replay_action(action) for action in list_note_replay_actions(db, user_id=user.id, note_id=note.id)],
         }
     )
 

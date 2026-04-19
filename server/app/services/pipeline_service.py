@@ -7,7 +7,12 @@ from app.models.extraction import ExtractionRun
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.services.asset_text_service import get_asset_text
-from app.services.extraction_run_service import mark_extraction_run_applied
+from app.services.extraction_run_service import (
+    list_extraction_runs,
+    log_replay_action,
+    mark_extraction_run_applied,
+    resolve_applied_run_id,
+)
 from app.services.extractor_service import build_extraction_payload
 from app.services.projection_service import persist_extraction_projection
 
@@ -46,6 +51,7 @@ def process_note(db: Session, job_id: str) -> None:
 
     payload = build_extraction_payload(note.id, asset.id, text)
     db.flush()
+    previous_applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=note.user_id, note_id=note.id))
 
     extraction_run = ExtractionRun(
         user_id=note.user_id,
@@ -53,7 +59,7 @@ def process_note(db: Session, job_id: str) -> None:
         source_asset_id=asset.id,
         raw_result_json=payload,
         normalized_result_json=payload,
-        status="applied",
+        status="completed",
         extractor_name=payload["source"]["extractor_name"],
         extractor_version=payload["source"]["extractor_version"],
     )
@@ -67,6 +73,14 @@ def process_note(db: Session, job_id: str) -> None:
         text=text,
     )
     mark_extraction_run_applied(db, user_id=note.user_id, note_id=note.id, run_id=extraction_run.id)
+    log_replay_action(
+        db,
+        user_id=note.user_id,
+        note_id=note.id,
+        run=extraction_run,
+        action_type="auto_apply_extraction_run",
+        previous_run_id=previous_applied_run_id,
+    )
 
     job.status = JOB_STATUS_COMPLETED
     job.result_json = {

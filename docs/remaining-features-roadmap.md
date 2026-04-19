@@ -197,6 +197,13 @@ Delivered in the second replay slice:
 - note detail UI now marks the currently applied run and supports rolling back to another saved run
 - full API e2e now verifies reprocess plus historical run re-apply flow
 
+Delivered in the third replay slice:
+
+- note APIs now expose replay action history for automatic and manual projection applies
+- manual replay apply requests can carry an operator note for audit context
+- note detail UI now shows replay action history alongside run history and diff context
+- full API e2e now verifies replay action audit persistence after a manual rollback/apply
+
 Suggested deliverables:
 
 - replay with selected extractor version before auto-applying it

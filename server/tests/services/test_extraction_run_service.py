@@ -1,9 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
 from app.models.extraction import ExtractionRun
+from app.models.review import ReviewAction
 from app.services.extraction_run_service import (
     compare_extraction_payloads,
     resolve_applied_run_id,
+    serialize_replay_action,
     serialize_extraction_run,
     summarize_run_payload,
 )
@@ -184,3 +186,32 @@ def test_resolve_applied_run_id_falls_back_to_latest_successful_run() -> None:
     applied_run_id = resolve_applied_run_id([older_run, newer_run])
 
     assert applied_run_id == "run-2"
+
+
+def test_serialize_replay_action_preserves_note_and_run_metadata() -> None:
+    now = datetime.now(UTC)
+    action = ReviewAction(
+        id="action-1",
+        user_id="user-1",
+        target_type="note",
+        target_id="note-1",
+        action_type="apply_extraction_run",
+        status_before="applied",
+        status_after="applied",
+        payload_json={
+            "run_id": "run-2",
+            "previous_run_id": "run-1",
+            "extractor_name": "openrouter",
+            "extractor_version": "v2",
+            "note": "回滚到更稳定的实体识别版本。",
+        },
+        created_at=now,
+        updated_at=now,
+    )
+
+    serialized = serialize_replay_action(action)
+
+    assert serialized["run_id"] == "run-2"
+    assert serialized["previous_run_id"] == "run-1"
+    assert serialized["extractor_name"] == "openrouter"
+    assert serialized["note"] == "回滚到更稳定的实体识别版本。"

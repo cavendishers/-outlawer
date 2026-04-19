@@ -65,6 +65,23 @@ type ExtractionCompare = {
 type ApplyExtractionRunResponse = {
   note: NoteDetail;
   applied_run: ExtractionRunItem;
+  replay_actions: ReplayAction[];
+};
+
+type ReplayAction = {
+  id: string;
+  action_type: string;
+  created_at: string | null;
+  run_id: string;
+  previous_run_id: string | null;
+  extractor_name: string;
+  extractor_version: string;
+  note: string | null;
+};
+
+type ReplayActionList = {
+  items: ReplayAction[];
+  total: number;
 };
 
 export default function NotePage() {
@@ -73,7 +90,9 @@ export default function NotePage() {
   const [noteId, setNoteId] = useState("");
   const [runs, setRuns] = useState<ExtractionRunItem[]>([]);
   const [compare, setCompare] = useState<ExtractionCompare | null>(null);
+  const [replayActions, setReplayActions] = useState<ReplayAction[]>([]);
   const [applyingRunId, setApplyingRunId] = useState("");
+  const [applyNote, setApplyNote] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -98,6 +117,7 @@ export default function NotePage() {
 
   const loadExtractionRuns = async (targetNoteId: string) => {
     const data = await apiFetch<ExtractionRunList>(`/notes/${targetNoteId}/extraction-runs`);
+    const replayActionData = await apiFetch<ReplayActionList>(`/notes/${targetNoteId}/replay-actions`);
     const orderedItems = [...data.items].sort((left, right) => {
       if (left.is_applied !== right.is_applied) {
         return left.is_applied ? -1 : 1;
@@ -107,6 +127,7 @@ export default function NotePage() {
       return rightTime - leftTime;
     });
     setRuns(orderedItems);
+    setReplayActions(replayActionData.items);
 
     const appliedRun = orderedItems.find((item) => item.is_applied) ?? null;
     const latestDifferentRun = orderedItems.find((item) => !item.is_applied) ?? null;
@@ -135,8 +156,11 @@ export default function NotePage() {
     try {
       const result = await apiFetch<ApplyExtractionRunResponse>(`/notes/${noteId}/extraction-runs/${runId}/apply`, {
         method: "POST",
+        body: JSON.stringify({ note: applyNote }),
       });
       setNote(result.note);
+      setReplayActions(result.replay_actions);
+      setApplyNote("");
       await loadExtractionRuns(noteId);
       setError("");
     } catch (err) {
@@ -220,6 +244,18 @@ export default function NotePage() {
           ) : (
             <p className="mt-4 text-base font-medium">当前还没有可展示的提取运行记录。</p>
           )}
+          <div className="mt-6 border-4 border-ink bg-white/70 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em]">Replay Note</p>
+            <label className="mt-3 block text-sm font-black uppercase tracking-[0.12em]">
+              本次回滚备注
+            </label>
+            <textarea
+              value={applyNote}
+              onChange={(event) => setApplyNote(event.target.value)}
+              className="mt-2 min-h-24 w-full border-4 border-ink bg-white px-3 py-2 text-sm font-medium outline-none"
+              placeholder="例如：恢复到上一版提取结果，保留更稳定的人物识别。"
+            />
+          </div>
           {compare ? (
             <div className="mt-6 border-4 border-ink bg-[var(--surface-signal-soft)] p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -270,6 +306,40 @@ export default function NotePage() {
               </div>
             </div>
           ) : null}
+          <div className="mt-6 border-4 border-ink bg-[var(--surface-info-soft)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em]">Replay Audit</p>
+                <h3 className="mt-2 text-2xl font-black">重放操作日志</h3>
+              </div>
+              <p className="text-sm font-black uppercase">{replayActions.length} 条</p>
+            </div>
+            {replayActions.length ? (
+              <div className="mt-4 space-y-3">
+                {replayActions.map((action) => (
+                  <div key={action.id} className="border-4 border-ink bg-white/70 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-black uppercase tracking-[0.16em]">{formatReplayActionType(action.action_type)}</p>
+                      <p className="text-xs font-black uppercase">
+                        {action.created_at ? action.created_at.slice(0, 19).replace("T", " ") : "时间未知"}
+                      </p>
+                    </div>
+                    <p className="mt-3 text-sm font-semibold">
+                      run: {action.run_id} · {action.extractor_name} / {action.extractor_version}
+                    </p>
+                    <p className="mt-2 text-sm font-medium">
+                      上一版本：{action.previous_run_id ?? "无"}
+                    </p>
+                    <p className="mt-2 text-sm font-medium">
+                      备注：{action.note ?? "无"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm font-medium">当前还没有重放或回滚操作日志。</p>
+            )}
+          </div>
         </Panel>
         {noteId ? (
           <Link
@@ -293,4 +363,10 @@ function formatDiffValue(value: string | string[] | number | boolean | null): st
   if (Array.isArray(value)) return value.join("、") || "无";
   if (value === null || value === "") return "无";
   return String(value);
+}
+
+function formatReplayActionType(value: string): string {
+  if (value === "apply_extraction_run") return "manual replay";
+  if (value === "auto_apply_extraction_run") return "auto apply";
+  return value;
 }

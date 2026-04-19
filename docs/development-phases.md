@@ -647,3 +647,35 @@ Documents updated manually after completion:
 - `docs/current-system-overview.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/development-phases.md`
+
+## Phase 19: Replay Audit Trail And Operator Note Slice
+
+Status: `DONE`
+
+Goal:
+
+- make projection replay actions auditable by recording both automatic and manual apply actions with optional operator notes
+
+Work items:
+
+- log automatic extraction-run apply actions into `review_actions`
+- log manual historical run apply actions with optional operator notes
+- add note-scoped replay action list API
+- surface replay audit history and operator note input in the note detail page
+- extend full API e2e to verify replay audit persistence
+
+Completion criteria:
+
+- both automatic and manual projection applies are queryable through a note-scoped audit log
+- manual replay apply can store an operator note for later review
+- the note detail page can show replay action history beside run history and diffs
+- automated verification covers replay action log writes and reads
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`

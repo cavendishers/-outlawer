@@ -116,12 +116,23 @@ def main() -> None:
     assert "summary" in extraction_compare["diff"]
     assert "entities" in extraction_compare["diff"]
     assert extraction_compare["candidate_run"]["id"] == latest_run_id
-    applied = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/extraction-runs/{previous_run_id}/apply", headers=headers))
+    applied = assert_ok(
+        client.post(
+            f"{args.base_url}/notes/{note_id}/extraction-runs/{previous_run_id}/apply",
+            headers=headers,
+            json={"note": "恢复到上一版提取结果以确认回滚链路。"},
+        )
+    )
     assert applied["applied_run"]["id"] == previous_run_id
     assert applied["applied_run"]["is_applied"] is True
+    assert applied["replay_actions"], applied
     extraction_runs_after_apply = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
     applied_run_ids = [item["id"] for item in extraction_runs_after_apply["items"] if item["is_applied"]]
     assert applied_run_ids == [previous_run_id], extraction_runs_after_apply
+    replay_actions = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/replay-actions", headers=headers))
+    assert replay_actions["items"], replay_actions
+    assert replay_actions["items"][0]["run_id"] == previous_run_id
+    assert replay_actions["items"][0]["note"] == "恢复到上一版提取结果以确认回滚链路。"
 
     second_asset = assert_ok(
         client.post(

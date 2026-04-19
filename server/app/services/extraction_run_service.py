@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.extraction import ExtractionRun
+from app.models.review import ReviewAction
 from app.services.projection_service import ProjectionResult, persist_extraction_projection
 from app.utils.text import normalize_name
 
@@ -14,6 +15,7 @@ RUN_STATUS_APPLIED = "applied"
 RUN_STATUS_SUPERSEDED = "superseded"
 RUN_STATUS_COMPLETED = "completed"
 MIN_DATETIME = datetime.min.replace(tzinfo=UTC)
+REPLAY_ACTION_TYPES = {"apply_extraction_run", "auto_apply_extraction_run"}
 
 
 def serialize_extraction_run(run: ExtractionRun, *, applied_run_id: str | None = None) -> dict[str, Any]:
@@ -37,6 +39,22 @@ def list_extraction_runs(db: Session, *, user_id: str, note_id: str) -> list[Ext
             select(ExtractionRun)
             .where(ExtractionRun.user_id == user_id, ExtractionRun.note_id == note_id)
             .order_by(ExtractionRun.created_at.desc())
+        ).all()
+    )
+
+
+def list_note_replay_actions(db: Session, *, user_id: str, note_id: str, limit: int = 20) -> list[ReviewAction]:
+    return list(
+        db.scalars(
+            select(ReviewAction)
+            .where(
+                ReviewAction.user_id == user_id,
+                ReviewAction.target_type == "note",
+                ReviewAction.target_id == note_id,
+                ReviewAction.action_type.in_(sorted(REPLAY_ACTION_TYPES)),
+            )
+            .order_by(ReviewAction.created_at.desc())
+            .limit(limit)
         ).all()
     )
 
@@ -106,7 +124,10 @@ def apply_extraction_run_projection(
     asset: RawAsset,
     run: ExtractionRun,
     text: str,
+    action_type: str = "apply_extraction_run",
+    operator_note: str | None = None,
 ) -> ProjectionResult:
+    previous_applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=note.user_id, note_id=note.id))
     payload = run.normalized_result_json or {}
     projection_result = persist_extraction_projection(
         db,
@@ -116,9 +137,63 @@ def apply_extraction_run_projection(
         text=text,
     )
     mark_extraction_run_applied(db, user_id=note.user_id, note_id=note.id, run_id=run.id)
-    db.add(note)
+    log_replay_action(
+        db,
+        user_id=note.user_id,
+        note_id=note.id,
+        run=run,
+        action_type=action_type,
+        previous_run_id=previous_applied_run_id,
+        operator_note=operator_note,
+    )
     db.flush()
     return projection_result
+
+
+def log_replay_action(
+    db: Session,
+    *,
+    user_id: str,
+    note_id: str,
+    run: ExtractionRun,
+    action_type: str,
+    previous_run_id: str | None,
+    operator_note: str | None = None,
+) -> ReviewAction:
+    action = ReviewAction(
+        user_id=user_id,
+        target_type="note",
+        target_id=note_id,
+        action_type=action_type,
+        status_before=RUN_STATUS_APPLIED if previous_run_id else None,
+        status_after=RUN_STATUS_APPLIED,
+        payload_json={
+            "run_id": run.id,
+            "previous_run_id": previous_run_id,
+            "extractor_name": run.extractor_name,
+            "extractor_version": run.extractor_version,
+            "note": operator_note,
+        },
+    )
+    db.add(action)
+    db.flush()
+    return action
+
+
+def serialize_replay_action(action: ReviewAction) -> dict[str, Any]:
+    payload = action.payload_json or {}
+    return {
+        "id": action.id,
+        "action_type": action.action_type,
+        "created_at": serialize_datetime(action.created_at),
+        "status_before": action.status_before,
+        "status_after": action.status_after,
+        "run_id": safe_string(payload.get("run_id")),
+        "previous_run_id": safe_string(payload.get("previous_run_id")) or None,
+        "extractor_name": safe_string(payload.get("extractor_name")),
+        "extractor_version": safe_string(payload.get("extractor_version")),
+        "note": safe_string(payload.get("note")) or None,
+    }
 
 
 def compare_extraction_payloads(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> dict[str, Any]:
