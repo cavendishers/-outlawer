@@ -82,6 +82,7 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
                 "confidence": derivative_payload.get("confidence"),
                 "parsing_notes": derivative_payload.get("parsing_notes"),
                 "source_attribution": derivative_payload.get("source_attribution"),
+                "video_scene_segments": derivative_payload.get("video_scene_segments"),
             }
         except Exception as exc:  # noqa: BLE001
             derivative_meta = {
@@ -188,6 +189,24 @@ def build_multimodal_canonical_text(asset: RawAsset, payload: dict[str, object])
     if isinstance(confidence, (int, float)):
         sections.append(f"解析置信度：{round(float(confidence), 2)}")
 
+    video_scene_segments = normalize_video_scene_segments(payload.get("video_scene_segments"))
+    if video_scene_segments:
+        sections.append("视频片段证据：")
+        for item in video_scene_segments[:8]:
+            label = item["label"] or f"scene_{item['segment_index'] or '?'}"
+            interval = format_scene_interval(item["start_timecode"], item["end_timecode"])
+            evidence_label = format_evidence_type(item["evidence_type"])
+            text_parts = [
+                item["observed_text"],
+                item["inferred_context"],
+                item["description"],
+            ]
+            body = "；".join(part for part in text_parts if part)
+            if not body:
+                continue
+            prefix = f"{label}{interval}"
+            sections.append(f"- [{evidence_label}] {prefix}: {body}")
+
     source_attribution = normalize_source_attribution(payload.get("source_attribution"))
     if source_attribution:
         sections.append("来源片段：")
@@ -195,7 +214,8 @@ def build_multimodal_canonical_text(asset: RawAsset, payload: dict[str, object])
             prefix = item["label"]
             if item["timecode"]:
                 prefix = f"{prefix}@{item['timecode']}"
-            sections.append(f"- {prefix}: {item['text']}")
+            evidence_label = format_evidence_type(item["evidence_type"])
+            sections.append(f"- [{evidence_label}] {prefix}: {item['text']}")
 
     return "\n".join(section for section in sections if section).strip()
 
@@ -237,13 +257,18 @@ def merge_multimodal_payloads(
         ai_payload.get("source_attribution")
     )
     deduped_source: list[dict[str, str | float | None]] = []
-    seen_keys: set[tuple[str, str, str | None]] = set()
+    seen_keys: set[tuple[str, str, str | None, str | None]] = set()
     for item in merged_source:
-        key = (item["source_type"], item["text"], item["timecode"])
+        key = (item["source_type"], item["text"], item["timecode"], item["evidence_type"])
         if key in seen_keys:
             continue
         seen_keys.add(key)
         deduped_source.append(item)
+
+    video_scene_segments = merge_video_scene_segments(
+        local_payload.get("video_scene_segments"),
+        ai_payload.get("video_scene_segments"),
+    )
 
     return {
         "canonical_text": choose_richer_multimodal_text(
@@ -269,6 +294,7 @@ def merge_multimodal_payloads(
         ),
         "parser_name": "local_plus_openrouter_multimodal",
         "source_attribution": deduped_source,
+        "video_scene_segments": video_scene_segments,
     }
 
 
@@ -300,6 +326,7 @@ def normalize_source_attribution(value: object) -> list[dict[str, str | float | 
         source_type = safe_multimodal_string(item.get("source_type"))
         label = safe_multimodal_string(item.get("label")) or source_type
         timecode = safe_multimodal_string(item.get("timecode")) or None
+        evidence_type = normalize_evidence_type(item.get("evidence_type"))
         confidence = item.get("confidence")
         if not text or not source_type:
             continue
@@ -310,9 +337,90 @@ def normalize_source_attribution(value: object) -> list[dict[str, str | float | 
                 "timecode": timecode,
                 "text": text,
                 "confidence": float(confidence) if isinstance(confidence, (int, float)) else None,
+                "evidence_type": evidence_type,
             }
         )
     return items
+
+
+def normalize_video_scene_segments(value: object) -> list[dict[str, str | int | float | None]]:
+    if not isinstance(value, list):
+        return []
+    segments: list[dict[str, str | int | float | None]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        segment_index = item.get("segment_index")
+        label = safe_multimodal_string(item.get("frame_label")) or safe_multimodal_string(item.get("label"))
+        observed_text = (
+            safe_multimodal_string(item.get("observed_text"))
+            or safe_multimodal_string(item.get("ocr_text"))
+            or safe_multimodal_string(item.get("transcript"))
+        )
+        inferred_context = safe_multimodal_string(item.get("inferred_context"))
+        description = safe_multimodal_string(item.get("description"))
+        if not observed_text and not inferred_context and not description:
+            continue
+        confidence = item.get("confidence")
+        segments.append(
+            {
+                "segment_index": int(segment_index) if isinstance(segment_index, int) else None,
+                "label": label,
+                "start_timecode": safe_multimodal_string(item.get("start_timecode")) or None,
+                "end_timecode": safe_multimodal_string(item.get("end_timecode")) or None,
+                "observed_text": observed_text,
+                "inferred_context": inferred_context,
+                "description": description,
+                "confidence": float(confidence) if isinstance(confidence, (int, float)) else None,
+                "evidence_type": normalize_evidence_type(item.get("evidence_type")),
+            }
+        )
+    return segments
+
+
+def merge_video_scene_segments(left: object, right: object) -> list[dict[str, str | int | float | None]]:
+    merged = [*normalize_video_scene_segments(left), *normalize_video_scene_segments(right)]
+    deduped: list[dict[str, str | int | float | None]] = []
+    seen_keys: set[tuple[str | None, str | None, str, str, str]] = set()
+    for item in merged:
+        key = (
+            item["start_timecode"],
+            item["end_timecode"],
+            str(item["observed_text"]),
+            str(item["inferred_context"]),
+            str(item["description"]),
+        )
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def normalize_evidence_type(value: object) -> str:
+    evidence_type = safe_multimodal_string(value)
+    if evidence_type in {"direct_observation", "model_inference", "mixed"}:
+        return evidence_type
+    return "direct_observation"
+
+
+def format_evidence_type(evidence_type: object) -> str:
+    labels = {
+        "direct_observation": "直接证据",
+        "model_inference": "模型推断",
+        "mixed": "混合证据",
+    }
+    return labels.get(str(evidence_type), "直接证据")
+
+
+def format_scene_interval(start_timecode: object, end_timecode: object) -> str:
+    start = safe_multimodal_string(start_timecode)
+    end = safe_multimodal_string(end_timecode)
+    if start and end:
+        return f"@{start}-{end}"
+    if start:
+        return f"@{start}"
+    return ""
 
 
 def infer_asset_mime_type(asset_type: str) -> str:

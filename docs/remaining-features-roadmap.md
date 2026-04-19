@@ -30,7 +30,7 @@ Current status as of `2026-04-19`:
 | Text ingestion | `DONE` | upload, note creation, extraction flow available |
 | Image ingestion | `DONE` | raw storage plus OCR/derivative text available |
 | Audio ingestion | `DONE` | raw storage plus ASR/derivative text available |
-| Video ingestion | `PARTIAL` | basic derivative extraction exists, but semantic quality is still MVP-grade |
+| Video ingestion | `PARTIAL` | raw storage, sampled OCR/ASR derivatives, scene time ranges, and evidence labels exist; deeper semantic quality is still MVP-grade |
 | Raw asset preservation | `DONE` | MinIO-backed storage and raw reads available |
 | AI-assisted organization and categorization | `PARTIAL` | extraction and normalization exist, but governance workflows are incomplete |
 | Person extraction | `PARTIAL` | core extraction works, but alias/merge/governance is still weak |
@@ -136,10 +136,9 @@ Why it matters:
 
 What is missing:
 
-- richer video scene segmentation
 - stronger image semantic understanding
 - better audio speaker/context extraction
-- stronger OpenRouter multimodal prompt and result normalization
+- prompt versioning and result comparison before projection replay
 
 Delivered in the first upgrade slice:
 
@@ -148,12 +147,21 @@ Delivered in the first upgrade slice:
 - canonical multimodal text now includes richer observed people, events, locations, confidence, and source fragments
 - service-level regression tests cover multimodal payload merging
 
+Delivered in the second upgrade slice:
+
+- local video parsing samples frames according to media duration
+- video frame OCR evidence now includes scene labels and time ranges
+- multimodal derivative payloads now preserve `video_scene_segments`
+- canonical multimodal text labels direct evidence, model inference, and mixed evidence separately
+- OpenRouter multimodal prompts request the same evidence attribution structure
+- service-level regression tests cover scene segments and evidence typing
+
 Suggested deliverables:
 
-- video frame batching strategy
 - multimodal extraction prompt versioning
 - richer derivative payload schema
-- confidence and source attribution for multimodal outputs
+- image semantic extraction beyond OCR-only text
+- audio speaker/context extraction
 
 Acceptance target:
 

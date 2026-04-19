@@ -1,7 +1,11 @@
 from app.services.local_media_service import (
     build_local_media_derivative,
+    build_source_attribution_from_text,
     choose_best_transcript,
+    choose_video_frame_interval,
+    choose_video_frame_limit,
     extract_time_candidates,
+    format_timecode,
     normalize_media_text,
 )
 
@@ -40,3 +44,42 @@ def test_build_local_media_derivative_uses_local_parser_payload(monkeypatch) -> 
     assert payload["parser_name"] == "local_tesseract_ocr"
     assert payload["canonical_text"] == "2026-04-18 Zhang San and Li Si project launch meeting"
     assert payload["observed_time"] == ["2026-04-18"]
+
+
+def test_video_sampling_scales_with_duration() -> None:
+    assert choose_video_frame_interval(None) == 3
+    assert choose_video_frame_interval(12) == 3
+    assert choose_video_frame_interval(45) == 6
+    assert choose_video_frame_interval(120) == 12
+    assert choose_video_frame_interval(600) == 75
+
+    assert choose_video_frame_limit(None) == 6
+    assert choose_video_frame_limit(12) == 6
+    assert choose_video_frame_limit(45) == 8
+
+
+def test_source_attribution_marks_direct_evidence_by_default() -> None:
+    attribution = build_source_attribution_from_text(
+        source_type="video_frame_ocr",
+        label="scene_01",
+        timecode="00:00:03",
+        text=" 项目启动会 2026-04-18\n",
+        confidence=0.6,
+    )
+
+    assert attribution == [
+        {
+            "source_type": "video_frame_ocr",
+            "label": "scene_01",
+            "timecode": "00:00:03",
+            "text": "项目启动会 2026-04-18",
+            "confidence": 0.6,
+            "evidence_type": "direct_observation",
+        }
+    ]
+
+
+def test_format_timecode_uses_hh_mm_ss() -> None:
+    assert format_timecode(0) == "00:00:00"
+    assert format_timecode(65) == "00:01:05"
+    assert format_timecode(3661) == "01:01:01"

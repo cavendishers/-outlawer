@@ -38,7 +38,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
 
 ## Phase 0: Foundation and Conventions
 
@@ -543,6 +543,39 @@ Completion criteria:
 - the multimodal merge behavior is covered by automated tests
 
 Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 16: Multimodal Video Scene Evidence Attribution
+
+Status: `DONE`
+
+Goal:
+
+- make video-derived knowledge more trustworthy by separating sampled scene evidence from model inference
+
+Work items:
+
+- sample video frames according to media duration instead of using a fixed frame count
+- attach timecodes and scene labels to local video frame OCR evidence
+- add `video_scene_segments` to multimodal derivative payloads
+- normalize `evidence_type` values for direct observation, model inference, and mixed evidence
+- update OpenRouter multimodal prompts to return the same attribution structure
+- render video scene evidence inside canonical derivative text
+- add service-level regression tests for scene segments and evidence typing
+
+Completion criteria:
+
+- video derivatives can preserve sampled scene time ranges for later extraction and review
+- canonical derivative text clearly labels direct evidence versus model inference
+- local and OpenRouter multimodal payloads can merge scene segments without losing attribution
+- service-level tests cover the evidence attribution behavior
+
+Documents updated manually after completion:
 
 - `README.md`
 - `AGENTS.md`

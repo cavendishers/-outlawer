@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import re
 import shutil
 import subprocess
@@ -46,6 +47,7 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
         video_observation = extract_video_observations(content, mime_type)
         text = str(video_observation.get("text") or "")
         source_attribution = list(video_observation.get("source_attribution") or [])
+        video_scene_segments = list(video_observation.get("video_scene_segments") or [])
         parser_name = "local_video_ocr_asr"
     else:
         return None
@@ -65,6 +67,7 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
         "parsing_notes": f"{parser_name} generated normalized text from the uploaded media.",
         "parser_name": parser_name,
         "source_attribution": source_attribution,
+        "video_scene_segments": video_scene_segments if asset_type == "video" else [],
     }
 
 
@@ -150,6 +153,9 @@ def extract_video_observations(content: bytes, mime_type: str) -> dict[str, obje
         frames_dir.mkdir(parents=True, exist_ok=True)
         audio_path = tmp_path / "audio.wav"
         source_path.write_bytes(content)
+        duration_seconds = probe_media_duration_seconds(source_path, settings.local_media_ffmpeg_bin)
+        frame_interval_seconds = choose_video_frame_interval(duration_seconds)
+        max_frames = choose_video_frame_limit(duration_seconds)
 
         frame_extract = subprocess.run(
             [
@@ -158,9 +164,9 @@ def extract_video_observations(content: bytes, mime_type: str) -> dict[str, obje
                 "-i",
                 str(source_path),
                 "-vf",
-                "fps=1/3",
+                f"fps=1/{frame_interval_seconds}",
                 "-frames:v",
-                "6",
+                str(max_frames),
                 str(frames_dir / "frame_%02d.png"),
             ],
             capture_output=True,
@@ -172,19 +178,34 @@ def extract_video_observations(content: bytes, mime_type: str) -> dict[str, obje
 
         frame_texts: list[str] = []
         source_attribution: list[dict[str, object]] = []
+        video_scene_segments: list[dict[str, object]] = []
         for index, frame_path in enumerate(sorted(frames_dir.glob("*.png"))):
             text = extract_image_text(frame_path.read_bytes(), "image/png")
             normalized = normalize_media_text(text)
+            start_seconds = index * frame_interval_seconds
+            end_seconds = start_seconds + frame_interval_seconds
             if normalized:
                 frame_texts.append(normalized)
+                label = f"scene_{index + 1:02d}"
                 source_attribution.extend(
                     build_source_attribution_from_text(
                         source_type="video_frame_ocr",
-                        label=f"frame_{index + 1:02d}",
+                        label=label,
                         text=normalized,
                         confidence=0.6,
-                        timecode=format_timecode(index * 3),
+                        timecode=format_timecode(start_seconds),
                     )
+                )
+                video_scene_segments.append(
+                    {
+                        "segment_index": index + 1,
+                        "start_timecode": format_timecode(start_seconds),
+                        "end_timecode": format_timecode(end_seconds),
+                        "frame_label": label,
+                        "ocr_text": normalized,
+                        "confidence": 0.6,
+                        "evidence_type": "direct_observation",
+                    }
                 )
 
         audio_extract = subprocess.run(
@@ -215,6 +236,7 @@ def extract_video_observations(content: bytes, mime_type: str) -> dict[str, obje
                     label="audio_track",
                     text=audio_text,
                     confidence=0.7,
+                    timecode=format_timecode(0),
                 )
             )
 
@@ -229,6 +251,7 @@ def extract_video_observations(content: bytes, mime_type: str) -> dict[str, obje
         return {
             "text": "\n".join(sections).strip(),
             "source_attribution": source_attribution,
+            "video_scene_segments": video_scene_segments,
         }
 
 
@@ -369,6 +392,7 @@ def build_source_attribution_from_text(
     text: str,
     confidence: float,
     timecode: str | None = None,
+    evidence_type: str = "direct_observation",
 ) -> list[dict[str, object]]:
     normalized = normalize_media_text(text)
     if not normalized:
@@ -380,8 +404,67 @@ def build_source_attribution_from_text(
             "timecode": timecode,
             "text": normalized,
             "confidence": confidence,
+            "evidence_type": evidence_type,
         }
     ]
+
+
+def probe_media_duration_seconds(source_path: Path, ffmpeg_bin: str) -> int | None:
+    ffprobe_bin = resolve_ffprobe_bin(ffmpeg_bin)
+    if not ffprobe_bin:
+        return None
+    result = subprocess.run(
+        [
+            ffprobe_bin,
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(source_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        logger.warning("local_video_duration_probe_failed code=%s stderr=%s", result.returncode, result.stderr.strip())
+        return None
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        return None
+    if duration <= 0:
+        return None
+    return int(math.ceil(duration))
+
+
+def resolve_ffprobe_bin(ffmpeg_bin: str) -> str | None:
+    ffprobe_candidate = str(Path(ffmpeg_bin).with_name("ffprobe")) if "/" in ffmpeg_bin else "ffprobe"
+    if shutil.which(ffprobe_candidate):
+        return ffprobe_candidate
+    return shutil.which("ffprobe")
+
+
+def choose_video_frame_interval(duration_seconds: int | None) -> int:
+    if duration_seconds is None:
+        return 3
+    if duration_seconds <= 18:
+        return 3
+    if duration_seconds <= 60:
+        return 6
+    if duration_seconds <= 180:
+        return 12
+    return max(15, math.ceil(duration_seconds / 8))
+
+
+def choose_video_frame_limit(duration_seconds: int | None) -> int:
+    if duration_seconds is None:
+        return 6
+    if duration_seconds <= 18:
+        return 6
+    return 8
 
 
 def dedupe_named_items(items: list[str], *, min_length: int, max_items: int) -> list[str]:
