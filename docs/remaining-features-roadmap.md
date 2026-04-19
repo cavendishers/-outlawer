@@ -190,10 +190,18 @@ Delivered in the first replay slice:
 - note detail UI now shows recent extraction runs and the latest diff snapshot
 - full API e2e now verifies extraction run list/detail/compare endpoints
 
+Delivered in the second replay slice:
+
+- note APIs now support applying a selected historical extraction run back into the current projection
+- extraction run status now distinguishes `applied` and `superseded` runs for note-scoped replay history
+- note detail UI now marks the currently applied run and supports rolling back to another saved run
+- full API e2e now verifies reprocess plus historical run re-apply flow
+
 Suggested deliverables:
 
-- replay with selected extractor version
-- projection apply/rollback decision workflow
+- replay with selected extractor version before auto-applying it
+- projection apply approval workflow with audit notes
+- rollback/replace decision workflow with clearer operator intent capture
 
 Acceptance target:
 

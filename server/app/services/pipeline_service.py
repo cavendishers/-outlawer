@@ -7,6 +7,7 @@ from app.models.extraction import ExtractionRun
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.services.asset_text_service import get_asset_text
+from app.services.extraction_run_service import mark_extraction_run_applied
 from app.services.extractor_service import build_extraction_payload
 from app.services.projection_service import persist_extraction_projection
 
@@ -52,11 +53,12 @@ def process_note(db: Session, job_id: str) -> None:
         source_asset_id=asset.id,
         raw_result_json=payload,
         normalized_result_json=payload,
-        status=JOB_STATUS_COMPLETED,
+        status="applied",
         extractor_name=payload["source"]["extractor_name"],
         extractor_version=payload["source"]["extractor_version"],
     )
     db.add(extraction_run)
+    db.flush()
     projection_result = persist_extraction_projection(
         db,
         note=note,
@@ -64,6 +66,7 @@ def process_note(db: Session, job_id: str) -> None:
         payload=payload,
         text=text,
     )
+    mark_extraction_run_applied(db, user_id=note.user_id, note_id=note.id, run_id=extraction_run.id)
 
     job.status = JOB_STATUS_COMPLETED
     job.result_json = {

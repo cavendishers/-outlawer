@@ -1,19 +1,28 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.note import Note
+from app.models.raw_asset import RawAsset
 from app.models.extraction import ExtractionRun
+from app.services.projection_service import ProjectionResult, persist_extraction_projection
 from app.utils.text import normalize_name
 
+RUN_STATUS_APPLIED = "applied"
+RUN_STATUS_SUPERSEDED = "superseded"
+RUN_STATUS_COMPLETED = "completed"
+MIN_DATETIME = datetime.min.replace(tzinfo=UTC)
 
-def serialize_extraction_run(run: ExtractionRun) -> dict[str, Any]:
+
+def serialize_extraction_run(run: ExtractionRun, *, applied_run_id: str | None = None) -> dict[str, Any]:
     return {
         "id": run.id,
         "note_id": run.note_id,
         "source_asset_id": run.source_asset_id,
         "status": run.status,
+        "is_applied": is_applied_run(run, applied_run_id=applied_run_id),
         "extractor_name": run.extractor_name,
         "extractor_version": run.extractor_version,
         "created_at": serialize_datetime(run.created_at),
@@ -42,17 +51,74 @@ def get_extraction_run(db: Session, *, user_id: str, note_id: str, run_id: str) 
     )
 
 
-def compare_extraction_runs(base_run: ExtractionRun, candidate_run: ExtractionRun) -> dict[str, Any]:
+def compare_extraction_runs(
+    base_run: ExtractionRun,
+    candidate_run: ExtractionRun,
+    *,
+    applied_run_id: str | None = None,
+) -> dict[str, Any]:
+    resolved_applied_run_id = applied_run_id or resolve_applied_run_id([base_run, candidate_run])
     diff = compare_extraction_payloads(
         base_run.normalized_result_json or {},
         candidate_run.normalized_result_json or {},
     )
     return {
         "note_id": base_run.note_id,
-        "base_run": serialize_extraction_run(base_run),
-        "candidate_run": serialize_extraction_run(candidate_run),
+        "base_run": serialize_extraction_run(base_run, applied_run_id=resolved_applied_run_id),
+        "candidate_run": serialize_extraction_run(candidate_run, applied_run_id=resolved_applied_run_id),
         "diff": diff,
     }
+
+
+def resolve_applied_run_id(runs: list[ExtractionRun]) -> str | None:
+    applied_runs = [run for run in runs if run.status == RUN_STATUS_APPLIED]
+    if applied_runs:
+        applied_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
+        return applied_runs[0].id
+
+    successful_runs = [run for run in runs if run.status != "failed"]
+    if not successful_runs:
+        return None
+    successful_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
+    return successful_runs[0].id
+
+
+def is_applied_run(run: ExtractionRun, *, applied_run_id: str | None) -> bool:
+    if applied_run_id:
+        return run.id == applied_run_id
+    return run.status == RUN_STATUS_APPLIED
+
+
+def mark_extraction_run_applied(db: Session, *, user_id: str, note_id: str, run_id: str) -> None:
+    runs = list_extraction_runs(db, user_id=user_id, note_id=note_id)
+    for run in runs:
+        if run.id == run_id:
+            run.status = RUN_STATUS_APPLIED
+        elif run.status != "failed":
+            run.status = RUN_STATUS_SUPERSEDED
+        db.add(run)
+
+
+def apply_extraction_run_projection(
+    db: Session,
+    *,
+    note: Note,
+    asset: RawAsset,
+    run: ExtractionRun,
+    text: str,
+) -> ProjectionResult:
+    payload = run.normalized_result_json or {}
+    projection_result = persist_extraction_projection(
+        db,
+        note=note,
+        asset=asset,
+        payload=payload,
+        text=text,
+    )
+    mark_extraction_run_applied(db, user_id=note.user_id, note_id=note.id, run_id=run.id)
+    db.add(note)
+    db.flush()
+    return projection_result
 
 
 def compare_extraction_payloads(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> dict[str, Any]:

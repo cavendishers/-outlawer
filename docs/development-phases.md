@@ -39,6 +39,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess and historical run re-apply flow
 
 ## Phase 0: Foundation and Conventions
 
@@ -605,6 +606,38 @@ Completion criteria:
 - any two extraction runs for the same note can be compared through a stable diff payload
 - the note detail page can display recent run metadata and a latest diff snapshot
 - automated verification covers diff logic and note-scoped extraction run APIs
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 18: Projection Replay And Historical Run Apply Slice
+
+Status: `DONE`
+
+Goal:
+
+- let a user explicitly re-apply a stored extraction run so current projections can be rolled back or replayed without rerunning the model immediately
+
+Work items:
+
+- add note-scoped apply endpoint for a historical extraction run
+- track applied versus superseded extraction run state within existing run records
+- reuse stored normalized extraction payloads to rebuild the canonical note projection
+- surface current-applied state and rollback action in the note detail page
+- extend full API e2e to cover reprocess plus historical run re-apply
+
+Completion criteria:
+
+- a saved extraction run can be applied back onto the current note projection
+- note-scoped extraction runs clearly indicate which run is currently applied
+- the note detail page can trigger a rollback/replay action against an existing run
+- automated verification covers apply and status transitions for extraction runs
 
 Documents updated manually after completion:
 

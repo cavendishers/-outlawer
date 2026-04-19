@@ -1,4 +1,12 @@
-from app.services.extraction_run_service import compare_extraction_payloads, summarize_run_payload
+from datetime import UTC, datetime, timedelta
+
+from app.models.extraction import ExtractionRun
+from app.services.extraction_run_service import (
+    compare_extraction_payloads,
+    resolve_applied_run_id,
+    serialize_extraction_run,
+    summarize_run_payload,
+)
 
 
 def test_compare_extraction_payloads_detects_summary_entity_and_event_changes() -> None:
@@ -118,3 +126,61 @@ def test_summarize_run_payload_counts_core_sections() -> None:
         "relation_count": 3,
         "similarity_hint_count": 1,
     }
+
+
+def test_resolve_applied_run_id_prefers_explicit_applied_status() -> None:
+    now = datetime.now(UTC)
+    superseded_run = ExtractionRun(
+        id="run-old",
+        user_id="user-1",
+        note_id="note-1",
+        status="superseded",
+        extractor_name="heuristic",
+        extractor_version="v1",
+        created_at=now - timedelta(minutes=5),
+        updated_at=now - timedelta(minutes=5),
+    )
+    applied_run = ExtractionRun(
+        id="run-new",
+        user_id="user-1",
+        note_id="note-1",
+        status="applied",
+        extractor_name="openrouter",
+        extractor_version="v2",
+        created_at=now,
+        updated_at=now,
+    )
+
+    applied_run_id = resolve_applied_run_id([superseded_run, applied_run])
+    serialized = serialize_extraction_run(applied_run, applied_run_id=applied_run_id)
+
+    assert applied_run_id == "run-new"
+    assert serialized["is_applied"] is True
+
+
+def test_resolve_applied_run_id_falls_back_to_latest_successful_run() -> None:
+    now = datetime.now(UTC)
+    older_run = ExtractionRun(
+        id="run-1",
+        user_id="user-1",
+        note_id="note-1",
+        status="completed",
+        extractor_name="heuristic",
+        extractor_version="v1",
+        created_at=now - timedelta(minutes=10),
+        updated_at=now - timedelta(minutes=10),
+    )
+    newer_run = ExtractionRun(
+        id="run-2",
+        user_id="user-1",
+        note_id="note-1",
+        status="completed",
+        extractor_name="heuristic",
+        extractor_version="v1",
+        created_at=now,
+        updated_at=now,
+    )
+
+    applied_run_id = resolve_applied_run_id([older_run, newer_run])
+
+    assert applied_run_id == "run-2"

@@ -21,6 +21,7 @@ type NoteDetail = {
 type ExtractionRunItem = {
   id: string;
   status: string;
+  is_applied: boolean;
   extractor_name: string;
   extractor_version: string;
   created_at: string | null;
@@ -61,12 +62,18 @@ type ExtractionCompare = {
   };
 };
 
+type ApplyExtractionRunResponse = {
+  note: NoteDetail;
+  applied_run: ExtractionRunItem;
+};
+
 export default function NotePage() {
   const params = useParams<{ id: string }>();
   const [note, setNote] = useState<NoteDetail | null>(null);
   const [noteId, setNoteId] = useState("");
   const [runs, setRuns] = useState<ExtractionRunItem[]>([]);
   const [compare, setCompare] = useState<ExtractionCompare | null>(null);
+  const [applyingRunId, setApplyingRunId] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -82,24 +89,62 @@ export default function NotePage() {
         setError(err instanceof Error ? err.message : "卷宗加载失败");
       });
 
-    apiFetch<ExtractionRunList>(`/notes/${params.id}/extraction-runs`)
-      .then((data) => {
-        setRuns(data.items);
-        if (data.items.length >= 2) {
-          return apiFetch<ExtractionCompare>(
-            `/notes/${params.id}/extraction-runs/compare?base_run_id=${data.items[1].id}&candidate_run_id=${data.items[0].id}`,
-          ).then((compareData) => {
-            setCompare(compareData);
-          });
-        }
-        setCompare(null);
-        return null;
-      })
+    loadExtractionRuns(params.id)
       .catch(() => {
         setRuns([]);
         setCompare(null);
       });
   }, [params]);
+
+  const loadExtractionRuns = async (targetNoteId: string) => {
+    const data = await apiFetch<ExtractionRunList>(`/notes/${targetNoteId}/extraction-runs`);
+    const orderedItems = [...data.items].sort((left, right) => {
+      if (left.is_applied !== right.is_applied) {
+        return left.is_applied ? -1 : 1;
+      }
+      const leftTime = left.created_at ? Date.parse(left.created_at) : 0;
+      const rightTime = right.created_at ? Date.parse(right.created_at) : 0;
+      return rightTime - leftTime;
+    });
+    setRuns(orderedItems);
+
+    const appliedRun = orderedItems.find((item) => item.is_applied) ?? null;
+    const latestDifferentRun = orderedItems.find((item) => !item.is_applied) ?? null;
+    if (appliedRun && latestDifferentRun) {
+      const compareData = await apiFetch<ExtractionCompare>(
+        `/notes/${targetNoteId}/extraction-runs/compare?base_run_id=${latestDifferentRun.id}&candidate_run_id=${appliedRun.id}`,
+      );
+      setCompare(compareData);
+      return;
+    }
+
+    if (orderedItems.length >= 2) {
+      const compareData = await apiFetch<ExtractionCompare>(
+        `/notes/${targetNoteId}/extraction-runs/compare?base_run_id=${orderedItems[1].id}&candidate_run_id=${orderedItems[0].id}`,
+      );
+      setCompare(compareData);
+      return;
+    }
+
+    setCompare(null);
+  };
+
+  const handleApplyRun = async (runId: string) => {
+    if (!noteId) return;
+    setApplyingRunId(runId);
+    try {
+      const result = await apiFetch<ApplyExtractionRunResponse>(`/notes/${noteId}/extraction-runs/${runId}/apply`, {
+        method: "POST",
+      });
+      setNote(result.note);
+      await loadExtractionRuns(noteId);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "版本应用失败");
+    } finally {
+      setApplyingRunId("");
+    }
+  };
 
   return (
     <AuthGate>
@@ -138,9 +183,9 @@ export default function NotePage() {
                 <div key={run.id} className="border-4 border-ink bg-white/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-black uppercase tracking-[0.16em]">
-                      {index === 0 ? "latest run" : `run ${runs.length - index}`}
+                      {run.is_applied ? "current projection" : index === 0 ? "latest run" : `run ${runs.length - index}`}
                     </p>
-                    <p className="text-xs font-black uppercase">{run.status}</p>
+                    <p className="text-xs font-black uppercase">{run.is_applied ? "applied" : run.status}</p>
                   </div>
                   <p className="mt-3 text-2xl font-black">{run.summary.title || "未命名提取运行"}</p>
                   <p className="mt-2 text-sm font-semibold">
@@ -153,6 +198,22 @@ export default function NotePage() {
                     实体 {run.summary.entity_count} · 事件 {run.summary.event_count} · 关系 {run.summary.relation_count} · 相似提示{" "}
                     {run.summary.similarity_hint_count}
                   </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {run.is_applied ? (
+                      <span className="border-4 border-ink bg-[var(--surface-success-soft)] px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
+                        当前生效
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="brutal-action brutal-action-primary text-sm"
+                        disabled={applyingRunId === run.id}
+                        onClick={() => handleApplyRun(run.id)}
+                      >
+                        {applyingRunId === run.id ? "应用中..." : "回滚到此版本"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

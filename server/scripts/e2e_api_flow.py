@@ -88,19 +88,40 @@ def main() -> None:
         print("Phase 3 e2e passed")
         return
 
+    reprocess = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/reprocess", headers=headers))
+    replay_job_id = reprocess["job_id"]
+    replay_job_status = None
+    for _ in range(max(1, args.job_timeout_seconds // max(1, args.poll_interval_seconds))):
+        replay_job_status = assert_ok(client.get(f"{args.base_url}/jobs/{replay_job_id}", headers=headers))
+        if replay_job_status["status"] == "completed":
+            break
+        time.sleep(args.poll_interval_seconds)
+    assert replay_job_status is not None
+    assert replay_job_status["status"] == "completed", replay_job_status
+
     extraction_runs = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
-    assert extraction_runs["items"], extraction_runs
-    first_run_id = extraction_runs["items"][0]["id"]
-    extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{first_run_id}", headers=headers))
+    assert extraction_runs["total"] >= 2, extraction_runs
+    assert extraction_runs["items"][0]["is_applied"] is True
+    latest_run_id = extraction_runs["items"][0]["id"]
+    previous_run_id = extraction_runs["items"][1]["id"]
+    extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{latest_run_id}", headers=headers))
     assert extraction_run["summary"]["event_count"] >= 1
     extraction_compare = assert_ok(
         client.get(
             f"{args.base_url}/notes/{note_id}/extraction-runs/compare",
             headers=headers,
-            params={"base_run_id": first_run_id, "candidate_run_id": first_run_id},
+            params={"base_run_id": previous_run_id, "candidate_run_id": latest_run_id},
         )
     )
-    assert extraction_compare["diff"]["changed"] is False
+    assert "summary" in extraction_compare["diff"]
+    assert "entities" in extraction_compare["diff"]
+    assert extraction_compare["candidate_run"]["id"] == latest_run_id
+    applied = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/extraction-runs/{previous_run_id}/apply", headers=headers))
+    assert applied["applied_run"]["id"] == previous_run_id
+    assert applied["applied_run"]["is_applied"] is True
+    extraction_runs_after_apply = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
+    applied_run_ids = [item["id"] for item in extraction_runs_after_apply["items"] if item["is_applied"]]
+    assert applied_run_ids == [previous_run_id], extraction_runs_after_apply
 
     second_asset = assert_ok(
         client.post(
