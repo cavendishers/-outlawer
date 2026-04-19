@@ -26,12 +26,26 @@ VOSK_MODEL_URLS = {
 def build_local_media_derivative(asset_type: str, title: str, mime_type: str, content: bytes) -> dict[str, object] | None:
     if asset_type == "image":
         text = extract_image_text(content, mime_type)
+        source_attribution = build_source_attribution_from_text(
+            source_type="image_ocr",
+            label="image_ocr",
+            text=text,
+            confidence=0.66,
+        )
         parser_name = "local_tesseract_ocr"
     elif asset_type == "audio":
         text = extract_audio_text(content, mime_type)
+        source_attribution = build_source_attribution_from_text(
+            source_type="audio_transcript",
+            label="audio_transcript",
+            text=text,
+            confidence=0.68,
+        )
         parser_name = "local_vosk_asr"
     elif asset_type == "video":
-        text = extract_video_text(content, mime_type)
+        video_observation = extract_video_observations(content, mime_type)
+        text = str(video_observation.get("text") or "")
+        source_attribution = list(video_observation.get("source_attribution") or [])
         parser_name = "local_video_ocr_asr"
     else:
         return None
@@ -43,13 +57,14 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
     return {
         "canonical_text": normalized,
         "short_summary": build_local_summary(asset_type, title, normalized),
-        "observed_people": [],
-        "observed_events": [],
+        "observed_people": extract_people_candidates(normalized),
+        "observed_events": extract_event_candidates(normalized),
         "observed_time": extract_time_candidates(normalized),
-        "observed_location": [],
+        "observed_location": extract_location_candidates(normalized),
         "confidence": 0.68,
         "parsing_notes": f"{parser_name} generated normalized text from the uploaded media.",
         "parser_name": parser_name,
+        "source_attribution": source_attribution,
     }
 
 
@@ -123,10 +138,10 @@ def extract_audio_text(content: bytes, mime_type: str) -> str:
         return choose_best_transcript(transcripts)
 
 
-def extract_video_text(content: bytes, mime_type: str) -> str:
+def extract_video_observations(content: bytes, mime_type: str) -> dict[str, object]:
     settings = get_settings()
     if not shutil.which(settings.local_media_ffmpeg_bin):
-        return ""
+        return {"text": "", "source_attribution": []}
 
     with tempfile.TemporaryDirectory(prefix="outlawer-video-") as tmpdir:
         tmp_path = Path(tmpdir)
@@ -143,9 +158,9 @@ def extract_video_text(content: bytes, mime_type: str) -> str:
                 "-i",
                 str(source_path),
                 "-vf",
-                "fps=1",
+                "fps=1/3",
                 "-frames:v",
-                "3",
+                "6",
                 str(frames_dir / "frame_%02d.png"),
             ],
             capture_output=True,
@@ -156,11 +171,21 @@ def extract_video_text(content: bytes, mime_type: str) -> str:
             logger.warning("local_video_frame_extract_failed code=%s stderr=%s", frame_extract.returncode, frame_extract.stderr.strip())
 
         frame_texts: list[str] = []
-        for frame_path in sorted(frames_dir.glob("*.png")):
+        source_attribution: list[dict[str, object]] = []
+        for index, frame_path in enumerate(sorted(frames_dir.glob("*.png"))):
             text = extract_image_text(frame_path.read_bytes(), "image/png")
             normalized = normalize_media_text(text)
             if normalized:
                 frame_texts.append(normalized)
+                source_attribution.extend(
+                    build_source_attribution_from_text(
+                        source_type="video_frame_ocr",
+                        label=f"frame_{index + 1:02d}",
+                        text=normalized,
+                        confidence=0.6,
+                        timecode=format_timecode(index * 3),
+                    )
+                )
 
         audio_extract = subprocess.run(
             [
@@ -184,6 +209,14 @@ def extract_video_text(content: bytes, mime_type: str) -> str:
         audio_text = ""
         if audio_extract.returncode == 0 and audio_path.exists():
             audio_text = extract_audio_text(audio_path.read_bytes(), "audio/wav")
+            source_attribution.extend(
+                build_source_attribution_from_text(
+                    source_type="video_audio_transcript",
+                    label="audio_track",
+                    text=audio_text,
+                    confidence=0.7,
+                )
+            )
 
         sections: list[str] = []
         unique_frame_text = dedupe_texts(frame_texts)
@@ -193,7 +226,14 @@ def extract_video_text(content: bytes, mime_type: str) -> str:
         if audio_text:
             sections.append("音轨转写：")
             sections.append(audio_text)
-        return "\n".join(sections).strip()
+        return {
+            "text": "\n".join(sections).strip(),
+            "source_attribution": source_attribution,
+        }
+
+
+def extract_video_text(content: bytes, mime_type: str) -> str:
+    return str(extract_video_observations(content, mime_type).get("text") or "")
 
 
 def transcribe_wave_file(path: Path, language: str) -> str:
@@ -298,6 +338,68 @@ def extract_time_candidates(text: str) -> list[str]:
         if item not in deduped:
             deduped.append(item)
     return deduped[:5]
+
+
+def extract_people_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    for match in re.finditer(r"([\u4e00-\u9fff]{2,4})和([\u4e00-\u9fff]{2,4})", text):
+        candidates.extend([match.group(1), match.group(2)])
+    for match in re.finditer(r"([\u4e00-\u9fff]{2,4})(?=在|于|参加|提出|记录|讨论|发言|确认|汇报)", text):
+        candidates.append(match.group(1))
+    for match in re.finditer(r"[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2}", text):
+        candidates.append(match.group(0))
+    return dedupe_named_items(candidates, min_length=2, max_items=5)
+
+
+def extract_location_candidates(text: str) -> list[str]:
+    candidates = re.findall(r"(?:在|于)([\u4e00-\u9fffA-Za-z0-9\-]{2,16}(?:会议室|办公室|教室|实验室|大厅|会场|园区|大厦|中心|车站|酒店|学校|医院|楼|室))", text)
+    return dedupe_named_items(candidates, min_length=2, max_items=5)
+
+
+def extract_event_candidates(text: str) -> list[str]:
+    keywords = ["启动会", "项目启动会议", "会议", "讨论", "复盘", "汇报", "培训", "演讲", "采访", "发布会"]
+    hits = [keyword for keyword in keywords if keyword in text]
+    return dedupe_named_items(hits, min_length=2, max_items=5)
+
+
+def build_source_attribution_from_text(
+    *,
+    source_type: str,
+    label: str,
+    text: str,
+    confidence: float,
+    timecode: str | None = None,
+) -> list[dict[str, object]]:
+    normalized = normalize_media_text(text)
+    if not normalized:
+        return []
+    return [
+        {
+            "source_type": source_type,
+            "label": label,
+            "timecode": timecode,
+            "text": normalized,
+            "confidence": confidence,
+        }
+    ]
+
+
+def dedupe_named_items(items: list[str], *, min_length: int, max_items: int) -> list[str]:
+    deduped: list[str] = []
+    for item in items:
+        cleaned = normalize_media_text(item).replace("\n", " ")
+        if len(cleaned) < min_length or cleaned in deduped:
+            continue
+        deduped.append(cleaned)
+        if len(deduped) >= max_items:
+            break
+    return deduped
+
+
+def format_timecode(total_seconds: int) -> str:
+    minutes, seconds = divmod(total_seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def guess_suffix(mime_type: str, asset_type: str) -> str:

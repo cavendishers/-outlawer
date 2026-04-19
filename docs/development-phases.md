@@ -38,6 +38,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py` -> passed
 
 ## Phase 0: Foundation and Conventions
 
@@ -515,6 +516,36 @@ Documents to update manually after completion:
 - `README.md`
 - `AGENTS.md`
 - `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 15: Multimodal Quality Upgrade Slice 1
+
+Status: `DONE`
+
+Goal:
+
+- improve multimodal derivative quality without changing the storage model by combining local parsing, optional AI enrichment, and source attribution
+
+Work items:
+
+- stop short-circuiting multimodal enrichment after the first successful local parser result
+- merge local multimodal observations with OpenRouter multimodal output when available
+- preserve source attribution snippets from OCR and ASR segments
+- enrich canonical multimodal text with confidence and source-fragment sections
+- add service-level regression tests for multimodal payload merging
+
+Completion criteria:
+
+- multimodal assets can retain local OCR/ASR observations even when AI enhancement also runs
+- normalized derivative text carries richer attribution and observation context
+- the multimodal merge behavior is covered by automated tests
+
+Documents to update manually after completion:
+
+- `README.md`
+- `AGENTS.md`
 - `docs/current-system-overview.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/development-phases.md`

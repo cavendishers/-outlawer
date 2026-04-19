@@ -34,12 +34,13 @@ The system accepts text, audio, image, and video inputs. Raw materials are prese
 For multimodal assets, the worker now uses a layered parser strategy:
 
 - image: local Tesseract OCR first, then optional OpenRouter enrichment
-- audio: local Vosk speech transcription
-- video: frame OCR plus audio transcription, then normalized text extraction
+- audio: local Vosk speech transcription, then optional OpenRouter enrichment
+- video: sampled frame OCR plus audio transcription, then optional OpenRouter enrichment
+- multimodal derivatives now preserve source attribution snippets so later extraction can see what came from OCR frames versus audio transcript
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `14` are implemented and verified in Docker.
+- Phase `0` through Phase `15` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -108,6 +109,7 @@ Verified on `2026-04-19`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head`
 - `npm run build` in `web/`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py`

@@ -105,6 +105,7 @@ sequenceDiagram
 - `DONE`: Note canonicalization, extraction-run persistence, and reprocessing entry point.
 - `DONE`: Entity, event, relation, note-link, timeline, and extraction-evidence persistence.
 - `DONE`: OpenRouter text extraction with free-model fallback batching and local heuristic fallback.
+- `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing with optional OpenRouter enhancement and source attribution snippets.
 - `DONE`: Embedding-backed similarity search, merge-candidate generation, and unified search page.
 - `DONE`: People index, library, event pages, timeline/global graph view, note detail, and story views.
 - `DONE`: Chunibyo-style note and entity story views stored separately from canonical data.
@@ -115,7 +116,7 @@ sequenceDiagram
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `HIGH`: Multimodal quality upgrade. Image/audio/video ingestion works, but semantic understanding is still MVP-grade, especially video scene-level extraction.
+1. `HIGH`: Multimodal quality upgrade is still incomplete. The pipeline now preserves local parsing, AI enhancement, and source attribution together, but video scene understanding and speaker/context extraction are still MVP-grade.
 2. `HIGH`: Extraction replay and version comparison. Reprocessing exists, but side-by-side extraction diffs, controlled projection replay, and rollback decisions are not complete.
 3. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
 4. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
@@ -126,7 +127,7 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next implementation slice should upgrade multimodal understanding quality so image, audio, and especially video ingestion can produce stronger graph material before human review. The expected scope is:
+The next implementation slice should continue multimodal understanding quality work, now focusing on deeper video semantics and more explicit attribution of what the model inferred versus what OCR/ASR directly observed. The expected scope is:
 
 - improve video scene segmentation and frame batching
 - strengthen image semantic extraction beyond OCR-only signals

@@ -141,6 +141,13 @@ What is missing:
 - better audio speaker/context extraction
 - stronger OpenRouter multimodal prompt and result normalization
 
+Delivered in the first upgrade slice:
+
+- local OCR/ASR derivatives now keep source attribution snippets
+- local multimodal parsing can be merged with OpenRouter enhancement instead of short-circuiting after the first local success
+- canonical multimodal text now includes richer observed people, events, locations, confidence, and source fragments
+- service-level regression tests cover multimodal payload merging
+
 Suggested deliverables:
 
 - video frame batching strategy
