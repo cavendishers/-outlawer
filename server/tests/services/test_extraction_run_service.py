@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 from app.models.extraction import ExtractionRun
 from app.models.review import ReviewAction
 from app.services.extraction_run_service import (
+    RUN_STATUS_READY_FOR_REVIEW,
+    RUN_STATUS_REJECTED,
     compare_extraction_payloads,
     resolve_applied_run_id,
     serialize_replay_action,
@@ -186,6 +188,44 @@ def test_resolve_applied_run_id_falls_back_to_latest_successful_run() -> None:
     applied_run_id = resolve_applied_run_id([older_run, newer_run])
 
     assert applied_run_id == "run-2"
+
+
+def test_resolve_applied_run_id_ignores_review_and_rejected_runs() -> None:
+    now = datetime.now(UTC)
+    applied_run = ExtractionRun(
+        id="run-applied",
+        user_id="user-1",
+        note_id="note-1",
+        status="applied",
+        extractor_name="heuristic",
+        extractor_version="v1",
+        created_at=now - timedelta(minutes=10),
+        updated_at=now - timedelta(minutes=10),
+    )
+    review_run = ExtractionRun(
+        id="run-review",
+        user_id="user-1",
+        note_id="note-1",
+        status=RUN_STATUS_READY_FOR_REVIEW,
+        extractor_name="openrouter",
+        extractor_version="v2",
+        created_at=now,
+        updated_at=now,
+    )
+    rejected_run = ExtractionRun(
+        id="run-rejected",
+        user_id="user-1",
+        note_id="note-1",
+        status=RUN_STATUS_REJECTED,
+        extractor_name="openrouter",
+        extractor_version="v2",
+        created_at=now - timedelta(minutes=1),
+        updated_at=now - timedelta(minutes=1),
+    )
+
+    applied_run_id = resolve_applied_run_id([review_run, rejected_run, applied_run])
+
+    assert applied_run_id == "run-applied"
 
 
 def test_serialize_replay_action_preserves_note_and_run_metadata() -> None:

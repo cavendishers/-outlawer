@@ -68,6 +68,18 @@ type ApplyExtractionRunResponse = {
   replay_actions: ReplayAction[];
 };
 
+type ApproveExtractionRunResponse = {
+  note: NoteDetail;
+  approved_run: ExtractionRunItem;
+  replay_actions: ReplayAction[];
+};
+
+type RejectExtractionRunResponse = {
+  note: NoteDetail;
+  rejected_run: ExtractionRunItem;
+  replay_actions: ReplayAction[];
+};
+
 type ReplayAction = {
   id: string;
   action_type: string;
@@ -92,6 +104,7 @@ export default function NotePage() {
   const [compare, setCompare] = useState<ExtractionCompare | null>(null);
   const [replayActions, setReplayActions] = useState<ReplayAction[]>([]);
   const [applyingRunId, setApplyingRunId] = useState("");
+  const [reviewingRunId, setReviewingRunId] = useState("");
   const [applyNote, setApplyNote] = useState("");
   const [error, setError] = useState("");
 
@@ -119,6 +132,12 @@ export default function NotePage() {
     const data = await apiFetch<ExtractionRunList>(`/notes/${targetNoteId}/extraction-runs`);
     const replayActionData = await apiFetch<ReplayActionList>(`/notes/${targetNoteId}/replay-actions`);
     const orderedItems = [...data.items].sort((left, right) => {
+      if (left.status === "ready_for_review" || right.status === "ready_for_review") {
+        if (left.status === right.status) {
+          return 0;
+        }
+        return left.status === "ready_for_review" ? -1 : 1;
+      }
       if (left.is_applied !== right.is_applied) {
         return left.is_applied ? -1 : 1;
       }
@@ -170,6 +189,46 @@ export default function NotePage() {
     }
   };
 
+  const handleApproveRun = async (runId: string) => {
+    if (!noteId) return;
+    setReviewingRunId(runId);
+    try {
+      const result = await apiFetch<ApproveExtractionRunResponse>(`/notes/${noteId}/extraction-runs/${runId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({ note: applyNote }),
+      });
+      setNote(result.note);
+      setReplayActions(result.replay_actions);
+      setApplyNote("");
+      await loadExtractionRuns(noteId);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "审批应用失败");
+    } finally {
+      setReviewingRunId("");
+    }
+  };
+
+  const handleRejectRun = async (runId: string) => {
+    if (!noteId) return;
+    setReviewingRunId(runId);
+    try {
+      const result = await apiFetch<RejectExtractionRunResponse>(`/notes/${noteId}/extraction-runs/${runId}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ note: applyNote }),
+      });
+      setNote(result.note);
+      setReplayActions(result.replay_actions);
+      setApplyNote("");
+      await loadExtractionRuns(noteId);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "审批拒绝失败");
+    } finally {
+      setReviewingRunId("");
+    }
+  };
+
   return (
     <AuthGate>
       <main className="space-y-6">
@@ -207,9 +266,15 @@ export default function NotePage() {
                 <div key={run.id} className="border-4 border-ink bg-white/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-black uppercase tracking-[0.16em]">
-                      {run.is_applied ? "current projection" : index === 0 ? "latest run" : `run ${runs.length - index}`}
+                      {run.status === "ready_for_review"
+                        ? "review candidate"
+                        : run.is_applied
+                          ? "current projection"
+                          : index === 0
+                            ? "latest run"
+                            : `run ${runs.length - index}`}
                     </p>
-                    <p className="text-xs font-black uppercase">{run.is_applied ? "applied" : run.status}</p>
+                    <p className="text-xs font-black uppercase">{run.is_applied ? "applied" : formatRunStatus(run.status)}</p>
                   </div>
                   <p className="mt-3 text-2xl font-black">{run.summary.title || "未命名提取运行"}</p>
                   <p className="mt-2 text-sm font-semibold">
@@ -223,9 +288,32 @@ export default function NotePage() {
                     {run.summary.similarity_hint_count}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    {run.is_applied ? (
+                    {run.status === "ready_for_review" ? (
+                      <>
+                        <button
+                          type="button"
+                          className="brutal-action brutal-action-primary text-sm"
+                          disabled={reviewingRunId === run.id}
+                          onClick={() => handleApproveRun(run.id)}
+                        >
+                          {reviewingRunId === run.id ? "审批中..." : "审批应用"}
+                        </button>
+                        <button
+                          type="button"
+                          className="brutal-action text-sm"
+                          disabled={reviewingRunId === run.id}
+                          onClick={() => handleRejectRun(run.id)}
+                        >
+                          {reviewingRunId === run.id ? "处理中..." : "拒绝草稿"}
+                        </button>
+                      </>
+                    ) : run.is_applied ? (
                       <span className="border-4 border-ink bg-[var(--surface-success-soft)] px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
                         当前生效
+                      </span>
+                    ) : run.status === "rejected" ? (
+                      <span className="border-4 border-ink bg-[var(--surface-danger-soft)] px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
+                        已拒绝
                       </span>
                     ) : (
                       <button
@@ -247,13 +335,13 @@ export default function NotePage() {
           <div className="mt-6 border-4 border-ink bg-white/70 p-4">
             <p className="text-xs font-black uppercase tracking-[0.16em]">Replay Note</p>
             <label className="mt-3 block text-sm font-black uppercase tracking-[0.12em]">
-              本次回滚备注
+              本次审批或回滚备注
             </label>
             <textarea
               value={applyNote}
               onChange={(event) => setApplyNote(event.target.value)}
               className="mt-2 min-h-24 w-full border-4 border-ink bg-white px-3 py-2 text-sm font-medium outline-none"
-              placeholder="例如：恢复到上一版提取结果，保留更稳定的人物识别。"
+              placeholder="例如：审批通过新的抽取草稿，或恢复到上一版以保留更稳定的人物识别。"
             />
           </div>
           {compare ? (
@@ -271,7 +359,7 @@ export default function NotePage() {
                 基准：{compare.base_run.extractor_name} / {compare.base_run.extractor_version}
               </p>
               <p className="text-sm font-semibold">
-                当前：{compare.candidate_run.extractor_name} / {compare.candidate_run.extractor_version}
+                {compare.candidate_run.is_applied ? "当前" : "候选"}：{compare.candidate_run.extractor_name} / {compare.candidate_run.extractor_version}
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <div className="border-4 border-ink bg-white/70 p-4">
@@ -368,5 +456,14 @@ function formatDiffValue(value: string | string[] | number | boolean | null): st
 function formatReplayActionType(value: string): string {
   if (value === "apply_extraction_run") return "manual replay";
   if (value === "auto_apply_extraction_run") return "auto apply";
+  if (value === "approve_extraction_run") return "approve draft";
+  if (value === "reject_extraction_run") return "reject draft";
+  return value;
+}
+
+function formatRunStatus(value: string): string {
+  if (value === "ready_for_review") return "ready_for_review";
+  if (value === "rejected") return "rejected";
+  if (value === "superseded") return "superseded";
   return value;
 }

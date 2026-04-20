@@ -14,8 +14,18 @@ from app.utils.text import normalize_name
 RUN_STATUS_APPLIED = "applied"
 RUN_STATUS_SUPERSEDED = "superseded"
 RUN_STATUS_COMPLETED = "completed"
+RUN_STATUS_READY_FOR_REVIEW = "ready_for_review"
+RUN_STATUS_REJECTED = "rejected"
+RUN_STATUS_FAILED = "failed"
 MIN_DATETIME = datetime.min.replace(tzinfo=UTC)
-REPLAY_ACTION_TYPES = {"apply_extraction_run", "auto_apply_extraction_run"}
+REPLAY_ACTION_TYPES = {
+    "apply_extraction_run",
+    "auto_apply_extraction_run",
+    "approve_extraction_run",
+    "reject_extraction_run",
+}
+APPLIED_FALLBACK_STATUSES = {RUN_STATUS_APPLIED, RUN_STATUS_SUPERSEDED, RUN_STATUS_COMPLETED}
+ACTIVE_LINEAGE_STATUSES = {RUN_STATUS_APPLIED, RUN_STATUS_SUPERSEDED, RUN_STATUS_COMPLETED}
 
 
 def serialize_extraction_run(run: ExtractionRun, *, applied_run_id: str | None = None) -> dict[str, Any]:
@@ -94,7 +104,7 @@ def resolve_applied_run_id(runs: list[ExtractionRun]) -> str | None:
         applied_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
         return applied_runs[0].id
 
-    successful_runs = [run for run in runs if run.status != "failed"]
+    successful_runs = [run for run in runs if run.status in APPLIED_FALLBACK_STATUSES]
     if not successful_runs:
         return None
     successful_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
@@ -112,7 +122,7 @@ def mark_extraction_run_applied(db: Session, *, user_id: str, note_id: str, run_
     for run in runs:
         if run.id == run_id:
             run.status = RUN_STATUS_APPLIED
-        elif run.status != "failed":
+        elif run.status in ACTIVE_LINEAGE_STATUSES:
             run.status = RUN_STATUS_SUPERSEDED
         db.add(run)
 
@@ -126,6 +136,7 @@ def apply_extraction_run_projection(
     text: str,
     action_type: str = "apply_extraction_run",
     operator_note: str | None = None,
+    status_before: str | None = None,
 ) -> ProjectionResult:
     previous_applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=note.user_id, note_id=note.id))
     payload = run.normalized_result_json or {}
@@ -145,9 +156,60 @@ def apply_extraction_run_projection(
         action_type=action_type,
         previous_run_id=previous_applied_run_id,
         operator_note=operator_note,
+        status_before=status_before,
     )
     db.flush()
     return projection_result
+
+
+def approve_reviewable_extraction_run(
+    db: Session,
+    *,
+    note: Note,
+    asset: RawAsset,
+    run: ExtractionRun,
+    text: str,
+    operator_note: str | None = None,
+) -> ProjectionResult:
+    if run.status != RUN_STATUS_READY_FOR_REVIEW:
+        raise ValueError("Extraction run is not awaiting review")
+    return apply_extraction_run_projection(
+        db,
+        note=note,
+        asset=asset,
+        run=run,
+        text=text,
+        action_type="approve_extraction_run",
+        operator_note=operator_note,
+        status_before=RUN_STATUS_READY_FOR_REVIEW,
+    )
+
+
+def reject_reviewable_extraction_run(
+    db: Session,
+    *,
+    user_id: str,
+    note_id: str,
+    run: ExtractionRun,
+    operator_note: str | None = None,
+) -> ExtractionRun:
+    if run.status != RUN_STATUS_READY_FOR_REVIEW:
+        raise ValueError("Extraction run is not awaiting review")
+    run.status = RUN_STATUS_REJECTED
+    db.add(run)
+    log_replay_action(
+        db,
+        user_id=user_id,
+        note_id=note_id,
+        run=run,
+        action_type="reject_extraction_run",
+        previous_run_id=resolve_applied_run_id(list_extraction_runs(db, user_id=user_id, note_id=note_id)),
+        operator_note=operator_note,
+        status_before=RUN_STATUS_READY_FOR_REVIEW,
+        status_after=RUN_STATUS_REJECTED,
+    )
+    db.flush()
+    return run
 
 
 def log_replay_action(
@@ -159,14 +221,16 @@ def log_replay_action(
     action_type: str,
     previous_run_id: str | None,
     operator_note: str | None = None,
+    status_before: str | None = None,
+    status_after: str | None = None,
 ) -> ReviewAction:
     action = ReviewAction(
         user_id=user_id,
         target_type="note",
         target_id=note_id,
         action_type=action_type,
-        status_before=RUN_STATUS_APPLIED if previous_run_id else None,
-        status_after=RUN_STATUS_APPLIED,
+        status_before=status_before if status_before is not None else (RUN_STATUS_APPLIED if previous_run_id else None),
+        status_after=status_after or RUN_STATUS_APPLIED,
         payload_json={
             "run_id": run.id,
             "previous_run_id": previous_run_id,

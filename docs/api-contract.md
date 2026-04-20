@@ -86,6 +86,8 @@ Responsibilities:
 - `GET /api/v1/notes/{note_id}/extraction-runs/{run_id}`
 - `GET /api/v1/notes/{note_id}/extraction-runs/compare?base_run_id=...&candidate_run_id=...`
 - `GET /api/v1/notes/{note_id}/replay-actions`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/approve`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject`
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply`
 - `POST /api/v1/notes/{note_id}/reprocess`
 
@@ -96,6 +98,8 @@ Responsibilities:
 - trigger async reprocessing
 - preserve extraction history through `extraction_runs`
 - expose extraction run history, run summaries, and side-by-side diff snapshots
+- create `ready_for_review` draft runs during reprocess when an active projection already exists
+- approve or reject reviewable draft runs explicitly before changing the current projection
 - apply a selected historical extraction run back into the current note projection
 - expose replay audit history for automatic and manual projection-apply actions
 - return paginated note collections for library-style UIs
@@ -237,3 +241,11 @@ Responsibilities:
 
 - client queries `GET /api/v1/jobs/{job_id}`
 - once done, client fetches note, entities, timeline, and story views
+
+### Step 4: review reprocess draft when needed
+
+- if reprocess returns a run that `requires_review`, the active projection remains unchanged
+- client can compare the current applied run with the candidate draft
+- client approves with `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/approve`
+- client rejects with `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject`
+- historical rollback still uses `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply`

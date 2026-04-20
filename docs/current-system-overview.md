@@ -1,6 +1,6 @@
 # Current System Overview
 
-Last updated: `2026-04-19`
+Last updated: `2026-04-20`
 
 ## Purpose
 
@@ -106,6 +106,7 @@ sequenceDiagram
 - `DONE`: Extraction run history, per-run summary retrieval, and side-by-side diff snapshots for note reprocessing review.
 - `DONE`: Historical extraction runs can now be re-applied to the current note projection as an explicit rollback/replay action.
 - `DONE`: Replay actions are now audited through note-scoped action history for automatic and manual projection applies.
+- `DONE`: Reprocessing now creates `ready_for_review` extraction drafts that require explicit approve or reject before the active projection changes.
 - `DONE`: Entity, event, relation, note-link, timeline, and extraction-evidence persistence.
 - `DONE`: OpenRouter text extraction with free-model fallback batching and local heuristic fallback.
 - `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing with optional OpenRouter enhancement and source attribution snippets.
@@ -121,19 +122,17 @@ sequenceDiagram
 ## Unimplemented Or Partial Capabilities By Priority
 
 1. `HIGH`: Multimodal quality upgrade is still incomplete. The pipeline now preserves local parsing, AI enhancement, source attribution, and video scene evidence together, but image semantics and speaker/context extraction are still MVP-grade.
-2. `HIGH`: Extraction replay and version comparison. Run history, side-by-side extraction diffs, manual historical re-apply, and replay audit history now exist, but draft replay approval and operator-intent workflow are not complete.
-3. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
-4. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
-5. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
-6. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
-7. `LOW`: Plugin and integration system for external importers and third-party sync.
-8. `LOW`: Mobile-first ingestion and browsing experience.
+2. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
+3. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
+4. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
+5. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
+6. `LOW`: Plugin and integration system for external importers and third-party sync.
+7. `LOW`: Mobile-first ingestion and browsing experience.
 
 ## Next Development Direction
 
-The next implementation slice should continue multimodal understanding quality work, now focusing on non-video semantic depth and better extraction replay controls. The expected scope is:
+The next implementation slice should continue multimodal understanding quality work, now focusing on non-video semantic depth and richer evidence structure. The expected scope is:
 
 - strengthen image semantic extraction beyond OCR-only signals
 - improve audio speaker/context extraction
 - version multimodal prompts and normalize richer derivative payloads
-- add draft replay approval and operator-intent controls before applying new projections

@@ -10,11 +10,15 @@ from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.services.asset_text_service import get_asset_text
 from app.services.extraction_run_service import (
+    RUN_STATUS_REJECTED,
+    RUN_STATUS_READY_FOR_REVIEW,
     apply_extraction_run_projection,
+    approve_reviewable_extraction_run,
     compare_extraction_runs,
     get_extraction_run,
     list_extraction_runs,
     list_note_replay_actions,
+    reject_reviewable_extraction_run,
     resolve_applied_run_id,
     serialize_replay_action,
     serialize_extraction_run,
@@ -147,6 +151,8 @@ def apply_note_extraction_run(
     run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
+    if run.status in {RUN_STATUS_READY_FOR_REVIEW, RUN_STATUS_REJECTED}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This extraction run cannot be applied directly")
     asset_id = run.source_asset_id or note.asset_id
     asset = db.get(RawAsset, asset_id) if asset_id else None
     if not asset or asset.user_id != user.id:
@@ -180,6 +186,97 @@ def apply_note_extraction_run(
                 "relation_count": projection_result.relation_count,
                 "similarity_hint_count": projection_result.similarity_hint_count,
             },
+            "replay_actions": [serialize_replay_action(action) for action in list_note_replay_actions(db, user_id=user.id, note_id=note.id)],
+        }
+    )
+
+
+@router.post("/{note_id}/extraction-runs/{run_id}/approve")
+def approve_note_extraction_run(
+    note_id: str,
+    run_id: str,
+    db: DbSession,
+    payload: dict | None = None,
+    user=Depends(get_current_user),
+) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
+    asset_id = run.source_asset_id or note.asset_id
+    asset = db.get(RawAsset, asset_id) if asset_id else None
+    if not asset or asset.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source asset not found")
+    text = get_asset_text(asset, db)
+    if not text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No text available for replay")
+    operator_note = str((payload or {}).get("note") or "").strip() or None
+    try:
+        projection_result = approve_reviewable_extraction_run(
+            db,
+            note=note,
+            asset=asset,
+            run=run,
+            text=text,
+            operator_note=operator_note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(note)
+    refreshed_run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run.id)
+    applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=user.id, note_id=note.id))
+    return ok(
+        {
+            "note": serialize_note(note),
+            "approved_run": serialize_extraction_run(refreshed_run or run, applied_run_id=applied_run_id),
+            "projection_result": {
+                "note_id": projection_result.note_id,
+                "event_id": projection_result.event_id,
+                "extractor_name": projection_result.extractor_name,
+                "extractor_version": projection_result.extractor_version,
+                "entity_count": projection_result.entity_count,
+                "relation_count": projection_result.relation_count,
+                "similarity_hint_count": projection_result.similarity_hint_count,
+            },
+            "replay_actions": [serialize_replay_action(action) for action in list_note_replay_actions(db, user_id=user.id, note_id=note.id)],
+        }
+    )
+
+
+@router.post("/{note_id}/extraction-runs/{run_id}/reject")
+def reject_note_extraction_run(
+    note_id: str,
+    run_id: str,
+    db: DbSession,
+    payload: dict | None = None,
+    user=Depends(get_current_user),
+) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
+    operator_note = str((payload or {}).get("note") or "").strip() or None
+    try:
+        rejected_run = reject_reviewable_extraction_run(
+            db,
+            user_id=user.id,
+            note_id=note.id,
+            run=run,
+            operator_note=operator_note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=user.id, note_id=note.id))
+    return ok(
+        {
+            "note": serialize_note(note),
+            "rejected_run": serialize_extraction_run(rejected_run, applied_run_id=applied_run_id),
             "replay_actions": [serialize_replay_action(action) for action in list_note_replay_actions(db, user_id=user.id, note_id=note.id)],
         }
     )

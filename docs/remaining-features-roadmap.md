@@ -10,7 +10,7 @@ It is intended to answer one question clearly:
 
 ## Current Snapshot
 
-Current status as of `2026-04-19`:
+Current status as of `2026-04-20`:
 
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
@@ -204,10 +204,17 @@ Delivered in the third replay slice:
 - note detail UI now shows replay action history alongside run history and diff context
 - full API e2e now verifies replay action audit persistence after a manual rollback/apply
 
+Delivered in the fourth replay slice:
+
+- note reprocess now creates a `ready_for_review` extraction draft when an applied run already exists
+- explicit approve and reject endpoints are available for reviewable draft runs
+- active projection stays unchanged until draft approval
+- note detail UI now separates draft candidates, rejected runs, current projection, and historical rollback runs
+- full API e2e now verifies draft creation, approval, rejection, and active-projection preservation
+
 Suggested deliverables:
 
 - replay with selected extractor version before auto-applying it
-- projection apply approval workflow with audit notes
 - rollback/replace decision workflow with clearer operator intent capture
 
 Acceptance target:

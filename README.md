@@ -41,7 +41,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `19` are implemented and verified in Docker.
+- Phase `0` through Phase `20` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -49,6 +49,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Note detail now surfaces extraction run history and a latest diff snapshot to support safer reprocessing review.
 - Note detail can now re-apply a saved extraction run so the current projection can be rolled back to an earlier version.
 - Replay actions are now auditable from the note detail page, including optional operator notes on manual apply.
+- Reprocessing now creates a reviewable extraction draft when a note already has an active projection, and the active projection stays unchanged until explicit approve or reject.
 - Unified search is available in the web app for note keywords, entity hits, event hits, and note-to-note similarity recall.
 - Review workflow is available in the web app for merge-candidate filtering, accept/reject decisions, alias confirmation, and audited entity/event merges.
 - Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
@@ -106,7 +107,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 
 ## Verification Baseline
 
-Verified on `2026-04-19`:
+Verified on `2026-04-20`:
 
 - `python3 -m compileall server/app server/tests server/scripts`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest`

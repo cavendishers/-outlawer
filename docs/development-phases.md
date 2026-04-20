@@ -16,7 +16,7 @@ Status values to use:
 
 ## Latest Verification
 
-Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
+Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
 
 - `python3 -m compileall server/app` -> passed
 - `python3 server/scripts/e2e_api_flow.py --phase phase1` -> passed
@@ -39,7 +39,7 @@ Verified on `2026-04-19` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess and historical run re-apply flow
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, and historical replay coverage
 
 ## Phase 0: Foundation and Conventions
 
@@ -672,6 +672,39 @@ Completion criteria:
 - automated verification covers replay action log writes and reads
 
 Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+## Phase 20: Draft Replay Approval Flow
+
+Status: `DONE`
+
+Goal:
+
+- make reprocess safe by generating a reviewable extraction draft before any new projection is applied
+
+Work items:
+
+- make note reprocess create a `ready_for_review` extraction run instead of auto-applying it
+- keep the active projection unchanged until explicit approval
+- add explicit approve and reject endpoints for reviewable extraction runs
+- record approve and reject actions in replay audit history
+- update note detail to distinguish active, draft-review, rejected, and historical runs
+- extend full API e2e for draft creation, approval, rejection, and projection preservation
+
+Completion criteria:
+
+- reprocess no longer overwrites the current projection automatically
+- a draft extraction run can be approved or rejected explicitly
+- note detail can show and act on pending review candidates separately from rollback history
+- automated verification covers draft replay approval and rejection flows
+
+Documents to update manually after completion:
 
 - `README.md`
 - `AGENTS.md`

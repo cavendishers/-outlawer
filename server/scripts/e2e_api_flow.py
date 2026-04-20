@@ -101,38 +101,41 @@ def main() -> None:
 
     extraction_runs = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
     assert extraction_runs["total"] >= 2, extraction_runs
-    assert extraction_runs["items"][0]["is_applied"] is True
-    latest_run_id = extraction_runs["items"][0]["id"]
-    previous_run_id = extraction_runs["items"][1]["id"]
-    extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{latest_run_id}", headers=headers))
+    applied_runs = [item for item in extraction_runs["items"] if item["is_applied"]]
+    review_runs = [item for item in extraction_runs["items"] if item["status"] == "ready_for_review"]
+    assert len(applied_runs) == 1, extraction_runs
+    assert len(review_runs) == 1, extraction_runs
+    current_applied_run_id = applied_runs[0]["id"]
+    review_run_id = review_runs[0]["id"]
+    extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{review_run_id}", headers=headers))
     assert extraction_run["summary"]["event_count"] >= 1
     extraction_compare = assert_ok(
         client.get(
             f"{args.base_url}/notes/{note_id}/extraction-runs/compare",
             headers=headers,
-            params={"base_run_id": previous_run_id, "candidate_run_id": latest_run_id},
+            params={"base_run_id": current_applied_run_id, "candidate_run_id": review_run_id},
         )
     )
     assert "summary" in extraction_compare["diff"]
     assert "entities" in extraction_compare["diff"]
-    assert extraction_compare["candidate_run"]["id"] == latest_run_id
-    applied = assert_ok(
+    assert extraction_compare["candidate_run"]["id"] == review_run_id
+    approved = assert_ok(
         client.post(
-            f"{args.base_url}/notes/{note_id}/extraction-runs/{previous_run_id}/apply",
+            f"{args.base_url}/notes/{note_id}/extraction-runs/{review_run_id}/approve",
             headers=headers,
-            json={"note": "恢复到上一版提取结果以确认回滚链路。"},
+            json={"note": "审批通过新的抽取草稿，确认草稿审批链路。"},
         )
     )
-    assert applied["applied_run"]["id"] == previous_run_id
-    assert applied["applied_run"]["is_applied"] is True
-    assert applied["replay_actions"], applied
-    extraction_runs_after_apply = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
-    applied_run_ids = [item["id"] for item in extraction_runs_after_apply["items"] if item["is_applied"]]
-    assert applied_run_ids == [previous_run_id], extraction_runs_after_apply
+    assert approved["approved_run"]["id"] == review_run_id
+    assert approved["approved_run"]["is_applied"] is True
+    assert approved["replay_actions"], approved
+    extraction_runs_after_approve = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
+    applied_run_ids = [item["id"] for item in extraction_runs_after_approve["items"] if item["is_applied"]]
+    assert applied_run_ids == [review_run_id], extraction_runs_after_approve
     replay_actions = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/replay-actions", headers=headers))
     assert replay_actions["items"], replay_actions
-    assert replay_actions["items"][0]["run_id"] == previous_run_id
-    assert replay_actions["items"][0]["note"] == "恢复到上一版提取结果以确认回滚链路。"
+    assert replay_actions["items"][0]["run_id"] == review_run_id
+    assert replay_actions["items"][0]["note"] == "审批通过新的抽取草稿，确认草稿审批链路。"
 
     second_asset = assert_ok(
         client.post(
