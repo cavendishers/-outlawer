@@ -87,6 +87,31 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `POST /api/v1/notes/{note_id}/reprocess` returns `Envelope[NoteCreateResponse]`
 - `GET /api/v1/views/story/note/{note_id}` returns `Envelope[StoryViewResponse]`
 - `GET /api/v1/views/story/entity/{entity_id}` returns `Envelope[StoryViewResponse]`
+- `GET /api/v1/search` returns `Envelope[SearchResultListResponse]`
+- `GET /api/v1/search/unified` returns `Envelope[UnifiedSearchResponse]`
+- `GET /api/v1/search/similar/{note_id}` returns `Envelope[SimilarNoteListResponse]`
+- `GET /api/v1/search/merge-candidates` returns `Envelope[SearchMergeCandidateListResponse]`
+- `GET /api/v1/review/merge-candidates` returns `Envelope[PaginatedData[MergeCandidateResponse]]`
+- `GET /api/v1/review/merge-candidates/{candidate_id}` returns `Envelope[MergeCandidateDetailResponse]`
+- `POST /api/v1/review/merge-candidates/{candidate_id}/reject` returns `Envelope[MergeCandidateRejectResponse]`
+- `POST /api/v1/review/merge-candidates/{candidate_id}/accept` returns `Envelope[MergeCandidateAcceptResponse]`
+- `GET /api/v1/review/entities/{entity_id}/context` returns `Envelope[EntityReviewContextResponse]`
+- `POST /api/v1/review/entities/{entity_id}/aliases` returns `Envelope[ConfirmEntityAliasResponse]`
+- `GET /api/v1/review/events/{event_id}/context` returns `Envelope[EventReviewContextResponse]`
+- `GET /api/v1/curation/entities/{entity_id}` returns `Envelope[EntityCurationContextResponse]`
+- `PATCH /api/v1/curation/entities/{entity_id}` returns `Envelope[EntityResponse]`
+- `POST /api/v1/curation/entities/{entity_id}/aliases` returns `Envelope[EntityAliasResponse]`
+- `DELETE /api/v1/curation/entities/{entity_id}/aliases/{alias_id}` returns `Envelope[EntityAliasRemovedResponse]`
+- `POST /api/v1/curation/entities/{entity_id}/relations` returns `Envelope[CurationRelationItemResponse]`
+- `PATCH /api/v1/curation/entities/{entity_id}/relations/{relation_id}` returns `Envelope[CurationRelationItemResponse]`
+- `DELETE /api/v1/curation/entities/{entity_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
+- `GET /api/v1/curation/events/{event_id}` returns `Envelope[EventCurationContextResponse]`
+- `PATCH /api/v1/curation/events/{event_id}` returns `Envelope[EventCurationSubjectResponse]`
+- `POST /api/v1/curation/events/{event_id}/participants` returns `Envelope[EventParticipantResponsePayload]`
+- `DELETE /api/v1/curation/events/{event_id}/participants/{entity_id}` returns `Envelope[EventParticipantRemovedResponse]`
+- `POST /api/v1/curation/events/{event_id}/relations` returns `Envelope[CurationRelationItemResponse]`
+- `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[CurationRelationItemResponse]`
+- `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
 
 Verification rules:
 

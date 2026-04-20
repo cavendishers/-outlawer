@@ -40,6 +40,7 @@ Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/api/test_health.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed with search, review, and curation response-contract coverage
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, image semantic derivative verification, audio context derivative verification, and operations API detail verification
 
 ## Phase 0: Foundation and Conventions
@@ -838,6 +839,7 @@ Completion criteria:
 Follow-up note:
 
 - `2026-04-20`: core auth, asset, job, note, entity, event, timeline, and story-view read endpoints were further hardened with explicit `response_model` contracts and OpenAPI response tests.
+- `2026-04-20`: search, review, and curation response contracts were also hardened so the main public API surfaces now expose explicit OpenAPI response schemas end to end.
 
 Documents updated manually after completion:
 

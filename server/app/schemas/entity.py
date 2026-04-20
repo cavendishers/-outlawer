@@ -55,6 +55,14 @@ class EntityResponse(BaseModel):
     updated_at: str | None = None
 
 
+class EntityAliasResponse(BaseModel):
+    id: str
+    alias: str
+    normalized_alias: str
+    alias_type: str | None = None
+    created_at: str | None = None
+
+
 class EntityRelatedEventResponse(BaseModel):
     id: str
     title: str

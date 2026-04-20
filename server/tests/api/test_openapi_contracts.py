@@ -153,3 +153,81 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     assert set(approve_schema["properties"]) == {"note", "approved_run", "projection_result", "replay_actions"}
     assert set(reject_schema["properties"]) == {"note", "rejected_run", "replay_actions"}
     assert set(reprocess_schema["properties"]) == {"note_id", "job_id"}
+
+
+def test_search_endpoints_publish_explicit_response_models() -> None:
+    search_schema = _response_data_schema("/api/v1/search", "get")
+    unified_schema = _response_data_schema("/api/v1/search/unified", "get")
+    similar_schema = _response_data_schema("/api/v1/search/similar/{note_id}", "get")
+    merge_candidates_schema = _response_data_schema("/api/v1/search/merge-candidates", "get")
+
+    assert set(search_schema["properties"]) == {"items"}
+    assert set(unified_schema["properties"]) == {
+        "query",
+        "seed_note_id",
+        "seed_note_title",
+        "top_hits",
+        "notes",
+        "entities",
+        "events",
+        "similar_notes",
+        "stats",
+    }
+    assert set(similar_schema["properties"]) == {"items"}
+    assert set(merge_candidates_schema["properties"]) == {"items"}
+
+
+def test_review_endpoints_publish_explicit_response_models() -> None:
+    list_schema = _response_data_schema("/api/v1/review/merge-candidates", "get")
+    detail_schema = _response_data_schema("/api/v1/review/merge-candidates/{candidate_id}", "get")
+    reject_schema = _response_data_schema("/api/v1/review/merge-candidates/{candidate_id}/reject", "post")
+    accept_schema = _response_data_schema("/api/v1/review/merge-candidates/{candidate_id}/accept", "post")
+    entity_context_schema = _response_data_schema("/api/v1/review/entities/{entity_id}/context", "get")
+    alias_schema = _response_data_schema("/api/v1/review/entities/{entity_id}/aliases", "post")
+    event_context_schema = _response_data_schema("/api/v1/review/events/{event_id}/context", "get")
+
+    assert set(list_schema["properties"]) >= {"items", "total", "page", "page_size", "total_pages"}
+    assert set(detail_schema["properties"]) >= {
+        "id",
+        "object_type",
+        "status",
+        "score",
+        "reason",
+        "source",
+        "candidate",
+        "can_accept",
+        "can_reject",
+    }
+    assert set(reject_schema["properties"]) == {"candidate_id", "status"}
+    assert set(accept_schema["properties"]) == {"candidate_id", "status", "resolution", "survivor_id", "merged_id"}
+    assert set(entity_context_schema["properties"]) == {"entity", "aliases", "stats", "timeline_fragments", "candidates"}
+    assert set(alias_schema["properties"]) == {"entity_id", "aliases"}
+    assert set(event_context_schema["properties"]) == {"event", "stats", "candidates"}
+
+
+def test_curation_endpoints_publish_explicit_response_models() -> None:
+    entity_context_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}", "get")
+    entity_update_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}", "patch")
+    entity_alias_add_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}/aliases", "post")
+    entity_alias_remove_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}/aliases/{alias_id}", "delete")
+    entity_relation_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}/relations", "post")
+    entity_relation_remove_schema = _response_data_schema("/api/v1/curation/entities/{entity_id}/relations/{relation_id}", "delete")
+    event_context_schema = _response_data_schema("/api/v1/curation/events/{event_id}", "get")
+    event_update_schema = _response_data_schema("/api/v1/curation/events/{event_id}", "patch")
+    participant_add_schema = _response_data_schema("/api/v1/curation/events/{event_id}/participants", "post")
+    participant_remove_schema = _response_data_schema("/api/v1/curation/events/{event_id}/participants/{entity_id}", "delete")
+    event_relation_schema = _response_data_schema("/api/v1/curation/events/{event_id}/relations", "post")
+    event_relation_remove_schema = _response_data_schema("/api/v1/curation/events/{event_id}/relations/{relation_id}", "delete")
+
+    assert set(entity_context_schema["properties"]) == {"entity", "aliases", "related_events", "relations", "timeline_fragments", "stats"}
+    assert set(entity_update_schema["properties"]) >= {"id", "display_name", "entity_type", "status"}
+    assert set(entity_alias_add_schema["properties"]) == {"id", "alias", "normalized_alias", "alias_type", "created_at"}
+    assert set(entity_alias_remove_schema["properties"]) == {"entity_id", "alias_id", "status"}
+    assert set(entity_relation_schema["properties"]) >= {"id", "direction", "relation_type", "peer"}
+    assert set(entity_relation_remove_schema["properties"]) == {"relation_id", "status"}
+    assert set(event_context_schema["properties"]) == {"event", "participants", "relations", "stats"}
+    assert set(event_update_schema["properties"]) >= {"id", "title", "time_precision", "source_note_title"}
+    assert set(participant_add_schema["properties"]) == {"event_id", "entity_id", "role", "relation_type"}
+    assert set(participant_remove_schema["properties"]) == {"event_id", "entity_id", "status"}
+    assert set(event_relation_schema["properties"]) >= {"id", "direction", "relation_type", "peer"}
+    assert set(event_relation_remove_schema["properties"]) == {"relation_id", "status"}

@@ -3,6 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.deps import DbSession, get_current_user
 from app.core.responses import ok
 from app.models.note import Note
+from app.schemas.common import Envelope
+from app.schemas.search import (
+    SearchMergeCandidateListResponse,
+    SearchResultListResponse,
+    SimilarNoteListResponse,
+    UnifiedSearchResponse,
+)
 from app.services.search_service import (
     build_top_hits,
     clamp_limit,
@@ -18,7 +25,7 @@ from app.services.search_service import (
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=Envelope[SearchResultListResponse])
 def search(q: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     notes = strip_scores(search_notes(db, user.id, q, limit=12))
     return ok(
@@ -36,7 +43,7 @@ def search(q: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     )
 
 
-@router.get("/unified")
+@router.get("/unified", response_model=Envelope[UnifiedSearchResponse])
 def unified_search(
     db: DbSession,
     q: str | None = None,
@@ -88,7 +95,7 @@ def unified_search(
     )
 
 
-@router.get("/similar/{note_id}")
+@router.get("/similar/{note_id}", response_model=Envelope[SimilarNoteListResponse])
 def similar(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     note = db.get(Note, note_id)
     if not note or note.user_id != user.id:
@@ -96,7 +103,7 @@ def similar(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict
     return ok({"items": similar_note_items(db, user.id, note.id, limit=5)})
 
 
-@router.get("/merge-candidates")
+@router.get("/merge-candidates", response_model=Envelope[SearchMergeCandidateListResponse])
 def list_merge_candidates_endpoint(
     db: DbSession,
     object_type: str | None = None,
