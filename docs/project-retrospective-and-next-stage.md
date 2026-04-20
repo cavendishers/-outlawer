@@ -31,7 +31,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 - replay safety came later than it should have, so early reprocess behavior was too eager to overwrite current projections
 - multimodal prompt/version governance still needs stronger comparison tooling as prompts evolve
-- response models and some lower-priority endpoints still need the same level of explicit contract hardening as the main write surfaces
+- lower-priority surfaces like search, review context, and curation detail responses still need the same level of explicit contract hardening as the main read/write APIs
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
 - operations visibility now has a first dashboard, but deeper admin workflows and metrics are still thin
 - a few lower-priority read endpoints can still be moved onto the same query-service pattern over time

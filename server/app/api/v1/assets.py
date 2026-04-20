@@ -13,12 +13,14 @@ from app.core.responses import ok, paginated
 from app.models.asset_derivative import AssetDerivative
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
+from app.schemas.asset import AssetDetailResponse, AssetRawResponse, AssetResponse
+from app.schemas.common import Envelope, PaginatedData
 
 router = APIRouter()
 settings = get_settings()
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=Envelope[AssetResponse])
 async def upload_asset(
     db: DbSession,
     user=Depends(get_current_user),  # type: ignore[name-defined]
@@ -65,7 +67,7 @@ async def upload_asset(
     return ok(serialize_asset(asset))
 
 
-@router.get("")
+@router.get("", response_model=Envelope[PaginatedData[AssetResponse]])
 def list_assets(
     db: DbSession,
     page: int = 1,
@@ -86,7 +88,7 @@ def list_assets(
     )
 
 
-@router.get("/{asset_id}")
+@router.get("/{asset_id}", response_model=Envelope[AssetDetailResponse])
 def get_asset(asset_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     asset = db.get(RawAsset, asset_id)
     if not asset or asset.user_id != user.id:
@@ -119,7 +121,7 @@ def get_asset(asset_id: str, db: DbSession, user=Depends(get_current_user)) -> d
     )
 
 
-@router.get("/{asset_id}/raw")
+@router.get("/{asset_id}/raw", response_model=Envelope[AssetRawResponse])
 def get_asset_raw(asset_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     asset = db.get(RawAsset, asset_id)
     if not asset or asset.user_id != user.id:

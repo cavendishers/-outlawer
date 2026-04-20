@@ -60,6 +60,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
 - 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs。
 - note 创建/回放、review 审核、entity/event curation 写接口现在都使用显式 Pydantic 请求模型，并通过 OpenAPI 契约测试锁定字段边界。
+- auth、assets、jobs、notes、entities、events、timeline、story views 的核心响应模型也已经显式化，OpenAPI 可直接反映分页、详情、回放 diff 和图谱概览结构。
 - note、entity、event、timeline 的主要读接口现在都通过独立 query service 组装，路由层只保留参数与响应封装。
 - 事件详情页和人物故事页现在都带有第一版图谱工作台，可直接沿关联事件和时间片段继续跳转。
 

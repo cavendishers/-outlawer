@@ -46,8 +46,54 @@ class EntityResponse(BaseModel):
     canonical_name: str
     display_name: str
     description: str | None
-    aliases: list[str]
+    aliases: list[str] = Field(default_factory=list)
+    status: str
+    confidence_score: float | None = None
+    first_seen_at: str | None = None
+    last_seen_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class EntityRelatedEventResponse(BaseModel):
+    id: str
+    title: str
+    summary: str | None = None
+    time_text: str | None = None
+    event_type: str | None = None
+    location_text: str | None = None
+    role: str | None = None
+    relation_type: str | None = None
+    start_time: str | None = None
+
+
+class EntityTimelineFragmentResponse(BaseModel):
+    event_id: str
+    title: str
+    summary: str | None = None
+    time_text: str | None = None
+    event_type: str | None = None
+    location_text: str | None = None
+    role: str | None = None
+    relation_type: str | None = None
+    chapter_label: str
+    source_note_title: str | None = None
+    position: int
+    total: int
+
+
+class EntityEventResponse(BaseModel):
+    id: str
+    title: str
+    summary: str | None = None
+    event_type: str | None = None
+    start_time: str | None = None
+
+
+class EntityEventListResponse(BaseModel):
+    items: list[EntityEventResponse] = Field(default_factory=list)
 
 
 class EntityDetailResponse(EntityResponse):
-    related_events: list[dict] = Field(default_factory=list)
+    related_events: list[EntityRelatedEventResponse] = Field(default_factory=list)
+    timeline_fragments: list[EntityTimelineFragmentResponse] = Field(default_factory=list)

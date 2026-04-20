@@ -26,6 +26,7 @@ Standard response body:
 - Upload and processing are separate operations.
 - Job status values are `pending`, `running`, `completed`, and `failed`.
 - Core write endpoints should publish explicit Pydantic request schemas in OpenAPI and reject undeclared body fields.
+- Core read endpoints should publish explicit response models in OpenAPI instead of anonymous `dict` payloads.
 
 ## Typed Write Request Contracts
 
@@ -50,6 +51,47 @@ The following write surfaces are now schema-driven rather than generic dictionar
 Verification rule:
 
 - `server/tests/api/test_openapi_contracts.py` should keep asserting these request bodies stay explicit and non-open-ended.
+
+## Typed Read Response Contracts
+
+The following read and replay surfaces now publish explicit response schemas through `response_model` declarations:
+
+- `POST /api/v1/auth/login` returns `Envelope[TokenPayload]`
+- `POST /api/v1/auth/logout` returns `Envelope[LogoutResponse]`
+- `GET /api/v1/auth/me` returns `Envelope[CurrentUserResponse]`
+- `POST /api/v1/assets/upload` returns `Envelope[AssetResponse]`
+- `GET /api/v1/assets` returns `Envelope[PaginatedData[AssetResponse]]`
+- `GET /api/v1/assets/{asset_id}` returns `Envelope[AssetDetailResponse]`
+- `GET /api/v1/assets/{asset_id}/raw` returns `Envelope[AssetRawResponse]`
+- `GET /api/v1/jobs` returns `Envelope[PaginatedData[JobResponse]]`
+- `GET /api/v1/jobs/{job_id}` returns `Envelope[JobDetailResponse]`
+- `POST /api/v1/jobs/{job_id}/retry` returns `Envelope[JobRetryResponse]`
+- `GET /api/v1/entities` returns `Envelope[PaginatedData[EntityResponse]]`
+- `GET /api/v1/entities/{entity_id}` returns `Envelope[EntityDetailResponse]`
+- `GET /api/v1/entities/{entity_id}/events` returns `Envelope[EntityEventListResponse]`
+- `GET /api/v1/events` returns `Envelope[PaginatedData[EventResponse]]`
+- `GET /api/v1/events/{event_id}` returns `Envelope[EventDetailResponse]`
+- `GET /api/v1/timeline` returns `Envelope[PaginatedData[TimelineItemResponse]]`
+- `GET /api/v1/timeline/overview` returns `Envelope[TimelineOverviewResponse]`
+- `GET /api/v1/timeline/range` returns `Envelope[TimelineRangeResponse]`
+- `POST /api/v1/notes` returns `Envelope[NoteCreateResponse]`
+- `GET /api/v1/notes` returns `Envelope[PaginatedData[NoteResponse]]`
+- `GET /api/v1/notes/{note_id}` returns `Envelope[NoteResponse]`
+- `GET /api/v1/notes/{note_id}/extraction-runs` returns `Envelope[CollectionData[ExtractionRunResponse]]`
+- `GET /api/v1/notes/{note_id}/extraction-runs/{run_id}` returns `Envelope[ExtractionRunResponse]`
+- `GET /api/v1/notes/{note_id}/extraction-runs/compare` returns `Envelope[ExtractionRunCompareResponse]`
+- `GET /api/v1/notes/{note_id}/replay-actions` returns `Envelope[CollectionData[ReplayActionResponse]]`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply` returns `Envelope[NoteExtractionRunApplyResponse]`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/approve` returns `Envelope[NoteExtractionRunApproveResponse]`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject` returns `Envelope[NoteExtractionRunRejectResponse]`
+- `POST /api/v1/notes/{note_id}/reprocess` returns `Envelope[NoteCreateResponse]`
+- `GET /api/v1/views/story/note/{note_id}` returns `Envelope[StoryViewResponse]`
+- `GET /api/v1/views/story/entity/{entity_id}` returns `Envelope[StoryViewResponse]`
+
+Verification rules:
+
+- `server/tests/api/test_openapi_contracts.py` should assert that these endpoints keep a component-backed response schema in `200` responses.
+- paginated read models should continue using `data.items` as the primary collection field, with metadata in the same envelope.
 
 ## Pagination Parameters
 

@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class JobResponse(BaseModel):
@@ -8,4 +10,16 @@ class JobResponse(BaseModel):
     target_type: str
     target_id: str
     error_message: str | None = None
-    result_json: dict = {}
+    retry_count: int = 0
+    created_at: str | None = None
+    finished_at: str | None = None
+
+
+class JobDetailResponse(JobResponse):
+    payload_json: dict[str, Any] = Field(default_factory=dict)
+    result_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class JobRetryResponse(BaseModel):
+    job_id: str
+    status: str

@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends
 from app.api.deps import DbSession, get_current_user
 from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
+from app.schemas.common import Envelope, PaginatedData
+from app.schemas.timeline import TimelineItemResponse, TimelineOverviewResponse, TimelineRangeResponse
 from app.services import timeline_query_service
 
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=Envelope[PaginatedData[TimelineItemResponse]])
 def get_timeline(
     db: DbSession,
     page: int = 1,
@@ -24,12 +26,12 @@ def get_timeline(
     )
 
 
-@router.get("/overview")
+@router.get("/overview", response_model=Envelope[TimelineOverviewResponse])
 def get_timeline_overview(db: DbSession, user=Depends(get_current_user)) -> dict:
     return ok(timeline_query_service.get_timeline_overview(db, user_id=user.id))
 
 
-@router.get("/range")
+@router.get("/range", response_model=Envelope[TimelineRangeResponse])
 def get_timeline_range(
     db: DbSession,
     page: int = 1,

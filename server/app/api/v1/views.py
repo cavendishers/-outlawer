@@ -3,11 +3,13 @@ from sqlalchemy import select
 
 from app.api.deps import DbSession, get_current_user
 from app.models.style_view import StyleView
+from app.schemas.common import Envelope
+from app.schemas.view import StoryViewResponse
 
 router = APIRouter()
 
 
-@router.get("/story/note/{note_id}")
+@router.get("/story/note/{note_id}", response_model=Envelope[StoryViewResponse])
 def note_story(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     story = db.scalar(
         select(StyleView).where(
@@ -21,7 +23,7 @@ def note_story(note_id: str, db: DbSession, user=Depends(get_current_user)) -> d
     return {"code": 0, "message": "ok", "data": story_to_dict(story)}
 
 
-@router.get("/story/entity/{entity_id}")
+@router.get("/story/entity/{entity_id}", response_model=Envelope[StoryViewResponse])
 def entity_story(entity_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     story = db.scalar(
         select(StyleView).where(

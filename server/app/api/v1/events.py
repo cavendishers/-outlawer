@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.deps import DbSession, get_current_user
 from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
+from app.schemas.common import Envelope, PaginatedData
+from app.schemas.event import EventDetailResponse, EventResponse
 from app.services import event_query_service
 
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=Envelope[PaginatedData[EventResponse]])
 def list_events(
     db: DbSession,
     page: int = 1,
@@ -24,7 +26,7 @@ def list_events(
     )
 
 
-@router.get("/{event_id}")
+@router.get("/{event_id}", response_model=Envelope[EventDetailResponse])
 def get_event(event_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(event_query_service.get_event_detail(db, user_id=user.id, event_id=event_id))

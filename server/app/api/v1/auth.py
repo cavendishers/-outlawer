@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import DbSession, get_current_user
-from app.schemas.auth import LoginRequest
+from app.schemas.auth import CurrentUserResponse, LoginRequest, LogoutResponse, TokenPayload
+from app.schemas.common import Envelope
 from app.services.auth_service import authenticate_user
 
 router = APIRouter()
 
 
-@router.post("/login")
+@router.post("/login", response_model=Envelope[TokenPayload])
 def login(payload: LoginRequest, db: DbSession) -> dict:
     user, token = authenticate_user(db, payload.username, payload.password)
     if not user:
@@ -27,12 +28,12 @@ def login(payload: LoginRequest, db: DbSession) -> dict:
     }
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=Envelope[LogoutResponse])
 def logout() -> dict:
     return {"code": 0, "message": "ok", "data": {"logged_out": True}}
 
 
-@router.get("/me")
+@router.get("/me", response_model=Envelope[CurrentUserResponse])
 def me(user=Depends(get_current_user)) -> dict:  # type: ignore[name-defined]
     return {
         "code": 0,

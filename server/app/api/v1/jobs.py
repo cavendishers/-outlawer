@@ -6,12 +6,14 @@ from app.api.deps import DbSession, get_current_user
 from app.core.pagination import normalize_page_params, paginate_query
 from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
+from app.schemas.common import Envelope, PaginatedData
+from app.schemas.job import JobDetailResponse, JobResponse, JobRetryResponse
 from app.services.job_dispatcher import dispatch_job
 
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=Envelope[PaginatedData[JobResponse]])
 def list_jobs(
     db: DbSession,
     page: int = 1,
@@ -29,7 +31,7 @@ def list_jobs(
     )
 
 
-@router.get("/{job_id}")
+@router.get("/{job_id}", response_model=Envelope[JobDetailResponse])
 def get_job(job_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     job = db.get(AIJob, job_id)
     if not job or job.user_id != user.id:
@@ -37,7 +39,7 @@ def get_job(job_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     return ok(serialize_job(job, include_result=True))
 
 
-@router.post("/{job_id}/retry")
+@router.post("/{job_id}/retry", response_model=Envelope[JobRetryResponse])
 def retry_job(job_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     job = db.get(AIJob, job_id)
     if not job or job.user_id != user.id:

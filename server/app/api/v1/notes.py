@@ -7,7 +7,20 @@ from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
-from app.schemas.note import NoteCreateRequest, NoteReplayActionRequest
+from app.schemas.common import CollectionData, Envelope, PaginatedData
+from app.schemas.note import (
+    ExtractionRunCompareResponse,
+    ExtractionRunResponse,
+    NoteCreateRequest,
+    NoteCreateResponse,
+    NoteExtractionRunApplyResponse,
+    NoteExtractionRunApproveResponse,
+    NoteExtractionRunRejectResponse,
+    NoteReplayActionRequest,
+    NoteResponse,
+    ProjectionResultResponse,
+    ReplayActionResponse,
+)
 from app.services import note_query_service
 from app.services.asset_text_service import get_asset_text
 from app.services.extraction_run_service import (
@@ -28,7 +41,7 @@ from app.services.job_dispatcher import dispatch_job
 router = APIRouter()
 
 
-@router.post("")
+@router.post("", response_model=Envelope[NoteCreateResponse])
 def create_note(payload: NoteCreateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     asset = db.get(RawAsset, payload.asset_id)
     if not asset or asset.user_id != user.id:
@@ -60,7 +73,7 @@ def create_note(payload: NoteCreateRequest, db: DbSession, user=Depends(get_curr
     return ok({"note_id": note.id, "job_id": job.id})
 
 
-@router.get("")
+@router.get("", response_model=Envelope[PaginatedData[NoteResponse]])
 def list_notes(
     db: DbSession,
     page: int = 1,
@@ -77,7 +90,7 @@ def list_notes(
     )
 
 
-@router.get("/{note_id}")
+@router.get("/{note_id}", response_model=Envelope[NoteResponse])
 def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(note_query_service.get_note_detail(db, user_id=user.id, note_id=note_id))
@@ -85,7 +98,7 @@ def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dic
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
 
-@router.get("/{note_id}/extraction-runs")
+@router.get("/{note_id}/extraction-runs", response_model=Envelope[CollectionData[ExtractionRunResponse]])
 def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(note_query_service.list_note_extraction_run_items(db, user_id=user.id, note_id=note_id))
@@ -93,7 +106,7 @@ def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_curr
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
 
-@router.get("/{note_id}/extraction-runs/compare")
+@router.get("/{note_id}/extraction-runs/compare", response_model=Envelope[ExtractionRunCompareResponse])
 def compare_note_extraction_runs(
     note_id: str,
     base_run_id: str,
@@ -117,7 +130,7 @@ def compare_note_extraction_runs(
         raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
-@router.get("/{note_id}/extraction-runs/{run_id}")
+@router.get("/{note_id}/extraction-runs/{run_id}", response_model=Envelope[ExtractionRunResponse])
 def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(note_query_service.get_note_extraction_run_detail(db, user_id=user.id, note_id=note_id, run_id=run_id))
@@ -127,7 +140,7 @@ def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depen
         raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
-@router.get("/{note_id}/replay-actions")
+@router.get("/{note_id}/replay-actions", response_model=Envelope[CollectionData[ReplayActionResponse]])
 def list_note_replay_action_log(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(note_query_service.list_note_replay_action_items(db, user_id=user.id, note_id=note_id))
@@ -135,7 +148,7 @@ def list_note_replay_action_log(note_id: str, db: DbSession, user=Depends(get_cu
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
 
-@router.post("/{note_id}/extraction-runs/{run_id}/apply")
+@router.post("/{note_id}/extraction-runs/{run_id}/apply", response_model=Envelope[NoteExtractionRunApplyResponse])
 def apply_note_extraction_run(
     note_id: str,
     run_id: str,
@@ -191,7 +204,7 @@ def apply_note_extraction_run(
     )
 
 
-@router.post("/{note_id}/extraction-runs/{run_id}/approve")
+@router.post("/{note_id}/extraction-runs/{run_id}/approve", response_model=Envelope[NoteExtractionRunApproveResponse])
 def approve_note_extraction_run(
     note_id: str,
     run_id: str,
@@ -248,7 +261,7 @@ def approve_note_extraction_run(
     )
 
 
-@router.post("/{note_id}/extraction-runs/{run_id}/reject")
+@router.post("/{note_id}/extraction-runs/{run_id}/reject", response_model=Envelope[NoteExtractionRunRejectResponse])
 def reject_note_extraction_run(
     note_id: str,
     run_id: str,
@@ -286,7 +299,7 @@ def reject_note_extraction_run(
     )
 
 
-@router.post("/{note_id}/reprocess")
+@router.post("/{note_id}/reprocess", response_model=Envelope[NoteCreateResponse])
 def reprocess_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     note = db.get(Note, note_id)
     if not note or note.user_id != user.id:
