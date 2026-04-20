@@ -127,6 +127,15 @@ def main() -> None:
     )
     assert event_workspace["scope"] == "event"
     assert event_workspace["nodes"], event_workspace
+    event_node_detail = assert_ok(
+        client.get(
+            f"{args.base_url}/graph/nodes/event/{events['items'][0]['id']}",
+            headers=headers,
+            params={"event_id": events["items"][0]["id"]},
+        )
+    )
+    assert event_node_detail["node"]["id"] == events["items"][0]["id"]
+    assert "anchor_actions" in event_node_detail
     story = assert_ok(client.get(f"{args.base_url}/views/story/note/{note_id}", headers=headers))
     assert story["title"]
     search = assert_ok(client.get(f"{args.base_url}/search", headers=headers, params={"q": "启动"}))
@@ -140,6 +149,15 @@ def main() -> None:
     )
     assert entity_workspace["scope"] == "entity"
     assert entity_workspace["timeline_focus"] is not None
+    entity_node_detail = assert_ok(
+        client.get(
+            f"{args.base_url}/graph/nodes/entity/{entities['items'][0]['id']}",
+            headers=headers,
+            params={"entity_id": entities["items"][0]["id"]},
+        )
+    )
+    assert entity_node_detail["node"]["id"] == entities["items"][0]["id"]
+    assert "connected_nodes" in entity_node_detail
     overview_workspace = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers))
     assert overview_workspace["scope"] == "overview"
 

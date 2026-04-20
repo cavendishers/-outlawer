@@ -126,11 +126,12 @@ sequenceDiagram
 - `DONE`: Note, entity, event, and timeline read APIs now compose payloads through dedicated query services instead of route-level query assembly.
 - `DONE`: Event detail and entity story pages now include a first graph-workspace slice for event associations and people timeline fragments.
 - `DONE`: Phase 26 Slice A now adds a shared `/graph` workspace route and `/api/v1/graph/workspace` read model so event, entity, and overview anchors can enter one unified graph shell.
+- `DONE`: Phase 26 Slice B now adds URL-driven node focus, a unified node inspector, and `/api/v1/graph/nodes/{node_type}/{node_id}` detail payloads so graph navigation can stay inside one workspace.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Current graph correction exists, but it still feels like form-driven back-office editing rather than a native graph workspace.
+1. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration and node-focused inspection are now in place, but inline graph mutation and local neighborhood editing are still missing.
 2. `MEDIUM`: Back-office operations depth is still incomplete. The first dashboard is in place, but queue analytics, merge/review dashboards, and broader admin workflows are still thin.
 3. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
 4. `LOW`: Plugin and integration system for external importers and third-party sync.
@@ -142,4 +143,5 @@ The next implementation slice should turn the current graph correction surface i
 
 - add stronger event-to-event association views and graph-first navigation affordances
 - expose timeline fragments and related entities/events in a more canvas-oriented editor
+- add inline relation and participant mutation inside the shared graph workspace
 - build on the new query-service seam instead of reintroducing route-level read assembly

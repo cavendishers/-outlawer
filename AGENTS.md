@@ -18,6 +18,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.
+- Frontend production build verification must override to `NODE_ENV=production`, for example `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`.
 - Use [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py) as the baseline API e2e verification flow.
 - Use [`server/scripts/e2e_review_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_review_flow.py) for entity/event review workflow verification.
 - Use [`server/scripts/e2e_curation_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_curation_flow.py) for event curation workflow verification.

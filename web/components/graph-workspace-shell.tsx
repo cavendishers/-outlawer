@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Panel } from "@/components/panel";
 
@@ -51,6 +51,25 @@ type TimelineFocusItem = {
   kind: string;
 };
 
+type GraphConnectedNode = {
+  id: string;
+  node_type: string;
+  label: string;
+  subtitle: string;
+  href: string;
+  meta: string[];
+  relation_label: string | null;
+  is_anchor: boolean;
+};
+
+type GraphNodeDetail = {
+  node: GraphNode;
+  connected_nodes: GraphConnectedNode[];
+  connected_edges: GraphEdge[];
+  timeline_context: TimelineFocusItem[];
+  anchor_actions: GraphAction[];
+};
+
 type GraphWorkspaceShellProps = {
   title: string;
   description: string;
@@ -65,6 +84,10 @@ type GraphWorkspaceShellProps = {
     entity_count: number;
     timeline_count: number;
   };
+  activeNodeId: string | null;
+  onSelectNode: (nodeId: string) => void;
+  nodeDetail: GraphNodeDetail | null;
+  nodeDetailLoading?: boolean;
 };
 
 type PositionedNode = GraphNode & {
@@ -88,6 +111,10 @@ export function GraphWorkspaceShell({
   edges,
   timelineFocus,
   stats,
+  activeNodeId,
+  onSelectNode,
+  nodeDetail,
+  nodeDetailLoading = false,
 }: GraphWorkspaceShellProps) {
   const positionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
@@ -135,23 +162,16 @@ export function GraphWorkspaceShell({
     return positioned;
   }, [nodes]);
 
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(positionedNodes.find((node) => node.is_anchor)?.id ?? positionedNodes[0]?.id ?? null);
-
-  useEffect(() => {
-    if (!positionedNodes.length) {
-      setActiveNodeId(null);
-      return;
-    }
-    if (!activeNodeId || !positionedNodes.some((node) => node.id === activeNodeId)) {
-      setActiveNodeId(positionedNodes.find((node) => node.is_anchor)?.id ?? positionedNodes[0]?.id ?? null);
-    }
-  }, [activeNodeId, positionedNodes]);
-
   const activeNode = positionedNodes.find((node) => node.id === activeNodeId) ?? positionedNodes[0] ?? null;
   const nodeMap = new Map(positionedNodes.map((node) => [node.id, node]));
   const relatedEdges = activeNode
     ? edges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
     : [];
+  const effectiveTimelineContext = nodeDetail?.timeline_context?.length ? nodeDetail.timeline_context : timelineFocus;
+  const effectiveConnectedNodes = nodeDetail?.connected_nodes ?? [];
+  const effectiveActions = nodeDetail?.anchor_actions?.length
+    ? [...(activeNode?.inspector.actions ?? []), ...nodeDetail.anchor_actions]
+    : activeNode?.inspector.actions ?? [];
 
   return (
     <div className="space-y-6">
@@ -192,7 +212,7 @@ export function GraphWorkspaceShell({
               <button
                 key={node.id}
                 type="button"
-                onClick={() => setActiveNodeId(node.id)}
+                onClick={() => onSelectNode(node.id)}
                 className={`border-4 border-ink px-4 py-4 text-left shadow-brutal ${
                   node.is_anchor ? "bg-neon" : node.node_type === "event" ? "bg-peach" : "bg-aqua"
                 }`}
@@ -249,7 +269,7 @@ export function GraphWorkspaceShell({
                 >
                   <button
                     type="button"
-                    onClick={() => setActiveNodeId(node.id)}
+                    onClick={() => onSelectNode(node.id)}
                     className={`w-32 border-4 border-ink px-3 py-3 text-left shadow-brutal transition-transform hover:-translate-y-1 xl:w-36 ${
                       node.tone === "neon" ? "bg-neon" : node.tone === "peach" ? "bg-peach" : node.tone === "aqua" ? "bg-aqua" : "bg-paper"
                     }`}
@@ -285,13 +305,71 @@ export function GraphWorkspaceShell({
                     <p className="text-sm font-bold leading-relaxed">{line}</p>
                   </div>
                 ))}
+                {nodeDetailLoading ? (
+                  <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
+                    <p className="text-sm font-bold">正在展开当前节点的邻接详情...</p>
+                  </div>
+                ) : null}
                 <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
                   <p className="text-xs font-black uppercase tracking-[0.16em]">邻接连线</p>
                   <p className="mt-2 text-3xl font-black">{relatedEdges.length}</p>
                 </div>
               </div>
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em]">邻接节点</p>
+                {effectiveConnectedNodes.length ? (
+                  effectiveConnectedNodes.map((node) => (
+                    <button
+                      key={`${activeNode.id}-${node.id}`}
+                      type="button"
+                      onClick={() => onSelectNode(node.id)}
+                      className="grid w-full gap-3 border-4 border-ink bg-white px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.14em]">{node.subtitle}</p>
+                          <p className="mt-2 text-xl font-black leading-tight">{node.label}</p>
+                        </div>
+                        {node.relation_label ? <span className="brutal-chip">{node.relation_label}</span> : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="brutal-chip">{node.node_type}</span>
+                        {node.meta.slice(0, 2).map((item) => (
+                          <span key={`${node.id}-${item}`} className="brutal-chip">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+                    当前节点在这个工作台范围内还没有可继续选中的邻接节点。
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em]">时间上下文</p>
+                {effectiveTimelineContext.length ? (
+                  effectiveTimelineContext.map((item) => (
+                    <Link
+                      key={`${activeNode.id}-${item.kind}-${item.id}`}
+                      href={item.href}
+                      className="block border-4 border-ink bg-paper px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1"
+                    >
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
+                      <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
+                      <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+                    当前节点还没有额外的时间上下文。
+                  </div>
+                )}
+              </div>
               <div className="mt-6 flex flex-wrap gap-3">
-                {activeNode.inspector.actions.map((action) => (
+                {effectiveActions.map((action) => (
                   <Link
                     key={`${activeNode.id}-${action.href}-${action.action_type}`}
                     href={action.href}

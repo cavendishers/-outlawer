@@ -366,6 +366,12 @@ Acceptance:
 - every selected node has a stable inspector panel
 - event and entity navigation feel like one connected workspace
 
+Status update on `2026-04-20`:
+
+- delivered through `/api/v1/graph/nodes/{node_type}/{node_id}`
+- shared `/graph` workspace now keeps `active_node_id` in the URL
+- node inspector now expands connected nodes, timeline context, and anchor actions without leaving the workspace
+
 ### Slice C: Inline Graph Editing
 
 Goal:

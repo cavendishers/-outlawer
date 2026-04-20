@@ -113,6 +113,7 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[CurationRelationItemResponse]`
 - `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
 - `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`
+- `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`
 
 Verification rules:
 

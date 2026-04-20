@@ -235,6 +235,7 @@ def test_curation_endpoints_publish_explicit_response_models() -> None:
 
 def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
     graph_workspace_schema = _response_data_schema("/api/v1/graph/workspace", "get")
+    graph_node_detail_schema = _response_data_schema("/api/v1/graph/nodes/{node_type}/{node_id}", "get")
 
     assert set(graph_workspace_schema["properties"]) == {
         "scope",
@@ -245,4 +246,11 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "edges",
         "timeline_focus",
         "stats",
+    }
+    assert set(graph_node_detail_schema["properties"]) == {
+        "node",
+        "connected_nodes",
+        "connected_edges",
+        "timeline_context",
+        "anchor_actions",
     }

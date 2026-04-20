@@ -79,10 +79,11 @@ Detailed implementation plan:
 Current implementation progress:
 
 - Slice A is now in place with a shared `/graph` route, a unified graph workspace shell, and a dedicated `/api/v1/graph/workspace` read endpoint for event, entity, and overview anchors
+- Slice B is now in place with a node-detail endpoint, URL-synced node focus, connected-node inspection, and timeline-context navigation inside the shared graph workspace
 
 ## Priority-ordered Next Work
 
-1. expand graph editing into a canvas-oriented workflow
+1. add inline relation and participant editing into the shared graph workspace
 2. deepen operations dashboards and operator workflows
 3. plan multi-user and permissions model
 4. design plugin and external importer seams

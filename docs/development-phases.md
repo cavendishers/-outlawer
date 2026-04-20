@@ -26,7 +26,7 @@ Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml up migrate --build` -> applied `20260418_02_entity_seen_timestamps`
 - `docker compose -f deploy/compose/docker-compose.prod.yml config` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest` -> passed
-- `npm run build` in `web/` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed
 - `docker compose -p phase9check -f deploy/compose/docker-compose.prod.yml up -d postgres rabbitmq redis minio migrate` -> migration succeeded in clean volumes
 - OpenRouter free-model fallback was verified with `python3 server/scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - OpenRouter text extraction persistence was verified in Docker with completed `ai_jobs`, `relations`, `events.location_text`, and `merge_candidates` records
@@ -904,12 +904,14 @@ Current slice delivered:
 - shared `/graph` route now provides one unified graph workspace shell
 - `/api/v1/graph/workspace` now provides event-anchored, entity-anchored, and overview workspace payloads
 - event detail page, entity story page, and timeline page now expose direct entry links into the shared graph workspace
+- `/api/v1/graph/nodes/{node_type}/{node_id}` now provides node-detail neighborhoods for the shared inspector
+- shared graph workspace now keeps `active_node_id` in the URL and supports connected-node plus timeline-context navigation in-place
 
 Remaining work:
 
 - expand event-to-event association editing beyond read-only stepping
-- add a stronger shared graph canvas for entity/event cross-editing
-- make graph editing feel less like separate pages and more like one connected workspace
+- add inline relation and participant editing inside the shared graph workspace
+- make graph editing feel less like separate pages and more like one connected workspace after the mutation rail lands
 
 Recommended next slices:
 
@@ -936,7 +938,8 @@ Verification completed for current slice:
 
 Slice A follow-up verification:
 
-- `python3 -m compileall server/app server/tests web/app web/components web/lib web/pages` -> passed
+- `python3 -m compileall server/app server/tests web/app web/components web/lib` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml run --rm web npm run build` -> still blocked by existing Next.js `/404` prerender issue (`<Html> should not be imported outside of pages/_document`)
+- `cd web && npx tsc --noEmit` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with graph node detail coverage
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after wrapping `/graph` search-param reads in a Suspense-backed client boundary

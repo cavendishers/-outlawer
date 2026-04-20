@@ -63,6 +63,25 @@ class GraphWorkspaceStatsResponse(BaseModel):
     timeline_count: int
 
 
+class GraphWorkspaceConnectedNodeResponse(BaseModel):
+    id: str
+    node_type: str
+    label: str
+    subtitle: str
+    href: str
+    meta: list[str] = Field(default_factory=list)
+    relation_label: str | None = None
+    is_anchor: bool = False
+
+
+class GraphWorkspaceNodeDetailResponse(BaseModel):
+    node: GraphWorkspaceNodeResponse
+    connected_nodes: list[GraphWorkspaceConnectedNodeResponse] = Field(default_factory=list)
+    connected_edges: list[GraphWorkspaceEdgeResponse] = Field(default_factory=list)
+    timeline_context: list[GraphWorkspaceTimelineItemResponse] = Field(default_factory=list)
+    anchor_actions: list[GraphWorkspaceActionResponse] = Field(default_factory=list)
+
+
 class GraphWorkspaceResponse(BaseModel):
     scope: str
     title: str

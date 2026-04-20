@@ -65,6 +65,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - note、entity、event、timeline 的主要读接口现在都通过独立 query service 组装，路由层只保留参数与响应封装。
 - 事件详情页和人物故事页现在都带有第一版图谱工作台，可直接沿关联事件和时间片段继续跳转。
 - `/graph` 共享图谱工作台和 `/api/v1/graph/workspace` 读接口已经上线，支持以事件、人物或全局总览作为工作台锚点进入统一图谱视图。
+- 图谱工作台现在支持 URL 驱动的节点聚焦、统一节点检查器，以及 `/api/v1/graph/nodes/{node_type}/{node_id}` 节点详情接口，可直接沿邻接节点和时间上下文继续导航。
 
 ## Quick Start
 
@@ -116,6 +117,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 - Every completed phase must be manually reflected in the related docs.
 - `api` and `worker` images include `ffmpeg` and `tesseract`; backend Python dependencies include `vosk` for local ASR fallback.
 - New read-heavy APIs should prefer query services over route-level query composition.
+- The `web` dev container stays on `NODE_ENV=development`, but production build verification must override to `NODE_ENV=production`.
 
 ## Verification Baseline
 
@@ -124,7 +126,7 @@ Verified on `2026-04-20`:
 - `python3 -m compileall server/app server/tests server/scripts`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head`
-- `npm run build` in `web/`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`

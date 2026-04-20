@@ -114,6 +114,13 @@ Delivered in the fourth slice:
 - entity story page now includes a timeline workspace for stepping through people-related fragments and side-axis event echoes
 - graph-first navigation improved without changing existing review and curation governance flows
 
+Delivered in the fifth slice:
+
+- shared `/graph` workspace route now unifies event, entity, and overview graph entry points
+- node selection is URL-driven so the current focus can be revisited or shared
+- a dedicated node-detail API now returns connected nodes, connected edges, time context, and anchor actions for the current focus node
+- the graph inspector can now keep users inside one workspace while traversing adjacent nodes and timeline anchors
+
 Still missing:
 
 - broader graph canvas editing

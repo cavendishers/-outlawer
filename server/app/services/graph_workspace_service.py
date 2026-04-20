@@ -21,6 +21,95 @@ def get_graph_workspace(
     return build_overview_workspace(db, user_id=user_id)
 
 
+def get_graph_node_detail(
+    db: Session,
+    *,
+    user_id: str,
+    node_type: str,
+    node_id: str,
+    event_id: str | None = None,
+    entity_id: str | None = None,
+) -> dict[str, Any]:
+    workspace = get_graph_workspace(
+        db,
+        user_id=user_id,
+        event_id=event_id if event_id else (node_id if node_type == "event" and not entity_id else None),
+        entity_id=entity_id if entity_id else (node_id if node_type == "entity" and not event_id else None),
+    )
+    node = next(
+        (
+            item
+            for item in workspace["nodes"]
+            if item["id"] == node_id and item["node_type"] == node_type
+        ),
+        None,
+    )
+    if node is None:
+        raise ValueError("Graph node not found")
+
+    connected_edges = [
+        edge
+        for edge in workspace["edges"]
+        if edge["source_id"] == node_id or edge["target_id"] == node_id
+    ]
+    connected_node_ids = []
+    relation_label_map: dict[str, str] = {}
+    for edge in connected_edges:
+        peer_id = edge["target_id"] if edge["source_id"] == node_id else edge["source_id"]
+        if peer_id not in connected_node_ids:
+            connected_node_ids.append(peer_id)
+        relation_label_map[peer_id] = edge["label"]
+
+    connected_nodes = []
+    for item in workspace["nodes"]:
+        if item["id"] not in connected_node_ids:
+            continue
+        connected_nodes.append(
+            {
+                "id": item["id"],
+                "node_type": item["node_type"],
+                "label": item["label"],
+                "subtitle": item["subtitle"],
+                "href": item["href"],
+                "meta": item.get("meta", []),
+                "relation_label": relation_label_map.get(item["id"]),
+                "is_anchor": item.get("is_anchor", False),
+            }
+        )
+
+    timeline_context = build_timeline_context_for_node(
+        node=node,
+        workspace=workspace,
+        connected_nodes=connected_nodes,
+    )
+
+    anchor_actions = [action("回到总览", "/graph", "anchor_overview", "secondary")]
+    if node_type == "event":
+        anchor_actions.append(action("以此事件为锚点", f"/graph?event_id={node_id}", "anchor_event", "primary"))
+    elif node_type == "entity":
+        anchor_actions.append(action("以此人物为锚点", f"/graph?entity_id={node_id}", "anchor_entity", "primary"))
+
+    current_anchor = workspace.get("anchor")
+    if current_anchor and current_anchor["id"] != node_id:
+        if current_anchor["node_type"] == "event":
+            href = f"/graph?event_id={current_anchor['id']}"
+        elif current_anchor["node_type"] == "entity":
+            href = f"/graph?entity_id={current_anchor['id']}"
+        else:
+            href = "/graph"
+        anchor_actions.append(
+            action(f"返回锚点：{current_anchor['label']}", href, "anchor_current", "info")
+        )
+
+    return {
+        "node": node,
+        "connected_nodes": connected_nodes,
+        "connected_edges": connected_edges,
+        "timeline_context": timeline_context,
+        "anchor_actions": anchor_actions,
+    }
+
+
 def build_event_workspace(db: Session, *, user_id: str, event_id: str) -> dict[str, Any]:
     detail = event_query_service.get_event_detail(db, user_id=user_id, event_id=event_id)
     anchor = {
@@ -425,6 +514,28 @@ def workspace_payload(
             "timeline_count": len(timeline_focus),
         },
     }
+
+
+def build_timeline_context_for_node(
+    *,
+    node: dict[str, Any],
+    workspace: dict[str, Any],
+    connected_nodes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    timeline_focus = workspace.get("timeline_focus", [])
+    if node["node_type"] == "event":
+        matched = [item for item in timeline_focus if item.get("event_id") == node["id"]]
+        if matched:
+            return matched
+        return timeline_focus[:4]
+
+    connected_event_ids = {
+        item["id"] for item in connected_nodes if item["node_type"] == "event"
+    }
+    matched = [
+        item for item in timeline_focus if item.get("event_id") in connected_event_ids
+    ]
+    return matched[:6] if matched else timeline_focus[:6]
 
 
 def action(label: str, href: str, action_type: str, variant: str) -> dict[str, Any]:
