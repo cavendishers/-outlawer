@@ -22,6 +22,37 @@ def assert_ok(response: httpx.Response) -> dict:
     return payload["data"]
 
 
+def collect_merge_candidate_ids(
+    client: httpx.Client,
+    *,
+    base_url: str,
+    headers: dict[str, str],
+    object_type: str,
+    status: str,
+    page_size: int = 100,
+) -> set[str]:
+    page = 1
+    candidate_ids: set[str] = set()
+
+    while True:
+        payload = assert_ok(
+            client.get(
+                f"{base_url}/review/merge-candidates",
+                headers=headers,
+                params={
+                    "status": status,
+                    "object_type": object_type,
+                    "page": page,
+                    "page_size": page_size,
+                },
+            )
+        )
+        candidate_ids.update(item["id"] for item in payload["items"])
+        if page >= payload["total_pages"] or not payload["items"]:
+            return candidate_ids
+        page += 1
+
+
 def seed_review_fixture(username: str) -> dict[str, str]:
     suffix = uuid4().hex[:8]
     now = datetime(2026, 4, 18, 10, 30, tzinfo=UTC)
@@ -320,22 +351,20 @@ def main() -> None:
 
     ids = seed_review_fixture(args.username)
 
-    entity_queue = assert_ok(
-        client.get(
-            f"{args.base_url}/review/merge-candidates",
-            headers=headers,
-            params={"status": "pending", "object_type": "entity", "page_size": 100},
-        )
+    entity_queue_ids = collect_merge_candidate_ids(
+        client,
+        base_url=args.base_url,
+        headers=headers,
+        object_type="entity",
+        status="pending",
     )
-    event_queue = assert_ok(
-        client.get(
-            f"{args.base_url}/review/merge-candidates",
-            headers=headers,
-            params={"status": "pending", "object_type": "event", "page_size": 100},
-        )
+    event_queue_ids = collect_merge_candidate_ids(
+        client,
+        base_url=args.base_url,
+        headers=headers,
+        object_type="event",
+        status="pending",
     )
-    entity_queue_ids = {item["id"] for item in entity_queue["items"]}
-    event_queue_ids = {item["id"] for item in event_queue["items"]}
     assert ids["entity_candidate_id"] in entity_queue_ids
     assert ids["event_candidate_id"] in event_queue_ids
     assert ids["reject_candidate_id"] in event_queue_ids

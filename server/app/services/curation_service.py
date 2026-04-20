@@ -12,6 +12,8 @@ from app.models.event import Event, TimelineItem
 from app.models.note import Note
 from app.models.review import ReviewAction
 from app.models.style_view import StyleView
+from app.services.entity_query_service import list_related_events_for_entity
+from app.services.event_query_service import list_event_participants
 from app.services.graph_service import get_timeline_fragments_for_entity
 from app.utils.text import normalize_name
 
@@ -44,7 +46,7 @@ ENTITY_EDITABLE_FIELDS = {
 def get_entity_curation_context(db: Session, *, user_id: str, entity_id: str) -> dict[str, Any]:
     entity = get_owned_entity(db, user_id=user_id, entity_id=entity_id)
     aliases = build_entity_aliases(db, entity.id)
-    related_events = build_entity_related_events(db, user_id=user_id, entity_id=entity.id)
+    related_events = list_related_events_for_entity(db, user_id=user_id, entity_id=entity.id)
     relations = build_relations_for_owner(db, user_id=user_id, owner_type="entity", owner_id=entity.id)
     note_count = int(db.scalar(select(func.count()).select_from(NoteEntity).where(NoteEntity.entity_id == entity.id)) or 0)
 
@@ -185,7 +187,7 @@ def remove_entity_alias(db: Session, *, user_id: str, entity_id: str, alias_id: 
 def get_event_curation_context(db: Session, *, user_id: str, event_id: str) -> dict[str, Any]:
     event = get_owned_event(db, user_id=user_id, event_id=event_id)
     source_note = db.get(Note, event.source_note_id) if event.source_note_id else None
-    participants = build_participants(db, event.id)
+    participants = list_event_participants(db, event.id)
     relations = build_relations_for_owner(db, user_id=user_id, owner_type="event", owner_id=event.id)
 
     return {
@@ -679,32 +681,6 @@ def get_owned_entity(db: Session, *, user_id: str, entity_id: str) -> Entity:
     return entity
 
 
-def build_participants(db: Session, event_id: str) -> list[dict[str, Any]]:
-    rows = db.scalars(select(EventEntity).where(EventEntity.event_id == event_id).order_by(EventEntity.display_order.asc())).all()
-    if not rows:
-        return []
-    entities = {
-        entity.id: entity
-        for entity in db.scalars(select(Entity).where(Entity.id.in_([row.entity_id for row in rows]))).all()
-    }
-    items: list[dict[str, Any]] = []
-    for row in rows:
-        entity = entities.get(row.entity_id)
-        if entity is None:
-            continue
-        items.append(
-            {
-                "id": entity.id,
-                "display_name": entity.display_name,
-                "entity_type": entity.entity_type,
-                "role": row.role,
-                "relation_type": row.relation_type,
-                "confidence_score": row.confidence_score,
-            }
-        )
-    return items
-
-
 def build_entity_aliases(db: Session, entity_id: str) -> list[dict[str, Any]]:
     rows = db.scalars(select(EntityAlias).where(EntityAlias.entity_id == entity_id).order_by(EntityAlias.created_at.asc())).all()
     return [serialize_entity_alias(row) for row in rows]
@@ -718,38 +694,6 @@ def serialize_entity_alias(row: EntityAlias) -> dict[str, Any]:
         "alias_type": row.alias_type,
         "created_at": isoformat(row.created_at),
     }
-
-
-def build_entity_related_events(db: Session, *, user_id: str, entity_id: str) -> list[dict[str, Any]]:
-    links = db.scalars(select(EventEntity).where(EventEntity.entity_id == entity_id).order_by(EventEntity.display_order.asc())).all()
-    if not links:
-        return []
-
-    event_ids = [link.event_id for link in links]
-    events = {
-        event.id: event
-        for event in db.scalars(select(Event).where(Event.user_id == user_id, Event.id.in_(event_ids))).all()
-    }
-    items: list[dict[str, Any]] = []
-    seen_event_ids: set[str] = set()
-    for link in links:
-        event = events.get(link.event_id)
-        if event is None or event.id in seen_event_ids:
-            continue
-        seen_event_ids.add(event.id)
-        items.append(
-            {
-                "id": event.id,
-                "title": event.title,
-                "summary": event.summary,
-                "time_text": event.time_text,
-                "event_type": event.event_type,
-                "location_text": event.location_text,
-                "role": link.role,
-                "relation_type": link.relation_type,
-            }
-        )
-    return items
 
 
 def build_relations_for_owner(db: Session, *, user_id: str, owner_type: str, owner_id: str) -> list[dict[str, Any]]:

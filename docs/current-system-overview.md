@@ -121,11 +121,12 @@ sequenceDiagram
 - `DONE`: Entity curation page and API for canonical/display fields, type, status, seen timestamps, alias governance, and entity-centered relation maintenance.
 - `DONE`: Operations dashboard foundation for jobs, retries, raw assets, derivative summaries, and note extraction-run inspection.
 - `DONE`: Core note replay, review, and curation write APIs now use explicit Pydantic request schemas with OpenAPI contract coverage.
+- `DONE`: Note, entity, event, and timeline read APIs now compose payloads through dedicated query services instead of route-level query assembly.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
+1. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Current graph correction exists, but it still feels like form-driven back-office editing rather than a native graph workspace.
 2. `MEDIUM`: Back-office operations depth is still incomplete. The first dashboard is in place, but queue analytics, merge/review dashboards, and broader admin workflows are still thin.
 3. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
 4. `LOW`: Plugin and integration system for external importers and third-party sync.
@@ -133,8 +134,8 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next implementation slice should extract read-side composition out of route files now that write contracts are explicit. The expected scope is:
+The next implementation slice should turn the current graph correction surface into a stronger graph workspace. The expected scope is:
 
-- move note/entity/event/timeline read composition into dedicated query services
-- keep route handlers thin and orchestration-focused
-- prepare the codebase for deeper operations and graph-workspace features without growing route-level coupling
+- add stronger event-to-event association views and graph-first navigation affordances
+- expose timeline fragments and related entities/events in a more canvas-oriented editor
+- build on the new query-service seam instead of reintroducing route-level read assembly

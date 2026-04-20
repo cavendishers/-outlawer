@@ -1,21 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 
 from app.api.serializers import serialize_note
 from app.api.deps import DbSession, get_current_user
-from app.core.pagination import normalize_page_params, paginate_query
+from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.schemas.note import NoteCreateRequest, NoteReplayActionRequest
+from app.services import note_query_service
 from app.services.asset_text_service import get_asset_text
 from app.services.extraction_run_service import (
     RUN_STATUS_REJECTED,
     RUN_STATUS_READY_FOR_REVIEW,
     apply_extraction_run_projection,
     approve_reviewable_extraction_run,
-    compare_extraction_runs,
     get_extraction_run,
     list_extraction_runs,
     list_note_replay_actions,
@@ -69,10 +68,9 @@ def list_notes(
     user=Depends(get_current_user),
 ) -> dict:
     params = normalize_page_params(page, page_size)
-    query = select(Note).where(Note.user_id == user.id).order_by(Note.created_at.desc())
-    notes, total = paginate_query(db, query, params)
+    notes, total = note_query_service.list_notes(db, user_id=user.id, params=params)
     return paginated(
-        items=[serialize_note(note) for note in notes],
+        items=notes,
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -81,20 +79,18 @@ def list_notes(
 
 @router.get("/{note_id}")
 def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
-    note = db.get(Note, note_id)
-    if not note or note.user_id != user.id:
+    try:
+        return ok(note_query_service.get_note_detail(db, user_id=user.id, note_id=note_id))
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    return ok(serialize_note(note))
 
 
 @router.get("/{note_id}/extraction-runs")
 def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
-    note = db.get(Note, note_id)
-    if not note or note.user_id != user.id:
+    try:
+        return ok(note_query_service.list_note_extraction_run_items(db, user_id=user.id, note_id=note_id))
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    runs = list_extraction_runs(db, user_id=user.id, note_id=note.id)
-    applied_run_id = resolve_applied_run_id(runs)
-    return ok({"items": [serialize_extraction_run(run, applied_run_id=applied_run_id) for run in runs], "total": len(runs)})
 
 
 @router.get("/{note_id}/extraction-runs/compare")
@@ -105,36 +101,38 @@ def compare_note_extraction_runs(
     db: DbSession,
     user=Depends(get_current_user),
 ) -> dict:
-    note = db.get(Note, note_id)
-    if not note or note.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    base_run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=base_run_id)
-    candidate_run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=candidate_run_id)
-    if not base_run or not candidate_run:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
-    applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=user.id, note_id=note.id))
-    return ok(compare_extraction_runs(base_run, candidate_run, applied_run_id=applied_run_id))
+    try:
+        return ok(
+            note_query_service.compare_note_extraction_runs(
+                db,
+                user_id=user.id,
+                note_id=note_id,
+                base_run_id=base_run_id,
+                candidate_run_id=candidate_run_id,
+            )
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if detail in {"Note not found", "Extraction run not found"} else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
 @router.get("/{note_id}/extraction-runs/{run_id}")
 def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
-    note = db.get(Note, note_id)
-    if not note or note.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
-    if not run:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
-    applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=user.id, note_id=note.id))
-    return ok(serialize_extraction_run(run, applied_run_id=applied_run_id))
+    try:
+        return ok(note_query_service.get_note_extraction_run_detail(db, user_id=user.id, note_id=note_id, run_id=run_id))
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if detail in {"Note not found", "Extraction run not found"} else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
 @router.get("/{note_id}/replay-actions")
 def list_note_replay_action_log(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
-    note = db.get(Note, note_id)
-    if not note or note.user_id != user.id:
+    try:
+        return ok(note_query_service.list_note_replay_action_items(db, user_id=user.id, note_id=note_id))
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    actions = list_note_replay_actions(db, user_id=user.id, note_id=note.id)
-    return ok({"items": [serialize_replay_action(action) for action in actions], "total": len(actions)})
 
 
 @router.post("/{note_id}/extraction-runs/{run_id}/apply")

@@ -843,3 +843,34 @@ Documents updated manually after completion:
 - `docs/remaining-features-roadmap.md`
 - `docs/project-retrospective-and-next-stage.md`
 - `docs/development-phases.md`
+
+## Phase 25: Query Service Layer For Read Models
+
+Status: `DONE`
+
+Goal:
+
+- move the main browse/detail read assembly out of route files and into dedicated query services
+
+Work items:
+
+- extract note read queries into a dedicated query service
+- extract entity read queries into a dedicated query service
+- extract event read queries into a dedicated query service
+- extract timeline read queries into a dedicated query service
+- reuse shared read helpers from review and curation where it reduces duplicated composition logic
+
+Completion criteria:
+
+- note, entity, event, and timeline routes no longer assemble their main read payloads inline
+- core browse/detail response shapes stay stable for the frontend
+- automated verification proves review and curation flows still work after the read-side refactor
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/development-phases.md`

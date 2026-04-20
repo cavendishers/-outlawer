@@ -15,6 +15,7 @@ from app.models.extraction import ExtractionEvidence, MergeCandidate
 from app.models.note import Note
 from app.models.review import EntityMergeHistory, EventMergeHistory, ReviewAction
 from app.models.style_view import StyleView
+from app.services.event_query_service import list_event_participants
 from app.services.graph_service import get_related_events_for_event, get_timeline_fragments_for_entity
 from app.utils.text import normalize_name
 
@@ -130,7 +131,7 @@ def get_event_review_context(db: Session, *, user_id: str, event_id: str) -> dic
     ).all()
 
     source_note = db.get(Note, event.source_note_id) if event.source_note_id else None
-    participants = build_event_participants(db, event.id)
+    participants = list_event_participants(db, event.id)
 
     return {
         "event": {
@@ -518,28 +519,6 @@ def build_object_summary(db: Session, object_type: str, object_id: str, *, user_
             "data": serialize_note(note),
         }
     return None
-
-
-def build_event_participants(db: Session, event_id: str) -> list[dict[str, Any]]:
-    links = db.scalars(select(EventEntity).where(EventEntity.event_id == event_id).order_by(EventEntity.display_order.asc())).all()
-    if not links:
-        return []
-    entities = {
-        entity.id: entity
-        for entity in db.scalars(select(Entity).where(Entity.id.in_([link.entity_id for link in links]))).all()
-    }
-    return [
-        {
-            "id": entity.id,
-            "display_name": entity.display_name,
-            "entity_type": entity.entity_type,
-            "role": link.role,
-            "relation_type": link.relation_type,
-            "confidence_score": link.confidence_score,
-        }
-        for link in links
-        if (entity := entities.get(link.entity_id)) is not None
-    ]
 
 
 def ensure_entity_alias(db: Session, entity: Entity, alias: str, *, alias_type: str) -> None:

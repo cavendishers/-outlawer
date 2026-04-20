@@ -25,6 +25,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - replay and audit capabilities were added incrementally instead of waiting for a big-bang redesign
 - docs, roadmap, and phase tracking stayed synchronized with implementation
 - broad write surfaces now have explicit API contracts, which lowers frontend/backend drift risk
+- the new query-service seam now gives browse pages a cleaner place to evolve without bloating route files again
 
 ## What Went Poorly
 
@@ -33,7 +34,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - response models and some lower-priority endpoints still need the same level of explicit contract hardening as the main write surfaces
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
 - operations visibility now has a first dashboard, but deeper admin workflows and metrics are still thin
-- some route files still compose read models directly instead of using dedicated query services
+- a few lower-priority read endpoints can still be moved onto the same query-service pattern over time
 
 ## Future Capability Groups
 
@@ -57,23 +58,23 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 The next stage should be:
 
-- **Phase 25: Query Service Layer For Read Models**
+- **Phase 26: Graph Workspace And Canvas Editing**
 
-This is the best next step because the request-side contracts are now much clearer, which makes the remaining route-level read composition the main architectural source of sprawl:
+This is the best next step because the architecture seams are now cleaner, which means the biggest remaining gap is product depth rather than route structure:
 
-- note, entity, event, and timeline reads still mix query logic directly into route handlers
-- later operations work will be easier if read composition is centralized and reusable
-- graph-heavy pages are only going to get denser, so route files should stop owning read assembly
+- graph correction is available but still feels like back-office forms
+- event-to-event association browsing is stronger than before, but not yet a true workspace
+- the new query services give us a better foundation for richer graph UI without tangling route handlers again
 
-## Phase 25 Scope
+## Phase 26 Scope
 
-- move major read-side composition into dedicated query services
-- keep pagination and response envelopes stable while simplifying route files
-- document the read-model boundaries so future graph and operations features build on the same seam
+- expand event-to-event association views and people-timeline fragments into a clearer graph workspace
+- add graph-first navigation and editing affordances beyond flat forms
+- preserve current curation and review governance while improving the graph mental model
 
 ## Priority-ordered Next Work
 
-1. continue read-model query service extraction
-2. expand graph editing into a canvas-oriented workflow
-3. deepen operations dashboards and operator workflows
-4. plan multi-user and permissions model
+1. expand graph editing into a canvas-oriented workflow
+2. deepen operations dashboards and operator workflows
+3. plan multi-user and permissions model
+4. design plugin and external importer seams

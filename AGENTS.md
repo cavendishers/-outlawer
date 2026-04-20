@@ -14,7 +14,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `24` are implemented and verified.
+- Phase `0` through Phase `25` are implemented and verified.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.
@@ -62,6 +62,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 - List endpoints should be paginated.
 - Responses should follow a consistent envelope shape.
 - Core write endpoints should use explicit Pydantic request models instead of generic `dict` payloads.
+- Read-heavy route handlers should delegate composition to dedicated query services when possible.
 
 ## Deployment Rules
 

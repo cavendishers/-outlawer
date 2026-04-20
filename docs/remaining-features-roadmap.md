@@ -277,16 +277,18 @@ Why it matters:
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
-What is missing:
+Delivered:
 
-- dedicated query services for entity/event/timeline reads
-- thinner route files across all list/detail endpoints
+- dedicated query services for note, entity, event, and timeline read endpoints
+- thinner route files for the main browse/detail surfaces
+- shared participant and related-event read helpers reused by review and curation contexts
+- review e2e paging hardened so verification remains stable as candidate volume grows
 
 Why it matters:
 
-- current architecture is improving, but read-side composition is not fully separated yet
+- route-level sprawl is lower now that main read models have a stable composition seam
 
 ## Lower Priority
 

@@ -43,7 +43,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `24` are implemented and verified in Docker.
+- Phase `0` through Phase `25` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -60,6 +60,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
 - 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs。
 - note 创建/回放、review 审核、entity/event curation 写接口现在都使用显式 Pydantic 请求模型，并通过 OpenAPI 契约测试锁定字段边界。
+- note、entity、event、timeline 的主要读接口现在都通过独立 query service 组装，路由层只保留参数与响应封装。
 
 ## Quick Start
 
@@ -110,6 +111,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 - Docker Compose is the default local and initial production deployment path.
 - Every completed phase must be manually reflected in the related docs.
 - `api` and `worker` images include `ffmpeg` and `tesseract`; backend Python dependencies include `vosk` for local ASR fallback.
+- New read-heavy APIs should prefer query services over route-level query composition.
 
 ## Verification Baseline
 
