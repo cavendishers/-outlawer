@@ -45,6 +45,10 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head` -> passed with migration `20260420_04_source_of_truth_cleanup`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed after Phase A source-of-truth cleanup
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase A source-of-truth cleanup
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head` -> passed with migration `20260421_05_extraction_projection_versioning`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase B extraction/projection versioning
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase B extraction/projection versioning
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase B extraction/projection versioning
 
 ## Architecture Blueprint Track
 
@@ -72,6 +76,37 @@ Completion criteria:
 Documents updated after completion:
 
 - `README.md`
+- `docs/architecture-v2-blueprint.md`
+- `docs/current-system-overview.md`
+- `docs/database-design.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
+
+### Phase B: Extraction/projection versioning
+
+Status: `DONE`
+
+Verified on `2026-04-21`
+
+Work items:
+
+- enrich `extraction_runs` with provider/model/prompt/schema/input lineage metadata
+- add a shared extraction metadata registry helper
+- add immutable `projection_versions`
+- add `notes.active_projection_id` as the active projection pointer
+- record projection-version ids in replay and approval audit payloads
+
+Completion criteria:
+
+- extraction history is version-aware instead of only status-aware
+- every apply/approve path writes an immutable projection version record
+- the active note projection is explicit through a pointer rather than inferred only from run status
+- migration applies cleanly and replay e2e remains green
+
+Documents updated after completion:
+
+- `README.md`
+- `docs/api-contract.md`
 - `docs/architecture-v2-blueprint.md`
 - `docs/current-system-overview.md`
 - `docs/database-design.md`

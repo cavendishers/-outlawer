@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
-from app.models.extraction import ExtractionRun
+from app.models.extraction import ExtractionRun, ProjectionVersion
 from app.models.review import ReviewAction
 from app.services.projection_service import ProjectionResult, persist_extraction_projection
 from app.utils.text import normalize_name
@@ -24,11 +24,18 @@ REPLAY_ACTION_TYPES = {
     "approve_extraction_run",
     "reject_extraction_run",
 }
+PROJECTION_STATUS_APPLIED = "applied"
+PROJECTION_STATUS_SUPERSEDED = "superseded"
+PROJECTION_STATUS_PENDING_REVIEW = "pending_review"
+PROJECTION_STATUS_REJECTED = "rejected"
+PROJECTION_STATUS_FAILED = "failed"
+PROJECTION_STATUS_NOT_APPLIED = "not_applied"
 APPLIED_FALLBACK_STATUSES = {RUN_STATUS_APPLIED, RUN_STATUS_SUPERSEDED, RUN_STATUS_COMPLETED}
 ACTIVE_LINEAGE_STATUSES = {RUN_STATUS_APPLIED, RUN_STATUS_SUPERSEDED, RUN_STATUS_COMPLETED}
 
 
 def serialize_extraction_run(run: ExtractionRun, *, applied_run_id: str | None = None) -> dict[str, Any]:
+    projection_status = normalized_projection_status(run)
     return {
         "id": run.id,
         "note_id": run.note_id,
@@ -37,6 +44,14 @@ def serialize_extraction_run(run: ExtractionRun, *, applied_run_id: str | None =
         "is_applied": is_applied_run(run, applied_run_id=applied_run_id),
         "extractor_name": run.extractor_name,
         "extractor_version": run.extractor_version,
+        "provider_name": run.provider_name,
+        "model_name": run.model_name,
+        "prompt_version": run.prompt_version,
+        "schema_version": run.schema_version,
+        "input_hash": run.input_hash,
+        "parent_run_id": run.parent_run_id,
+        "run_kind": run.run_kind,
+        "projection_status": projection_status,
         "created_at": serialize_datetime(run.created_at),
         "updated_at": serialize_datetime(run.updated_at),
         "summary": summarize_run_payload(run.normalized_result_json or {}),
@@ -99,6 +114,11 @@ def compare_extraction_runs(
 
 
 def resolve_applied_run_id(runs: list[ExtractionRun]) -> str | None:
+    projection_applied_runs = [run for run in runs if normalized_projection_status(run) == PROJECTION_STATUS_APPLIED]
+    if projection_applied_runs:
+        projection_applied_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
+        return projection_applied_runs[0].id
+
     applied_runs = [run for run in runs if run.status == RUN_STATUS_APPLIED]
     if applied_runs:
         applied_runs.sort(key=lambda item: item.created_at or MIN_DATETIME, reverse=True)
@@ -122,8 +142,10 @@ def mark_extraction_run_applied(db: Session, *, user_id: str, note_id: str, run_
     for run in runs:
         if run.id == run_id:
             run.status = RUN_STATUS_APPLIED
+            run.projection_status = PROJECTION_STATUS_APPLIED
         elif run.status in ACTIVE_LINEAGE_STATUSES:
             run.status = RUN_STATUS_SUPERSEDED
+            run.projection_status = PROJECTION_STATUS_SUPERSEDED
         db.add(run)
 
 
@@ -139,6 +161,7 @@ def apply_extraction_run_projection(
     status_before: str | None = None,
 ) -> ProjectionResult:
     previous_applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=note.user_id, note_id=note.id))
+    previous_projection_id = note.active_projection_id
     payload = run.normalized_result_json or {}
     projection_result = persist_extraction_projection(
         db,
@@ -148,6 +171,16 @@ def apply_extraction_run_projection(
         text=text,
     )
     mark_extraction_run_applied(db, user_id=note.user_id, note_id=note.id, run_id=run.id)
+    projection_version = create_projection_version(
+        db,
+        note=note,
+        asset=asset,
+        run=run,
+        action_type=action_type,
+        previous_projection_id=previous_projection_id,
+        projection_result=projection_result,
+    )
+    note.active_projection_id = projection_version.id
     log_replay_action(
         db,
         user_id=note.user_id,
@@ -155,6 +188,8 @@ def apply_extraction_run_projection(
         run=run,
         action_type=action_type,
         previous_run_id=previous_applied_run_id,
+        projection_version_id=projection_version.id,
+        previous_projection_version_id=previous_projection_id,
         operator_note=operator_note,
         status_before=status_before,
     )
@@ -196,6 +231,7 @@ def reject_reviewable_extraction_run(
     if run.status != RUN_STATUS_READY_FOR_REVIEW:
         raise ValueError("Extraction run is not awaiting review")
     run.status = RUN_STATUS_REJECTED
+    run.projection_status = PROJECTION_STATUS_REJECTED
     db.add(run)
     log_replay_action(
         db,
@@ -204,6 +240,8 @@ def reject_reviewable_extraction_run(
         run=run,
         action_type="reject_extraction_run",
         previous_run_id=resolve_applied_run_id(list_extraction_runs(db, user_id=user_id, note_id=note_id)),
+        projection_version_id=None,
+        previous_projection_version_id=None,
         operator_note=operator_note,
         status_before=RUN_STATUS_READY_FOR_REVIEW,
         status_after=RUN_STATUS_REJECTED,
@@ -220,6 +258,8 @@ def log_replay_action(
     run: ExtractionRun,
     action_type: str,
     previous_run_id: str | None,
+    projection_version_id: str | None,
+    previous_projection_version_id: str | None,
     operator_note: str | None = None,
     status_before: str | None = None,
     status_after: str | None = None,
@@ -234,8 +274,14 @@ def log_replay_action(
         payload_json={
             "run_id": run.id,
             "previous_run_id": previous_run_id,
+            "projection_version_id": projection_version_id,
+            "previous_projection_version_id": previous_projection_version_id,
             "extractor_name": run.extractor_name,
             "extractor_version": run.extractor_version,
+            "provider_name": run.provider_name,
+            "model_name": run.model_name,
+            "prompt_version": run.prompt_version,
+            "schema_version": run.schema_version,
             "note": operator_note,
         },
     )
@@ -254,10 +300,63 @@ def serialize_replay_action(action: ReviewAction) -> dict[str, Any]:
         "status_after": action.status_after,
         "run_id": safe_string(payload.get("run_id")),
         "previous_run_id": safe_string(payload.get("previous_run_id")) or None,
+        "projection_version_id": safe_string(payload.get("projection_version_id")) or None,
+        "previous_projection_version_id": safe_string(payload.get("previous_projection_version_id")) or None,
         "extractor_name": safe_string(payload.get("extractor_name")),
         "extractor_version": safe_string(payload.get("extractor_version")),
+        "provider_name": safe_string(payload.get("provider_name")) or None,
+        "model_name": safe_string(payload.get("model_name")) or None,
+        "prompt_version": safe_string(payload.get("prompt_version")) or None,
+        "schema_version": safe_string(payload.get("schema_version")) or None,
         "note": safe_string(payload.get("note")) or None,
     }
+
+
+def normalized_projection_status(run: ExtractionRun) -> str:
+    if run.projection_status:
+        return run.projection_status
+    if run.status == RUN_STATUS_APPLIED:
+        return PROJECTION_STATUS_APPLIED
+    if run.status == RUN_STATUS_SUPERSEDED:
+        return PROJECTION_STATUS_SUPERSEDED
+    if run.status == RUN_STATUS_READY_FOR_REVIEW:
+        return PROJECTION_STATUS_PENDING_REVIEW
+    if run.status == RUN_STATUS_REJECTED:
+        return PROJECTION_STATUS_REJECTED
+    if run.status == RUN_STATUS_FAILED:
+        return PROJECTION_STATUS_FAILED
+    return PROJECTION_STATUS_NOT_APPLIED
+
+
+def create_projection_version(
+    db: Session,
+    *,
+    note: Note,
+    asset: RawAsset,
+    run: ExtractionRun,
+    action_type: str,
+    previous_projection_id: str | None,
+    projection_result: ProjectionResult,
+) -> ProjectionVersion:
+    version = ProjectionVersion(
+        user_id=note.user_id,
+        note_id=note.id,
+        extraction_run_id=run.id,
+        source_asset_id=asset.id,
+        previous_projection_id=previous_projection_id,
+        action_type=action_type,
+        summary_json={
+            "event_id": projection_result.event_id,
+            "extractor_name": projection_result.extractor_name,
+            "extractor_version": projection_result.extractor_version,
+            "entity_count": projection_result.entity_count,
+            "relation_count": projection_result.relation_count,
+            "similarity_hint_count": projection_result.similarity_hint_count,
+        },
+    )
+    db.add(version)
+    db.flush()
+    return version
 
 
 def compare_extraction_payloads(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> dict[str, Any]:

@@ -160,6 +160,7 @@ def test_resolve_applied_run_id_prefers_explicit_applied_status() -> None:
 
     assert applied_run_id == "run-new"
     assert serialized["is_applied"] is True
+    assert serialized["projection_status"] == "applied"
 
 
 def test_resolve_applied_run_id_falls_back_to_latest_successful_run() -> None:
@@ -255,3 +256,74 @@ def test_serialize_replay_action_preserves_note_and_run_metadata() -> None:
     assert serialized["previous_run_id"] == "run-1"
     assert serialized["extractor_name"] == "openrouter"
     assert serialized["note"] == "回滚到更稳定的实体识别版本。"
+
+
+def test_serialize_extraction_run_includes_versioning_metadata() -> None:
+    now = datetime.now(UTC)
+    run = ExtractionRun(
+        id="run-meta",
+        user_id="user-1",
+        note_id="note-1",
+        status="applied",
+        extractor_name="openrouter",
+        extractor_version="google/gemma-4-31b-it:free",
+        provider_name="openrouter",
+        model_name="google/gemma-4-31b-it:free",
+        prompt_version="text-openrouter-v1",
+        schema_version="ai-extraction-format-v1",
+        input_hash="abc123",
+        parent_run_id="run-parent",
+        run_kind="reprocess",
+        projection_status="applied",
+        created_at=now,
+        updated_at=now,
+        normalized_result_json={"summary": {"title": "启动会", "category": "knowledge"}},
+    )
+
+    serialized = serialize_extraction_run(run, applied_run_id="run-meta")
+
+    assert serialized["provider_name"] == "openrouter"
+    assert serialized["model_name"] == "google/gemma-4-31b-it:free"
+    assert serialized["prompt_version"] == "text-openrouter-v1"
+    assert serialized["schema_version"] == "ai-extraction-format-v1"
+    assert serialized["input_hash"] == "abc123"
+    assert serialized["parent_run_id"] == "run-parent"
+    assert serialized["run_kind"] == "reprocess"
+    assert serialized["projection_status"] == "applied"
+
+
+def test_serialize_replay_action_includes_projection_version_metadata() -> None:
+    now = datetime.now(UTC)
+    action = ReviewAction(
+        id="action-2",
+        user_id="user-1",
+        target_type="note",
+        target_id="note-1",
+        action_type="approve_extraction_run",
+        status_before="ready_for_review",
+        status_after="applied",
+        payload_json={
+            "run_id": "run-2",
+            "previous_run_id": "run-1",
+            "projection_version_id": "pv-2",
+            "previous_projection_version_id": "pv-1",
+            "extractor_name": "openrouter",
+            "extractor_version": "google/gemma-4-31b-it:free",
+            "provider_name": "openrouter",
+            "model_name": "google/gemma-4-31b-it:free",
+            "prompt_version": "text-openrouter-v1",
+            "schema_version": "ai-extraction-format-v1",
+            "note": "批准新版本。",
+        },
+        created_at=now,
+        updated_at=now,
+    )
+
+    serialized = serialize_replay_action(action)
+
+    assert serialized["projection_version_id"] == "pv-2"
+    assert serialized["previous_projection_version_id"] == "pv-1"
+    assert serialized["provider_name"] == "openrouter"
+    assert serialized["model_name"] == "google/gemma-4-31b-it:free"
+    assert serialized["prompt_version"] == "text-openrouter-v1"
+    assert serialized["schema_version"] == "ai-extraction-format-v1"

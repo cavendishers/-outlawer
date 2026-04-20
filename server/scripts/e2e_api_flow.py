@@ -308,6 +308,13 @@ def main() -> None:
     review_run_id = review_runs[0]["id"]
     extraction_run = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs/{review_run_id}", headers=headers))
     assert extraction_run["summary"]["event_count"] >= 1
+    assert extraction_run["provider_name"]
+    assert extraction_run["model_name"]
+    assert extraction_run["prompt_version"]
+    assert extraction_run["schema_version"]
+    assert extraction_run["input_hash"]
+    assert extraction_run["run_kind"] == "reprocess"
+    assert extraction_run["projection_status"] == "pending_review"
     extraction_compare = assert_ok(
         client.get(
             f"{args.base_url}/notes/{note_id}/extraction-runs/compare",
@@ -327,13 +334,17 @@ def main() -> None:
     )
     assert approved["approved_run"]["id"] == review_run_id
     assert approved["approved_run"]["is_applied"] is True
+    assert approved["approved_run"]["projection_status"] == "applied"
+    assert approved["projection_result"]["projection_version_id"]
     assert approved["replay_actions"], approved
+    assert approved["note"]["active_projection_id"] == approved["projection_result"]["projection_version_id"]
     extraction_runs_after_approve = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
     applied_run_ids = [item["id"] for item in extraction_runs_after_approve["items"] if item["is_applied"]]
     assert applied_run_ids == [review_run_id], extraction_runs_after_approve
     replay_actions = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/replay-actions", headers=headers))
     assert replay_actions["items"], replay_actions
     assert replay_actions["items"][0]["run_id"] == review_run_id
+    assert replay_actions["items"][0]["projection_version_id"]
     assert replay_actions["items"][0]["note"] == "审批通过新的抽取草稿，确认草稿审批链路。"
 
     second_asset = assert_ok(

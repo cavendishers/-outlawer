@@ -133,7 +133,7 @@ def test_core_read_endpoints_publish_explicit_response_models() -> None:
     assert set(entity_detail_schema["properties"]) >= {"related_events", "timeline_fragments", "display_name"}
     assert set(event_detail_schema["properties"]) >= {"participants", "related_events", "source_note_title"}
     assert set(timeline_overview_schema["properties"]) == {"stats", "nodes", "edges", "timeline_focus"}
-    assert set(note_schema["properties"]) >= {"id", "title", "status", "processed_at"}
+    assert set(note_schema["properties"]) >= {"id", "title", "status", "processed_at", "active_projection_id"}
     assert set(story_schema["properties"]) == {"id", "target_type", "target_id", "title", "content", "style_type"}
 
 
@@ -153,6 +153,30 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     assert set(approve_schema["properties"]) == {"note", "approved_run", "projection_result", "replay_actions"}
     assert set(reject_schema["properties"]) == {"note", "rejected_run", "replay_actions"}
     assert set(reprocess_schema["properties"]) == {"note_id", "job_id"}
+
+    run_item_schema = _resolve_schema(run_list_schema["properties"]["items"]["items"])
+    replay_action_item_schema = _resolve_schema(replay_actions_schema["properties"]["items"]["items"])
+    projection_result_schema = _resolve_schema(apply_schema["properties"]["projection_result"])
+
+    assert set(run_item_schema["properties"]) >= {
+        "provider_name",
+        "model_name",
+        "prompt_version",
+        "schema_version",
+        "input_hash",
+        "parent_run_id",
+        "run_kind",
+        "projection_status",
+    }
+    assert set(replay_action_item_schema["properties"]) >= {
+        "projection_version_id",
+        "previous_projection_version_id",
+        "provider_name",
+        "model_name",
+        "prompt_version",
+        "schema_version",
+    }
+    assert set(projection_result_schema["properties"]) >= {"projection_version_id"}
 
 
 def test_search_endpoints_publish_explicit_response_models() -> None:

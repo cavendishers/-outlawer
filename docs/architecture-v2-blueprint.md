@@ -540,6 +540,16 @@ Delivered:
 - add model/prompt/schema registry
 - add projection version records
 
+Status on `2026-04-21`: `DONE`
+
+Delivered:
+
+- `extraction_runs` now records `provider_name`, `model_name`, `prompt_version`, `schema_version`, `input_hash`, `parent_run_id`, `run_kind`, and `projection_status`
+- extraction metadata now comes from a shared registry helper instead of ad-hoc route or worker logic
+- immutable `projection_versions` now record each projection apply action
+- `notes.active_projection_id` now acts as the mutable pointer to the currently active projection version
+- replay, draft approval, and auto-apply now all create explicit projection-version records and audit payloads
+
 ### Phase C: Domain packaging
 
 - reorganize backend into domain modules

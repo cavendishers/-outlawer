@@ -54,6 +54,7 @@ def serialize_note(note: Note) -> dict:
         "category": note.category,
         "status": note.status,
         "asset_id": note.asset_id,
+        "active_projection_id": note.active_projection_id,
         "primary_time": isoformat(note.primary_time),
         "processed_at": isoformat(note.processed_at),
         "created_at": isoformat(note.created_at),

@@ -193,6 +193,7 @@ def apply_note_extraction_run(
             "projection_result": {
                 "note_id": projection_result.note_id,
                 "event_id": projection_result.event_id,
+                "projection_version_id": note.active_projection_id,
                 "extractor_name": projection_result.extractor_name,
                 "extractor_version": projection_result.extractor_version,
                 "entity_count": projection_result.entity_count,
@@ -250,6 +251,7 @@ def approve_note_extraction_run(
             "projection_result": {
                 "note_id": projection_result.note_id,
                 "event_id": projection_result.event_id,
+                "projection_version_id": note.active_projection_id,
                 "extractor_name": projection_result.extractor_name,
                 "extractor_version": projection_result.extractor_version,
                 "entity_count": projection_result.entity_count,

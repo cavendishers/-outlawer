@@ -127,6 +127,8 @@ sequenceDiagram
 - `DONE`: Note, entity, event, and timeline read APIs now compose payloads through dedicated query services instead of route-level query assembly.
 - `DONE`: Phase A source-of-truth cleanup is now applied. `entity_aliases` is the canonical alias store, `embeddings` is the canonical vector store, and `event_entities` is the canonical participant store.
 - `DONE`: Participant facts are no longer duplicated into `relations(participates_in)`, which keeps graph semantics cleaner for future governance and replay.
+- `DONE`: Phase B extraction/projection versioning is now applied. Extraction runs carry provider/model/prompt/schema/input lineage metadata, immutable `projection_versions` record each apply action, and notes now track the active projection explicitly.
+- `DONE`: Replay audit payloads now include projection-version ids and version metadata so draft approval, manual rollback, and auto-apply flows can be traced more safely.
 - `DONE`: Event detail and entity story pages now include a first graph-workspace slice for event associations and people timeline fragments.
 - `DONE`: Phase 26 Slice A now adds a shared `/graph` workspace route and `/api/v1/graph/workspace` read model so event, entity, and overview anchors can enter one unified graph shell.
 - `DONE`: Phase 26 Slice B now adds URL-driven node focus, a unified node inspector, and `/api/v1/graph/nodes/{node_type}/{node_id}` detail payloads so graph navigation can stay inside one workspace.
@@ -138,7 +140,7 @@ sequenceDiagram
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Extraction/projection versioning is still incomplete. Source-of-truth cleanup is done, but model/prompt/schema registry and projection-version records are still missing.
+1. `MEDIUM`: Domain packaging is still incomplete. Service boundaries are clearer than before, but the backend is not yet reorganized into the blueprint's domain-first modules.
 2. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
 3. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
 4. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
@@ -147,9 +149,9 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next implementation slice should move into blueprint Phase B while preserving the current graph/product surface. The expected scope is:
+The next implementation slice should move into blueprint Phase C while preserving the new versioning model. The expected scope is:
 
-- enrich `extraction_runs` with stronger model, prompt, schema, and projection version metadata
-- make replay/apply history more explicit as a versioned projection workflow instead of a best-effort overwrite
-- preserve the existing review and curation governance APIs instead of duplicating write rules
+- reorganize backend modules toward domain-first packaging without breaking the current `/api/v1` surface
+- keep route handlers thin and continue moving orchestration/query concerns into clearer services
+- preserve the new projection-version pointer model while splitting extraction and projection responsibilities further
 - keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI

@@ -24,6 +24,7 @@ class NoteResponse(BaseModel):
     category: str | None
     status: str
     asset_id: str | None
+    active_projection_id: str | None = None
     primary_time: str | None
     processed_at: str | None = None
     created_at: str | None = None
@@ -52,6 +53,14 @@ class ExtractionRunResponse(BaseModel):
     is_applied: bool
     extractor_name: str
     extractor_version: str
+    provider_name: str
+    model_name: str
+    prompt_version: str
+    schema_version: str
+    input_hash: str
+    parent_run_id: str | None = None
+    run_kind: str
+    projection_status: str
     created_at: str | None = None
     updated_at: str | None = None
     summary: ExtractionRunSummaryResponse
@@ -65,14 +74,21 @@ class ReplayActionResponse(BaseModel):
     status_after: str | None = None
     run_id: str
     previous_run_id: str | None = None
+    projection_version_id: str | None = None
+    previous_projection_version_id: str | None = None
     extractor_name: str
     extractor_version: str
+    provider_name: str | None = None
+    model_name: str | None = None
+    prompt_version: str | None = None
+    schema_version: str | None = None
     note: str | None = None
 
 
 class ProjectionResultResponse(BaseModel):
     note_id: str
     event_id: str | None = None
+    projection_version_id: str | None = None
     extractor_name: str
     extractor_version: str
     entity_count: int

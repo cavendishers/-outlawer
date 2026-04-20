@@ -45,6 +45,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 - Phase `0` through Phase `25` are implemented and verified in Docker.
 - Architecture V2 blueprint `Phase A: Source-of-truth cleanup` is now implemented and verified in Docker.
+- Architecture V2 blueprint `Phase B: Extraction/projection versioning` is now implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -67,6 +68,8 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - alias 读写现在统一走 `entity_aliases`，`entities.alias_json` 仅保留为过渡期缓存/展示字段。
 - note、entity、event 的向量现在统一落在 `embeddings`，`note_chunks.embedding_vector` 已移除。
 - 事件参与者事实现在以 `event_entities` 为唯一真相源，不再镜像写入 `relations(participates_in)`。
+- `extraction_runs` 现在会记录 provider/model/prompt/schema/input hash/lineage/projection status 等版本元数据。
+- `projection_versions` 和 `notes.active_projection_id` 已上线，回放、审批、自动应用都会显式写入投影版本记录。
 - 事件详情页和人物故事页现在都带有第一版图谱工作台，可直接沿关联事件和时间片段继续跳转。
 - `/graph` 共享图谱工作台和 `/api/v1/graph/workspace` 读接口已经上线，支持以事件、人物或全局总览作为工作台锚点进入统一图谱视图。
 - 图谱工作台现在支持 URL 驱动的节点聚焦、统一节点检查器，以及 `/api/v1/graph/nodes/{node_type}/{node_id}` 节点详情接口，可直接沿邻接节点和时间上下文继续导航。
@@ -137,6 +140,7 @@ Verified on `2026-04-21`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py`

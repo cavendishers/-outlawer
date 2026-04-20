@@ -213,17 +213,12 @@ Acceptance target:
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
 Why it matters:
 
 - reprocessing exists, but model-version comparison and controlled replay are not complete
 - this becomes critical once extraction prompts and model choices evolve
-
-What is missing:
-
-- selective projection replay
-- rollback/replace decision workflow
 
 Delivered in the first replay slice:
 
@@ -254,14 +249,13 @@ Delivered in the fourth replay slice:
 - note detail UI now separates draft candidates, rejected runs, current projection, and historical rollback runs
 - full API e2e now verifies draft creation, approval, rejection, and active-projection preservation
 
-Suggested deliverables:
+Delivered in the fifth replay slice:
 
-- replay with selected extractor version before auto-applying it
-- rollback/replace decision workflow with clearer operator intent capture
-
-Acceptance target:
-
-- user can compare current projection with a new extraction result before applying it
+- `extraction_runs` now carry provider, model, prompt, schema, input-hash, and parent lineage metadata
+- immutable `projection_versions` now record each projection apply event
+- notes now keep an explicit `active_projection_id` pointer
+- replay audit payloads now include projection-version ids and version metadata
+- full API e2e now verifies projection-version id persistence through draft approval
 
 ## Medium Priority
 
@@ -411,23 +405,23 @@ Problem:
 
 If the goal is product value rather than pure architecture cleanup, the best next order is:
 
-1. extraction replay and versioned reprocessing
-2. graph editing and knowledge curation
-3. multimodal quality upgrade
-4. back-office operations surface
-5. API schema completion and read-side service cleanup
-6. collaboration and permissions
-7. mobile experience
+1. graph editing and knowledge curation
+2. multimodal quality upgrade
+3. back-office operations surface
+4. API schema completion and read-side service cleanup
+5. collaboration and permissions
+6. mobile experience
+7. domain packaging and internal modularization
 
 ## Recommendation
 
 If we want the next phase to make the product feel materially more complete, the best next target is:
 
-- `Extraction Replay And Versioned Reprocessing`
+- `Graph Editing And Knowledge Curation`
 
 Reason:
 
-- Phase A source-of-truth cleanup is done, so the next architectural multiplier is stronger version metadata and replay governance
-- it reduces future projection ambiguity before more graph depth is added
-- it keeps later graph and multimodal work on top of a safer replay model
+- replay/versioning safety is now in place, so the next product multiplier is stronger graph correction depth
+- it directly improves long-term graph quality after extraction
+- it gives operators more leverage than another internal-only refactor
 - it pairs naturally with the graph views that already exist

@@ -95,6 +95,7 @@ Notes:
 id
 user_id
 asset_id
+active_projection_id
 title
 summary
 canonical_text
@@ -105,6 +106,10 @@ created_at
 updated_at
 processed_at
 ```
+
+Notes:
+
+- `active_projection_id` points to the immutable projection version currently serving as the note's active canonical projection
 
 ### note_chunks
 
@@ -359,6 +364,14 @@ normalized_result_json
 status
 extractor_name
 extractor_version
+provider_name
+model_name
+prompt_version
+schema_version
+input_hash
+parent_run_id
+run_kind
+projection_status
 created_at
 updated_at
 ```
@@ -367,6 +380,30 @@ Notes:
 
 - stores the raw AI output and the normalized post-processed output
 - critical for debugging, replay, and reprocessing
+- `parent_run_id` expresses run lineage inside one note
+- `projection_status` expresses whether the run is currently active, superseded, pending review, rejected, or never applied
+
+### projection_versions
+
+```text
+id
+user_id
+note_id
+extraction_run_id
+source_asset_id
+previous_projection_id
+action_type
+summary_json
+created_at
+updated_at
+```
+
+Notes:
+
+- immutable record of one projection-apply event
+- `previous_projection_id` links projection lineage explicitly
+- `action_type` distinguishes auto apply, manual replay, approval, and backfill records
+- note-level active projection should be tracked by pointer rather than inferred only from run status
 
 ### extraction_evidence
 

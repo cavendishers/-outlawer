@@ -193,11 +193,13 @@ Responsibilities:
 - read note summaries and canonical text
 - trigger async reprocessing
 - preserve extraction history through `extraction_runs`
+- expose extraction run version metadata such as provider, model, prompt, schema, input hash, run kind, and projection status
 - expose extraction run history, run summaries, and side-by-side diff snapshots
 - create `ready_for_review` draft runs during reprocess when an active projection already exists
 - approve or reject reviewable draft runs explicitly before changing the current projection
 - apply a selected historical extraction run back into the current note projection
-- expose replay audit history for automatic and manual projection-apply actions
+- expose replay audit history for automatic and manual projection-apply actions, including projection-version ids
+- return the active note projection pointer and the projection version id created by apply/approve actions
 - return paginated note collections for library-style UIs
 
 ### Entities

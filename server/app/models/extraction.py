@@ -18,6 +18,26 @@ class ExtractionRun(Base, IdMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="success")
     extractor_name: Mapped[str] = mapped_column(String(128), default="heuristic")
     extractor_version: Mapped[str] = mapped_column(String(32), default="v1")
+    provider_name: Mapped[str] = mapped_column(String(64), default="local")
+    model_name: Mapped[str] = mapped_column(String(255), default="heuristic_pipeline")
+    prompt_version: Mapped[str] = mapped_column(String(64), default="text-heuristic-v1")
+    schema_version: Mapped[str] = mapped_column(String(64), default="ai-extraction-format-v1")
+    input_hash: Mapped[str] = mapped_column(String(64), default="")
+    parent_run_id: Mapped[str | None] = mapped_column(ForeignKey("extraction_runs.id"), nullable=True, index=True)
+    run_kind: Mapped[str] = mapped_column(String(32), default="initial")
+    projection_status: Mapped[str] = mapped_column(String(32), default="not_applied", index=True)
+
+
+class ProjectionVersion(Base, IdMixin, TimestampMixin):
+    __tablename__ = "projection_versions"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    note_id: Mapped[str] = mapped_column(ForeignKey("notes.id"), index=True)
+    extraction_run_id: Mapped[str] = mapped_column(ForeignKey("extraction_runs.id"), index=True)
+    source_asset_id: Mapped[str | None] = mapped_column(ForeignKey("raw_assets.id"), nullable=True)
+    previous_projection_id: Mapped[str | None] = mapped_column(ForeignKey("projection_versions.id"), nullable=True, index=True)
+    action_type: Mapped[str] = mapped_column(String(32), default="apply_extraction_run")
+    summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class ExtractionEvidence(Base, IdMixin, TimestampMixin):

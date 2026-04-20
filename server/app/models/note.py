@@ -12,6 +12,7 @@ class Note(Base, IdMixin, TimestampMixin):
 
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     asset_id: Mapped[str | None] = mapped_column(ForeignKey("raw_assets.id"), nullable=True, index=True)
+    active_projection_id: Mapped[str | None] = mapped_column(ForeignKey("projection_versions.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255))
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     canonical_text: Mapped[str | None] = mapped_column(Text, nullable=True)

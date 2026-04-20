@@ -7,10 +7,14 @@ from app.models.extraction import ExtractionRun
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.services.asset_text_service import get_asset_text
+from app.services.extraction_metadata_service import resolve_extraction_run_metadata
 from app.services.extraction_run_service import (
     list_extraction_runs,
     log_replay_action,
     mark_extraction_run_applied,
+    PROJECTION_STATUS_FAILED,
+    PROJECTION_STATUS_PENDING_REVIEW,
+    PROJECTION_STATUS_APPLIED,
     resolve_applied_run_id,
     RUN_STATUS_COMPLETED,
     RUN_STATUS_READY_FOR_REVIEW,
@@ -55,6 +59,13 @@ def process_note(db: Session, job_id: str) -> None:
     db.flush()
     is_reprocess = bool(job.payload_json.get("reprocess"))
     previous_applied_run_id = resolve_applied_run_id(list_extraction_runs(db, user_id=note.user_id, note_id=note.id))
+    run_kind = "reprocess" if is_reprocess else "initial"
+    run_metadata = resolve_extraction_run_metadata(
+        payload,
+        text=text,
+        parent_run_id=previous_applied_run_id,
+        run_kind=run_kind,
+    )
 
     extraction_run = ExtractionRun(
         user_id=note.user_id,
@@ -65,6 +76,14 @@ def process_note(db: Session, job_id: str) -> None:
         status=RUN_STATUS_READY_FOR_REVIEW if is_reprocess and previous_applied_run_id else RUN_STATUS_COMPLETED,
         extractor_name=payload["source"]["extractor_name"],
         extractor_version=payload["source"]["extractor_version"],
+        provider_name=str(run_metadata["provider_name"]),
+        model_name=str(run_metadata["model_name"]),
+        prompt_version=str(run_metadata["prompt_version"]),
+        schema_version=str(run_metadata["schema_version"]),
+        input_hash=str(run_metadata["input_hash"]),
+        parent_run_id=run_metadata["parent_run_id"],
+        run_kind=str(run_metadata["run_kind"]),
+        projection_status=PROJECTION_STATUS_PENDING_REVIEW if is_reprocess and previous_applied_run_id else PROJECTION_STATUS_APPLIED,
     )
     db.add(extraction_run)
     db.flush()
@@ -88,6 +107,8 @@ def process_note(db: Session, job_id: str) -> None:
             run=extraction_run,
             action_type="auto_apply_extraction_run",
             previous_run_id=previous_applied_run_id,
+            projection_version_id=note.active_projection_id,
+            previous_projection_version_id=None,
         )
 
     job.status = JOB_STATUS_COMPLETED
@@ -122,6 +143,10 @@ def mark_job_failed(db: Session, job_id: str, message: str) -> None:
     db.rollback()
     job = db.get(AIJob, job_id)
     note = db.get(Note, job.target_id) if job else None
+    run = None
+    if note and note.user_id:
+        runs = list_extraction_runs(db, user_id=note.user_id, note_id=note.id)
+        run = runs[0] if runs else None
     if job:
         job.status = JOB_STATUS_FAILED
         job.error_message = message
@@ -129,4 +154,10 @@ def mark_job_failed(db: Session, job_id: str, message: str) -> None:
     if note:
         note.status = NOTE_STATUS_FAILED
         db.add(note)
+    if run and run.status == RUN_STATUS_READY_FOR_REVIEW:
+        run.projection_status = PROJECTION_STATUS_PENDING_REVIEW
+        db.add(run)
+    elif run:
+        run.projection_status = PROJECTION_STATUS_FAILED
+        db.add(run)
     db.commit()
