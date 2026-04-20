@@ -42,8 +42,29 @@ def test_build_local_media_derivative_uses_local_parser_payload(monkeypatch) -> 
 
     assert payload is not None
     assert payload["parser_name"] == "local_tesseract_ocr"
-    assert payload["canonical_text"] == "2026-04-18 Zhang San and Li Si project launch meeting"
+    assert "画面文字：" in payload["canonical_text"]
+    assert "2026-04-18 Zhang San and Li Si project launch meeting" in payload["canonical_text"]
     assert payload["observed_time"] == ["2026-04-18"]
+
+
+def test_build_local_media_derivative_generates_image_semantics_without_ocr(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.local_media_service.extract_image_text", lambda content, mime_type: "")
+
+    png_bytes = (
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x10\x00\x00\x00\x08\x08\x02\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+    )
+    payload = build_local_media_derivative("image", "项目启动会白板讨论照片", "image/png", png_bytes)
+
+    assert payload is not None
+    assert payload["document_type"] == "会议现场照片"
+    assert payload["image_layout"] == "横向 16x8"
+    assert "会议现场" in payload["observed_scene"]
+    assert "白板" in payload["observed_objects"]
+    assert "讨论" in payload["observed_actions"]
+    assert "图像语义提示：" in payload["canonical_text"]
 
 
 def test_video_sampling_scales_with_duration() -> None:

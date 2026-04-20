@@ -1,7 +1,14 @@
 import argparse
+import json
+import struct
 import time
+import zlib
 
 import httpx
+from sqlalchemy import and_, select
+
+from app.core.database import SessionLocal
+from app.models.asset_derivative import AssetDerivative
 
 
 def assert_ok(response: httpx.Response) -> dict:
@@ -9,6 +16,23 @@ def assert_ok(response: httpx.Response) -> dict:
     payload = response.json()
     assert payload["code"] == 0, payload
     return payload["data"]
+
+
+def build_test_png(width: int = 2, height: int = 1) -> bytes:
+    signature = b"\x89PNG\r\n\x1a\n"
+
+    def chunk(chunk_type: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + chunk_type
+            + data
+            + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    row = b"\x00" + b"\xff\xff\xff" * width
+    idat = zlib.compress(row * height)
+    return signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
 
 
 def main() -> None:
@@ -87,6 +111,65 @@ def main() -> None:
     if args.phase == "phase3":
         print("Phase 3 e2e passed")
         return
+
+    image_asset = assert_ok(
+        client.post(
+            f"{args.base_url}/assets/upload",
+            headers=headers,
+            data={
+                "title": "项目启动会白板讨论照片",
+                "asset_type": "image",
+            },
+            files={
+                "file": (
+                    "launch.png",
+                    build_test_png(),
+                    "image/png",
+                )
+            },
+        )
+    )
+    image_note_create = assert_ok(client.post(f"{args.base_url}/notes", headers=headers, json={"asset_id": image_asset["id"]}))
+    image_job_id = image_note_create["job_id"]
+    image_note_id = image_note_create["note_id"]
+    image_job_status = None
+    for _ in range(max(1, args.job_timeout_seconds // max(1, args.poll_interval_seconds))):
+        image_job_status = assert_ok(client.get(f"{args.base_url}/jobs/{image_job_id}", headers=headers))
+        if image_job_status["status"] == "completed":
+            break
+        time.sleep(args.poll_interval_seconds)
+    assert image_job_status is not None
+    assert image_job_status["status"] == "completed", image_job_status
+
+    image_note = assert_ok(client.get(f"{args.base_url}/notes/{image_note_id}", headers=headers))
+    assert image_note["status"] == "ready"
+
+    with SessionLocal() as db:
+        normalized_derivative = db.scalar(
+            select(AssetDerivative).where(
+                and_(
+                    AssetDerivative.asset_id == image_asset["id"],
+                    AssetDerivative.derivative_type == "normalized_text",
+                )
+            )
+        )
+        analysis_derivative = db.scalar(
+            select(AssetDerivative).where(
+                and_(
+                    AssetDerivative.asset_id == image_asset["id"],
+                    AssetDerivative.derivative_type == "analysis_json",
+                )
+            )
+        )
+        assert normalized_derivative is not None
+        assert "识别场景：" in normalized_derivative.content
+        assert "识别物件：" in normalized_derivative.content
+        assert "文档类型：" in normalized_derivative.content
+        assert analysis_derivative is not None
+        analysis_payload = json.loads(analysis_derivative.content)
+        assert "会议现场" in analysis_payload.get("observed_scene", [])
+        assert "白板" in analysis_payload.get("observed_objects", [])
+        assert analysis_payload.get("document_type")
 
     reprocess = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/reprocess", headers=headers))
     replay_job_id = reprocess["job_id"]

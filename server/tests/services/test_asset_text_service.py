@@ -25,6 +25,11 @@ def test_build_multimodal_canonical_text_includes_core_sections() -> None:
             "observed_people": ["张三", "李四"],
             "observed_time": ["2026-04-18"],
             "observed_location": ["会议室A"],
+            "observed_scene": ["会议现场", "白板讨论"],
+            "observed_objects": ["白板", "演示文稿"],
+            "observed_actions": ["讨论", "讲解"],
+            "document_type": "会议现场照片",
+            "image_layout": "横向 1600x900",
             "parsing_notes": "画面中存在轻微反光。",
         },
     )
@@ -32,6 +37,11 @@ def test_build_multimodal_canonical_text_includes_core_sections() -> None:
     assert "素材标题：白板会议照片" in text
     assert "规范化内容：" in text
     assert "识别人物：张三, 李四" in text
+    assert "识别场景：会议现场, 白板讨论" in text
+    assert "识别物件：白板, 演示文稿" in text
+    assert "识别动作：讨论, 讲解" in text
+    assert "文档类型：会议现场照片" in text
+    assert "画面布局：横向 1600x900" in text
     assert "解析说明：画面中存在轻微反光。" in text
 
 
@@ -151,6 +161,10 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
             "short_summary": "本地 OCR 识别出会议主题。",
             "observed_people": ["张三"],
             "observed_time": ["2026-04-18"],
+            "observed_scene": ["会议现场"],
+            "observed_objects": ["白板"],
+            "document_type": "会议现场照片",
+            "image_layout": "横向 1600x900",
             "parsing_notes": "本地 OCR 提取。",
             "source_attribution": [
                 {
@@ -180,6 +194,9 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
             "short_summary": "AI 补充了人物和地点上下文。",
             "observed_people": ["张三", "李四"],
             "observed_location": ["会议室A"],
+            "observed_scene": ["会议现场", "投影演示"],
+            "observed_objects": ["白板", "投影幕布"],
+            "observed_actions": ["讲解"],
             "parsing_notes": "AI 识别出现场发言内容。",
             "source_attribution": [
                 {
@@ -210,6 +227,11 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
     assert merged["canonical_text"] == "张三在会议室 A 讲解图谱拆分计划。"
     assert merged["observed_people"] == ["张三", "李四"]
     assert merged["observed_location"] == ["会议室A"]
+    assert merged["observed_scene"] == ["会议现场", "投影演示"]
+    assert merged["observed_objects"] == ["白板", "投影幕布"]
+    assert merged["observed_actions"] == ["讲解"]
+    assert merged["document_type"] == "会议现场照片"
+    assert merged["image_layout"] == "横向 1600x900"
     assert merged["confidence"] == 0.74
     assert len(merged["source_attribution"]) == 2
     assert merged["source_attribution"][0]["evidence_type"] == "direct_observation"

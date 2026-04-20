@@ -3,6 +3,7 @@ import logging
 import math
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
 import urllib.request
@@ -27,28 +28,69 @@ VOSK_MODEL_URLS = {
 def build_local_media_derivative(asset_type: str, title: str, mime_type: str, content: bytes) -> dict[str, object] | None:
     if asset_type == "image":
         text = extract_image_text(content, mime_type)
+        normalized_text = normalize_media_text(text)
+        image_metadata = extract_image_metadata(content, mime_type)
+        observed_scene = extract_image_scene_candidates(title, normalized_text, image_metadata)
+        observed_objects = extract_image_object_candidates(title, normalized_text)
+        observed_actions = extract_image_action_candidates(title, normalized_text)
+        document_type = infer_image_document_type(title, normalized_text, image_metadata)
+        image_layout = build_image_layout_label(image_metadata)
         source_attribution = build_source_attribution_from_text(
             source_type="image_ocr",
             label="image_ocr",
-            text=text,
+            text=normalized_text,
             confidence=0.66,
+        )
+        source_attribution.extend(
+            build_source_attribution_from_text(
+                source_type="image_scene_inference",
+                label="image_semantic_hint",
+                text=build_image_semantic_hint(
+                    document_type=document_type,
+                    image_layout=image_layout,
+                    observed_scene=observed_scene,
+                    observed_objects=observed_objects,
+                    observed_actions=observed_actions,
+                ),
+                confidence=0.42,
+                evidence_type="model_inference",
+            )
+        )
+        text = build_image_semantic_canonical_text(
+            normalized_text=normalized_text,
+            document_type=document_type,
+            image_layout=image_layout,
+            observed_scene=observed_scene,
+            observed_objects=observed_objects,
+            observed_actions=observed_actions,
         )
         parser_name = "local_tesseract_ocr"
     elif asset_type == "audio":
         text = extract_audio_text(content, mime_type)
+        normalized_text = normalize_media_text(text)
         source_attribution = build_source_attribution_from_text(
             source_type="audio_transcript",
             label="audio_transcript",
-            text=text,
+            text=normalized_text,
             confidence=0.68,
         )
         parser_name = "local_vosk_asr"
+        observed_scene = []
+        observed_objects = []
+        observed_actions = []
+        document_type = None
+        image_layout = None
     elif asset_type == "video":
         video_observation = extract_video_observations(content, mime_type)
         text = str(video_observation.get("text") or "")
         source_attribution = list(video_observation.get("source_attribution") or [])
         video_scene_segments = list(video_observation.get("video_scene_segments") or [])
         parser_name = "local_video_ocr_asr"
+        observed_scene = []
+        observed_objects = []
+        observed_actions = []
+        document_type = None
+        image_layout = None
     else:
         return None
 
@@ -63,6 +105,11 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
         "observed_events": extract_event_candidates(normalized),
         "observed_time": extract_time_candidates(normalized),
         "observed_location": extract_location_candidates(normalized),
+        "observed_scene": observed_scene,
+        "observed_objects": observed_objects,
+        "observed_actions": observed_actions,
+        "document_type": document_type,
+        "image_layout": image_layout,
         "confidence": 0.68,
         "parsing_notes": f"{parser_name} generated normalized text from the uploaded media.",
         "parser_name": parser_name,
@@ -407,6 +454,219 @@ def build_source_attribution_from_text(
             "evidence_type": evidence_type,
         }
     ]
+
+
+def extract_image_metadata(content: bytes, mime_type: str) -> dict[str, int | str | None]:
+    width, height = probe_image_dimensions(content, mime_type)
+    return {
+        "width": width,
+        "height": height,
+        "orientation": infer_image_orientation(width, height),
+    }
+
+
+def probe_image_dimensions(content: bytes, mime_type: str) -> tuple[int | None, int | None]:
+    try:
+        if mime_type == "image/png" and content[:8] == b"\x89PNG\r\n\x1a\n":
+            width, height = struct.unpack(">II", content[16:24])
+            return int(width), int(height)
+        if mime_type == "image/gif" and content[:6] in {b"GIF87a", b"GIF89a"}:
+            width, height = struct.unpack("<HH", content[6:10])
+            return int(width), int(height)
+        if mime_type in {"image/jpeg", "image/jpg"} or content[:2] == b"\xff\xd8":
+            return parse_jpeg_dimensions(content)
+        if mime_type == "image/webp" and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+            return parse_webp_dimensions(content)
+    except Exception:  # noqa: BLE001
+        logger.warning("local_image_metadata_probe_failed mime_type=%s", mime_type)
+    return None, None
+
+
+def parse_jpeg_dimensions(content: bytes) -> tuple[int | None, int | None]:
+    index = 2
+    content_length = len(content)
+    while index + 9 < content_length:
+        if content[index] != 0xFF:
+            index += 1
+            continue
+        marker = content[index + 1]
+        if marker in {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}:
+            height = struct.unpack(">H", content[index + 5 : index + 7])[0]
+            width = struct.unpack(">H", content[index + 7 : index + 9])[0]
+            return int(width), int(height)
+        block_length = struct.unpack(">H", content[index + 2 : index + 4])[0]
+        if block_length <= 0:
+            break
+        index += 2 + block_length
+    return None, None
+
+
+def parse_webp_dimensions(content: bytes) -> tuple[int | None, int | None]:
+    if len(content) < 30:
+        return None, None
+    chunk_header = content[12:16]
+    if chunk_header == b"VP8 " and len(content) >= 30:
+        width = struct.unpack("<H", content[26:28])[0] & 0x3FFF
+        height = struct.unpack("<H", content[28:30])[0] & 0x3FFF
+        return int(width), int(height)
+    if chunk_header == b"VP8L" and len(content) >= 25:
+        bits = struct.unpack("<I", content[21:25])[0]
+        width = (bits & 0x3FFF) + 1
+        height = ((bits >> 14) & 0x3FFF) + 1
+        return int(width), int(height)
+    if chunk_header == b"VP8X" and len(content) >= 30:
+        width = 1 + int.from_bytes(content[24:27], "little")
+        height = 1 + int.from_bytes(content[27:30], "little")
+        return width, height
+    return None, None
+
+
+def infer_image_orientation(width: int | None, height: int | None) -> str | None:
+    if not width or not height:
+        return None
+    if width == height:
+        return "square"
+    if width > height:
+        return "landscape"
+    return "portrait"
+
+
+def build_image_layout_label(metadata: dict[str, int | str | None]) -> str | None:
+    width = metadata.get("width")
+    height = metadata.get("height")
+    orientation = str(metadata.get("orientation") or "").strip()
+    if not isinstance(width, int) or not isinstance(height, int):
+        return None
+    orientation_labels = {
+        "landscape": "横向",
+        "portrait": "纵向",
+        "square": "方形",
+    }
+    prefix = orientation_labels.get(orientation, "未知布局")
+    return f"{prefix} {width}x{height}"
+
+
+def infer_image_document_type(title: str, text: str, metadata: dict[str, int | str | None]) -> str | None:
+    haystack = f"{title}\n{text}".lower()
+    if any(keyword in haystack for keyword in ["截图", "screenshot", "screen", "界面", "页面"]):
+        return "界面截图"
+    if any(keyword in haystack for keyword in ["白板", "投影", "幻灯", "slide", "ppt"]):
+        return "会议现场照片"
+    if any(keyword in haystack for keyword in ["文档", "报告", "方案", "清单", "合同", "通知", "表格"]):
+        return "文档页"
+    if any(keyword in haystack for keyword in ["海报", "poster", "展板"]):
+        return "海报或展板"
+    if any(keyword in haystack for keyword in ["照片", "photo", "现场", "合影"]):
+        return "现场照片"
+    if metadata.get("orientation") == "portrait":
+        return "纵向图片"
+    if metadata.get("orientation") == "landscape":
+        return "横向图片"
+    return None
+
+
+def extract_image_scene_candidates(title: str, text: str, metadata: dict[str, int | str | None]) -> list[str]:
+    haystack = f"{title}\n{text}"
+    candidates: list[str] = []
+    if any(keyword in haystack for keyword in ["会议", "启动会", "讨论", "复盘", "汇报"]):
+        candidates.append("会议现场")
+    if any(keyword in haystack for keyword in ["白板", "板书"]):
+        candidates.append("白板讨论")
+    if any(keyword in haystack for keyword in ["投影", "幻灯", "PPT", "ppt", "slide"]):
+        candidates.append("投影演示")
+    if any(keyword in haystack for keyword in ["截图", "界面", "页面", "按钮"]):
+        candidates.append("软件界面")
+    if not candidates and metadata.get("orientation") == "portrait":
+        candidates.append("纵向图像")
+    if not candidates and metadata.get("orientation") == "landscape":
+        candidates.append("横向图像")
+    return dedupe_named_items(candidates, min_length=2, max_items=5)
+
+
+def extract_image_object_candidates(title: str, text: str) -> list[str]:
+    haystack = f"{title}\n{text}"
+    keyword_map = {
+        "白板": "白板",
+        "投影": "投影幕布",
+        "幻灯": "投影幕布",
+        "PPT": "演示文稿",
+        "ppt": "演示文稿",
+        "slide": "演示文稿",
+        "图表": "图表",
+        "表格": "表格",
+        "文档": "文档页",
+        "报告": "文档页",
+        "页面": "界面面板",
+        "按钮": "界面控件",
+        "会议室": "会议空间",
+    }
+    candidates = [label for keyword, label in keyword_map.items() if keyword in haystack]
+    return dedupe_named_items(candidates, min_length=2, max_items=6)
+
+
+def extract_image_action_candidates(title: str, text: str) -> list[str]:
+    haystack = f"{title}\n{text}"
+    keyword_map = {
+        "讨论": "讨论",
+        "汇报": "汇报",
+        "讲解": "讲解",
+        "演示": "演示",
+        "记录": "记录",
+        "复盘": "复盘",
+        "确认": "确认",
+        "规划": "规划",
+        "启动": "启动准备",
+    }
+    candidates = [label for keyword, label in keyword_map.items() if keyword in haystack]
+    return dedupe_named_items(candidates, min_length=2, max_items=6)
+
+
+def build_image_semantic_hint(
+    *,
+    document_type: str | None,
+    image_layout: str | None,
+    observed_scene: list[str],
+    observed_objects: list[str],
+    observed_actions: list[str],
+) -> str:
+    parts: list[str] = []
+    if document_type:
+        parts.append(f"图像类型推断为{document_type}")
+    if image_layout:
+        parts.append(f"布局为{image_layout}")
+    if observed_scene:
+        parts.append(f"可能场景：{'、'.join(observed_scene)}")
+    if observed_objects:
+        parts.append(f"可见元素：{'、'.join(observed_objects)}")
+    if observed_actions:
+        parts.append(f"可能行为：{'、'.join(observed_actions)}")
+    return "；".join(parts)
+
+
+def build_image_semantic_canonical_text(
+    *,
+    normalized_text: str,
+    document_type: str | None,
+    image_layout: str | None,
+    observed_scene: list[str],
+    observed_objects: list[str],
+    observed_actions: list[str],
+) -> str:
+    sections: list[str] = []
+    if normalized_text:
+        sections.append("画面文字：")
+        sections.append(normalized_text)
+    semantic_hint = build_image_semantic_hint(
+        document_type=document_type,
+        image_layout=image_layout,
+        observed_scene=observed_scene,
+        observed_objects=observed_objects,
+        observed_actions=observed_actions,
+    )
+    if semantic_hint:
+        sections.append("图像语义提示：")
+        sections.append(semantic_hint)
+    return "\n".join(sections).strip()
 
 
 def probe_media_duration_seconds(source_path: Path, ffmpeg_bin: str) -> int | None:

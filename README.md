@@ -24,7 +24,7 @@ project/
   docs/
 ```
 
-Detailed design documents live in [`docs/current-system-overview.md`](/Users/hongan/Documents/fxxk/docs/current-system-overview.md), [`docs/architecture.md`](/Users/hongan/Documents/fxxk/docs/architecture.md), [`docs/architecture-review.md`](/Users/hongan/Documents/fxxk/docs/architecture-review.md), [`docs/remaining-features-roadmap.md`](/Users/hongan/Documents/fxxk/docs/remaining-features-roadmap.md), [`docs/phase-11-review-workflow-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-11-review-workflow-plan.md), [`docs/phase-12-event-curation-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-12-event-curation-plan.md), [`docs/api-contract.md`](/Users/hongan/Documents/fxxk/docs/api-contract.md), [`docs/database-design.md`](/Users/hongan/Documents/fxxk/docs/database-design.md), [`docs/ai-extraction-format.md`](/Users/hongan/Documents/fxxk/docs/ai-extraction-format.md), [`docs/deployment.md`](/Users/hongan/Documents/fxxk/docs/deployment.md), [`docs/migration-guide.md`](/Users/hongan/Documents/fxxk/docs/migration-guide.md), [`docs/mvp-plan.md`](/Users/hongan/Documents/fxxk/docs/mvp-plan.md), [`docs/development-phases.md`](/Users/hongan/Documents/fxxk/docs/development-phases.md), and [`docs/documentation-workflow.md`](/Users/hongan/Documents/fxxk/docs/documentation-workflow.md).
+Detailed design documents live in [`docs/current-system-overview.md`](/Users/hongan/Documents/fxxk/docs/current-system-overview.md), [`docs/architecture.md`](/Users/hongan/Documents/fxxk/docs/architecture.md), [`docs/architecture-review.md`](/Users/hongan/Documents/fxxk/docs/architecture-review.md), [`docs/remaining-features-roadmap.md`](/Users/hongan/Documents/fxxk/docs/remaining-features-roadmap.md), [`docs/project-retrospective-and-next-stage.md`](/Users/hongan/Documents/fxxk/docs/project-retrospective-and-next-stage.md), [`docs/phase-11-review-workflow-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-11-review-workflow-plan.md), [`docs/phase-12-event-curation-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-12-event-curation-plan.md), [`docs/api-contract.md`](/Users/hongan/Documents/fxxk/docs/api-contract.md), [`docs/database-design.md`](/Users/hongan/Documents/fxxk/docs/database-design.md), [`docs/ai-extraction-format.md`](/Users/hongan/Documents/fxxk/docs/ai-extraction-format.md), [`docs/deployment.md`](/Users/hongan/Documents/fxxk/docs/deployment.md), [`docs/migration-guide.md`](/Users/hongan/Documents/fxxk/docs/migration-guide.md), [`docs/mvp-plan.md`](/Users/hongan/Documents/fxxk/docs/mvp-plan.md), [`docs/development-phases.md`](/Users/hongan/Documents/fxxk/docs/development-phases.md), and [`docs/documentation-workflow.md`](/Users/hongan/Documents/fxxk/docs/documentation-workflow.md).
 Operational runbooks live in [`docs/operations.md`](/Users/hongan/Documents/fxxk/docs/operations.md).
 
 ## Product Summary
@@ -34,6 +34,7 @@ The system accepts text, audio, image, and video inputs. Raw materials are prese
 For multimodal assets, the worker now uses a layered parser strategy:
 
 - image: local Tesseract OCR first, then optional OpenRouter enrichment
+- image derivatives also include structured semantic hints for likely scene, visible objects, visible actions, image layout, and document/photo type
 - audio: local Vosk speech transcription, then optional OpenRouter enrichment
 - video: sampled frame OCR plus audio transcription, then optional OpenRouter enrichment
 - multimodal derivatives now preserve source attribution snippets so later extraction can see what came from OCR frames versus audio transcript
@@ -41,7 +42,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `20` are implemented and verified in Docker.
+- Phase `0` through Phase `21` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -54,6 +55,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Review workflow is available in the web app for merge-candidate filtering, accept/reject decisions, alias confirmation, and audited entity/event merges.
 - Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
 - Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, trusted aliases, and entity-centered graph relations.
+- Image ingestion now preserves semantic derivative fields beyond OCR-only text, including scene, object, action, layout, and document-type hints.
 
 ## Quick Start
 

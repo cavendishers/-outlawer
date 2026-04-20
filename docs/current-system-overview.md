@@ -51,7 +51,7 @@ flowchart LR
 ```mermaid
 flowchart TD
     Raw["Raw asset<br/>text/image/audio/video"] --> RawStore["raw_assets + MinIO object"]
-    RawStore --> Derivative["asset_derivatives<br/>OCR / transcript / video scene evidence / normalized text"]
+    RawStore --> Derivative["asset_derivatives<br/>OCR / image semantic hints / transcript / video scene evidence / normalized text"]
     Derivative --> Note["notes + note_chunks<br/>canonical searchable text"]
     Note --> Extraction["extraction_runs + extraction_evidence<br/>versioned AI output"]
     Extraction --> Entity["entities + entity_aliases + note_entities"]
@@ -101,6 +101,7 @@ sequenceDiagram
 - `DONE`: Username/password login with bearer-token auth.
 - `DONE`: Raw text, image, audio, and video asset ingestion with raw preservation.
 - `DONE`: Image OCR, audio transcription, and video derivative text fallback using local tools.
+- `DONE`: Image derivatives now preserve semantic scene, object, action, document-type, and layout hints beyond OCR-only text.
 - `DONE`: Async job tracking and retry flow through Celery and RabbitMQ.
 - `DONE`: Note canonicalization, extraction-run persistence, and reprocessing entry point.
 - `DONE`: Extraction run history, per-run summary retrieval, and side-by-side diff snapshots for note reprocessing review.
@@ -109,7 +110,7 @@ sequenceDiagram
 - `DONE`: Reprocessing now creates `ready_for_review` extraction drafts that require explicit approve or reject before the active projection changes.
 - `DONE`: Entity, event, relation, note-link, timeline, and extraction-evidence persistence.
 - `DONE`: OpenRouter text extraction with free-model fallback batching and local heuristic fallback.
-- `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing with optional OpenRouter enhancement and source attribution snippets.
+- `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing, image semantic hints, optional OpenRouter enhancement, and source attribution snippets.
 - `DONE`: Video derivatives now preserve sampled scene time ranges and label direct OCR/ASR evidence separately from model-inferred context.
 - `DONE`: Embedding-backed similarity search, merge-candidate generation, and unified search page.
 - `DONE`: People index, library, event pages, timeline/global graph view, note detail, and story views.
@@ -121,7 +122,7 @@ sequenceDiagram
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `HIGH`: Multimodal quality upgrade is still incomplete. The pipeline now preserves local parsing, AI enhancement, source attribution, and video scene evidence together, but image semantics and speaker/context extraction are still MVP-grade.
+1. `HIGH`: Multimodal quality upgrade is still incomplete. The pipeline now preserves local parsing, image semantics, AI enhancement, source attribution, and video scene evidence together, but audio speaker/context extraction is still MVP-grade.
 2. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
 3. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
 4. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
@@ -131,8 +132,7 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next implementation slice should continue multimodal understanding quality work, now focusing on non-video semantic depth and richer evidence structure. The expected scope is:
+The next implementation slice should continue multimodal understanding quality work, now focusing on audio context and richer evidence structure. The expected scope is:
 
-- strengthen image semantic extraction beyond OCR-only signals
 - improve audio speaker/context extraction
 - version multimodal prompts and normalize richer derivative payloads

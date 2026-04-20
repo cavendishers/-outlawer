@@ -9,7 +9,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - infrastructure baseline: Docker Compose deployment, PostgreSQL, pgvector, RabbitMQ, Redis, MinIO, FastAPI, Next.js, Alembic
 - authentication baseline: username/password login with bearer-token auth
 - ingestion baseline: text, image, audio, and video upload with raw material preservation
-- multimodal derivative baseline: local OCR and ASR fallback, optional OpenRouter enhancement, source attribution, video scene evidence typing
+- multimodal derivative baseline: local OCR and ASR fallback, image semantic hints, optional OpenRouter enhancement, source attribution, video scene evidence typing
 - knowledge graph baseline: notes, entities, events, relations, timeline items, embeddings, style views, extraction evidence
 - browse baseline: library, people, events, timeline, search, note detail, story views
 - governance baseline: merge review, alias governance, event curation, entity curation, relation edit-in-place
@@ -27,7 +27,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 ## What Went Poorly
 
 - replay safety came later than it should have, so early reprocess behavior was too eager to overwrite current projections
-- multimodal semantic quality is still uneven, especially outside video OCR and transcript evidence
+- multimodal semantic quality is still uneven, especially around audio speaker/context extraction
 - some APIs still rely on generic dictionaries rather than explicit request and response schemas
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
 - operations visibility is still developer-centric; there is no true runtime dashboard
@@ -37,7 +37,6 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 ### Highest-value product depth
 
-- stronger image semantic extraction beyond OCR-only parsing
 - stronger audio speaker and context extraction
 - broader graph canvas editing
 
@@ -57,27 +56,26 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 The next stage should be:
 
-- **Phase 21: Image Semantic Enrichment**
+- **Phase 22: Audio Speaker And Context Enrichment**
 
-This is the best next step because replay governance is now in place, and the biggest remaining quality gap is multimodal understanding depth:
+This is the best next step because replay governance and image semantic hints are now in place, and the biggest remaining multimodal quality gap is audio understanding:
 
-- image uploads still lean too heavily on OCR text
-- non-text visual clues like scene type, objects, and inferred activities should improve downstream event/entity extraction
-- richer visual evidence should flow into later search, timeline, and graph quality work
+- audio uploads still produce a flat transcript without speaker or context structure
+- meeting-style recordings need speaker turns, likely roles, and conversation context to improve entity/event extraction
+- richer audio evidence should flow into later search, timeline, and graph quality work
 
-## Phase 21 Scope
+## Phase 22 Scope
 
-- enrich image derivatives with semantic observations beyond OCR-only text
-- preserve structured evidence fragments for visible people, scene hints, objects, and activities
-- merge image semantic hints with OCR output into canonical multimodal text
-- extend service tests and full API e2e to cover enriched image derivatives
+- enrich audio derivatives with speaker-turn-like segments when available
+- preserve structured context hints for likely conversation type, topics, decisions, and follow-ups
+- merge audio context hints with transcript text into canonical multimodal text
+- extend service tests and full API e2e to cover enriched audio derivatives
 
 ## Priority-ordered Next Work
 
-1. improve image semantic extraction beyond OCR-only text
-2. improve audio speaker and context extraction
-3. build first operations dashboard for jobs and extraction runs
-4. tighten API contracts with explicit Pydantic schemas
-5. continue read-model query service extraction
-6. expand graph editing into a canvas-oriented workflow
-7. plan multi-user and permissions model
+1. improve audio speaker and context extraction
+2. build first operations dashboard for jobs and extraction runs
+3. tighten API contracts with explicit Pydantic schemas
+4. continue read-model query service extraction
+5. expand graph editing into a canvas-oriented workflow
+6. plan multi-user and permissions model

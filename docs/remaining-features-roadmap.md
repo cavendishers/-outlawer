@@ -28,7 +28,7 @@ Current status as of `2026-04-20`:
 | --- | --- | --- |
 | Username/password login | `DONE` | basic bearer-token auth is available |
 | Text ingestion | `DONE` | upload, note creation, extraction flow available |
-| Image ingestion | `DONE` | raw storage plus OCR/derivative text available |
+| Image ingestion | `DONE` | raw storage plus OCR, semantic hints, and derivative text available |
 | Audio ingestion | `DONE` | raw storage plus ASR/derivative text available |
 | Video ingestion | `PARTIAL` | raw storage, sampled OCR/ASR derivatives, scene time ranges, and evidence labels exist; deeper semantic quality is still MVP-grade |
 | Raw asset preservation | `DONE` | MinIO-backed storage and raw reads available |
@@ -136,7 +136,6 @@ Why it matters:
 
 What is missing:
 
-- stronger image semantic understanding
 - better audio speaker/context extraction
 - prompt versioning and result comparison before projection replay
 
@@ -156,11 +155,17 @@ Delivered in the second upgrade slice:
 - OpenRouter multimodal prompts request the same evidence attribution structure
 - service-level regression tests cover scene segments and evidence typing
 
+Delivered in the third upgrade slice:
+
+- image derivatives now include structured scene, object, action, layout, and document-type hints beyond OCR-only text
+- images with little or no OCR text can still produce local semantic fallback text from title, image metadata, and visual-layout hints
+- OpenRouter multimodal prompts now request the same image semantic fields for model-enhanced parsing
+- full API e2e verifies image upload through derived `analysis_json` and `normalized_text`
+
 Suggested deliverables:
 
 - multimodal extraction prompt versioning
 - richer derivative payload schema
-- image semantic extraction beyond OCR-only text
 - audio speaker/context extraction
 
 Acceptance target:

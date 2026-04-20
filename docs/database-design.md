@@ -85,7 +85,8 @@ created_at
 
 Notes:
 
-- `derivative_type`: transcript, ocr, frame_caption, normalized_text
+- `derivative_type`: transcript, ocr, frame_caption, normalized_text, analysis_json
+- image `analysis_json` payloads can include `observed_scene`, `observed_objects`, `observed_actions`, `document_type`, and `image_layout`
 
 ### notes
 

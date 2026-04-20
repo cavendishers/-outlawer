@@ -57,6 +57,11 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
             "parser": str(local_payload.get("parser_name") or "local_media_parser"),
             "short_summary": local_payload.get("short_summary"),
             "observed_time": local_payload.get("observed_time"),
+            "observed_scene": local_payload.get("observed_scene"),
+            "observed_objects": local_payload.get("observed_objects"),
+            "observed_actions": local_payload.get("observed_actions"),
+            "document_type": local_payload.get("document_type"),
+            "image_layout": local_payload.get("image_layout"),
             "confidence": local_payload.get("confidence"),
             "source_attribution": local_payload.get("source_attribution"),
         }
@@ -79,6 +84,11 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
                 "observed_events": derivative_payload.get("observed_events"),
                 "observed_time": derivative_payload.get("observed_time"),
                 "observed_location": derivative_payload.get("observed_location"),
+                "observed_scene": derivative_payload.get("observed_scene"),
+                "observed_objects": derivative_payload.get("observed_objects"),
+                "observed_actions": derivative_payload.get("observed_actions"),
+                "document_type": derivative_payload.get("document_type"),
+                "image_layout": derivative_payload.get("image_layout"),
                 "confidence": derivative_payload.get("confidence"),
                 "parsing_notes": derivative_payload.get("parsing_notes"),
                 "source_attribution": derivative_payload.get("source_attribution"),
@@ -180,6 +190,26 @@ def build_multimodal_canonical_text(asset: RawAsset, payload: dict[str, object])
     observed_location = normalize_multimodal_list(payload.get("observed_location"))
     if observed_location:
         sections.append(f"识别地点：{', '.join(observed_location)}")
+
+    observed_scene = normalize_multimodal_list(payload.get("observed_scene"))
+    if observed_scene:
+        sections.append(f"识别场景：{', '.join(observed_scene)}")
+
+    observed_objects = normalize_multimodal_list(payload.get("observed_objects"))
+    if observed_objects:
+        sections.append(f"识别物件：{', '.join(observed_objects)}")
+
+    observed_actions = normalize_multimodal_list(payload.get("observed_actions"))
+    if observed_actions:
+        sections.append(f"识别动作：{', '.join(observed_actions)}")
+
+    document_type = safe_multimodal_string(payload.get("document_type"))
+    if document_type:
+        sections.append(f"文档类型：{document_type}")
+
+    image_layout = safe_multimodal_string(payload.get("image_layout"))
+    if image_layout:
+        sections.append(f"画面布局：{image_layout}")
 
     parsing_notes = safe_multimodal_string(payload.get("parsing_notes"))
     if parsing_notes:
@@ -283,6 +313,17 @@ def merge_multimodal_payloads(
         "observed_events": merge_multimodal_lists(local_payload.get("observed_events"), ai_payload.get("observed_events")),
         "observed_time": merge_multimodal_lists(local_payload.get("observed_time"), ai_payload.get("observed_time")),
         "observed_location": merge_multimodal_lists(local_payload.get("observed_location"), ai_payload.get("observed_location")),
+        "observed_scene": merge_multimodal_lists(local_payload.get("observed_scene"), ai_payload.get("observed_scene")),
+        "observed_objects": merge_multimodal_lists(local_payload.get("observed_objects"), ai_payload.get("observed_objects")),
+        "observed_actions": merge_multimodal_lists(local_payload.get("observed_actions"), ai_payload.get("observed_actions")),
+        "document_type": choose_non_empty_multimodal_value(
+            safe_multimodal_string(ai_payload.get("document_type")),
+            safe_multimodal_string(local_payload.get("document_type")),
+        ),
+        "image_layout": choose_non_empty_multimodal_value(
+            safe_multimodal_string(ai_payload.get("image_layout")),
+            safe_multimodal_string(local_payload.get("image_layout")),
+        ),
         "confidence": max_multimodal_confidence(local_payload.get("confidence"), ai_payload.get("confidence")),
         "parsing_notes": "；".join(
             item
@@ -300,6 +341,14 @@ def merge_multimodal_payloads(
 
 def choose_richer_multimodal_text(primary: str, fallback: str) -> str:
     return primary if len(primary) >= len(fallback) else fallback
+
+
+def choose_non_empty_multimodal_value(primary: str, fallback: str) -> str | None:
+    if primary:
+        return primary
+    if fallback:
+        return fallback
+    return None
 
 
 def merge_multimodal_lists(left: object, right: object) -> list[str]:
