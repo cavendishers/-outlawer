@@ -874,3 +874,29 @@ Documents updated manually after completion:
 - `docs/remaining-features-roadmap.md`
 - `docs/project-retrospective-and-next-stage.md`
 - `docs/development-phases.md`
+
+## Phase 26: Graph Workspace And Canvas Editing
+
+Status: `IN_PROGRESS`
+
+Goal:
+
+- evolve graph browsing and correction from form-driven pages into a stronger graph workspace
+
+Current slice delivered:
+
+- event detail page now includes an association workspace with an anchor event panel, vertical related-event rail, and focused node inspector
+- entity story page now includes a timeline workspace with fragment stepping, previous/next context, and side-axis event echoes
+- graph-first navigation shortcuts now connect event and entity workspaces back to review and curation flows
+
+Remaining work:
+
+- expand event-to-event association editing beyond read-only stepping
+- add a stronger shared graph canvas for entity/event cross-editing
+- make graph editing feel less like separate pages and more like one connected workspace
+
+Verification completed for current slice:
+
+- `npm run build` in `web/`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m compileall app`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_health.py tests/integration/test_e2e_api_flow.py tests/integration/test_e2e_review_flow.py tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py`

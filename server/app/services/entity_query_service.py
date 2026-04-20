@@ -64,16 +64,7 @@ def get_entity_detail(db: Session, *, user_id: str, entity_id: str) -> dict[str,
     related_events = list_related_events_for_entity(db, user_id=user_id, entity_id=entity.id)
     return {
         **serialize_entity(entity),
-        "related_events": [
-            {
-                "id": item["id"],
-                "title": item["title"],
-                "summary": item["summary"],
-                "time_text": item["time_text"],
-                "event_type": item["event_type"],
-            }
-            for item in related_events
-        ],
+        "related_events": related_events,
         "timeline_fragments": get_timeline_fragments_for_entity(db, user_id, entity.id),
     }
 

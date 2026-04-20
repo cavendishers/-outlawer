@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { EntityTimelineWorkspace } from "@/components/entity-timeline-workspace";
 import { EntityJourneyMap } from "@/components/entity-journey-map";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
@@ -25,6 +26,10 @@ type EntityDetail = {
     summary: string | null;
     time_text: string | null;
     event_type: string | null;
+    location_text?: string | null;
+    role?: string | null;
+    relation_type?: string | null;
+    start_time?: string | null;
   }>;
   timeline_fragments: Array<{
     event_id: string;
@@ -223,6 +228,17 @@ export default function EntityStoryPage() {
             ) : null}
           </div>
         </Panel>
+
+        {entity ? (
+          <EntityTimelineWorkspace
+            entityId={entity.id}
+            displayName={entity.display_name}
+            entityType={entity.entity_type}
+            aliases={entity.aliases}
+            fragments={entity.timeline_fragments}
+            relatedEvents={entity.related_events}
+          />
+        ) : null}
 
         <Panel className="p-6" tone="default">
           <p className="text-sm font-black uppercase tracking-[0.16em]">关联事件速览</p>

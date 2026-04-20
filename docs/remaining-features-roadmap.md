@@ -108,6 +108,12 @@ Delivered in the third slice:
 - event curation relation updates without delete-and-recreate in the UI flow
 - dedicated e2e coverage for mixed entity/event relation editing
 
+Delivered in the fourth slice:
+
+- event detail page now includes an association workspace for stepping through related events, shared participants, and review shortcuts
+- entity story page now includes a timeline workspace for stepping through people-related fragments and side-axis event echoes
+- graph-first navigation improved without changing existing review and curation governance flows
+
 Still missing:
 
 - broader graph canvas editing

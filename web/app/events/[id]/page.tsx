@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { EventAssociationWorkspace } from "@/components/event-association-workspace";
 import { EventConstellation } from "@/components/event-constellation";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
@@ -187,6 +188,18 @@ export default function EventDetailPage() {
             </div>
           ) : null}
         </Panel>
+
+        {event ? (
+          <EventAssociationWorkspace
+            eventId={event.id}
+            eventTitle={event.title}
+            eventSummary={event.summary ?? event.description ?? "等待事件摘要。"}
+            timeText={event.time_text}
+            locationText={event.location_text}
+            participants={event.participants}
+            relatedEvents={event.related_events}
+          />
+        ) : null}
       </main>
     </AuthGate>
   );
