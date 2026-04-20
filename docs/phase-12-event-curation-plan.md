@@ -53,7 +53,7 @@ The page supports:
 ## Consistency Rules
 
 - manual edits do not overwrite raw assets or extraction runs
-- participant edits update both `event_entities` and the mirrored participant relation rows
+- participant edits update canonical `event_entities` rows only
 - event field edits keep `timeline_items` aligned for title, summary, display time, sort time, and time precision
 - relation management uses the existing `relations` table and is scoped to the current user
 

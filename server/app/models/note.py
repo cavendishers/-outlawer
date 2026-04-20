@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +32,5 @@ class NoteChunk(Base, IdMixin, TimestampMixin):
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
-    embedding_vector: Mapped[list[float] | None] = mapped_column(Vector(8), nullable=True)
 
     note = relationship("Note", back_populates="chunks")

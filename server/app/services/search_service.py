@@ -1,13 +1,14 @@
 from math import sqrt
 
-from sqlalchemy import String, cast, or_, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.embedding import Embedding
-from app.models.entity import Entity
+from app.models.entity import Entity, EntityAlias
 from app.models.event import Event
 from app.models.extraction import MergeCandidate
 from app.models.note import Note
+from app.services.entity_alias_service import build_entity_alias_map
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -63,10 +64,19 @@ def search_entities(db: Session, user_id: str, q: str, *, limit: int) -> list[di
                 Entity.display_name.ilike(pattern),
                 Entity.canonical_name.ilike(pattern),
                 Entity.description.ilike(pattern),
-                cast(Entity.alias_json, String).ilike(pattern),
+                exists(
+                    select(EntityAlias.id).where(
+                        EntityAlias.entity_id == Entity.id,
+                        or_(
+                            EntityAlias.alias.ilike(pattern),
+                            EntityAlias.normalized_alias.ilike(pattern),
+                        ),
+                    )
+                ),
             ),
         )
     ).all()
+    alias_map = build_entity_alias_map(db, entities)
     items = [
         {
             "id": entity.id,
@@ -74,11 +84,11 @@ def search_entities(db: Session, user_id: str, q: str, *, limit: int) -> list[di
             "canonical_name": entity.canonical_name,
             "entity_type": entity.entity_type,
             "description": entity.description,
-            "aliases": entity.alias_json,
+            "aliases": alias_map.get(entity.id, []),
             "confidence_score": entity.confidence_score,
             "href": f"/story/entity/{entity.id}",
             "search_type": "entity",
-            "score": keyword_score(q, entity.display_name, entity.canonical_name, entity.description, *entity.alias_json),
+            "score": keyword_score(q, entity.display_name, entity.canonical_name, entity.description, *alias_map.get(entity.id, [])),
         }
         for entity in entities
     ]

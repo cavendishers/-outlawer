@@ -119,6 +119,7 @@ def process_note(db: Session, job_id: str) -> None:
 
 
 def mark_job_failed(db: Session, job_id: str, message: str) -> None:
+    db.rollback()
     job = db.get(AIJob, job_id)
     note = db.get(Note, job.target_id) if job else None
     if job:

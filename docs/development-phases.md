@@ -16,7 +16,7 @@ Status values to use:
 
 ## Latest Verification
 
-Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
+Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
 
 - `python3 -m compileall server/app` -> passed
 - `python3 server/scripts/e2e_api_flow.py --phase phase1` -> passed
@@ -42,6 +42,41 @@ Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/api/test_health.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed with search, review, and curation response-contract coverage
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, image semantic derivative verification, audio context derivative verification, and operations API detail verification
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head` -> passed with migration `20260420_04_source_of_truth_cleanup`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed after Phase A source-of-truth cleanup
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase A source-of-truth cleanup
+
+## Architecture Blueprint Track
+
+### Phase A: Source-of-truth cleanup
+
+Status: `DONE`
+
+Verified on `2026-04-21`
+
+Work items:
+
+- move canonical alias writes and reads to `entity_aliases`
+- centralize note, entity, and event vectors in `embeddings`
+- remove `note_chunks.embedding_vector`
+- stop duplicating canonical participant facts into `relations(participates_in)`
+- add uniqueness constraints for alias, participant, and embedding truth boundaries
+
+Completion criteria:
+
+- alias governance and read models query `entity_aliases`
+- vector writes use `embeddings` only
+- `event_entities` remains the canonical participant fact store
+- migration applies cleanly and e2e flow stays green
+
+Documents updated after completion:
+
+- `README.md`
+- `docs/architecture-v2-blueprint.md`
+- `docs/current-system-overview.md`
+- `docs/database-design.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/development-phases.md`
 
 ## Phase 0: Foundation and Conventions
 

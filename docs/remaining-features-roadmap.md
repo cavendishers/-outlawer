@@ -10,7 +10,7 @@ It is intended to answer one question clearly:
 
 ## Current Snapshot
 
-Current status as of `2026-04-20`:
+Current status as of `2026-04-21`:
 
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
@@ -379,21 +379,23 @@ These are not direct user-facing features, but they still block future capabilit
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
-Problem:
+Resolved:
 
-- `alias_json` and `entity_aliases` both exist, but the system has not fully chosen one canonical path yet
+- `entity_aliases` is now the canonical alias store
+- `alias_json` is transitional cache/display data only
 
 ### Embedding Storage Consolidation
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
-Problem:
+Resolved:
 
-- `note_chunks.embedding_vector` still overlaps conceptually with the dedicated `embeddings` table
+- vectors now persist through `embeddings`
+- `note_chunks.embedding_vector` has been removed
 
 ### Merge Candidate Actions
 
@@ -409,23 +411,23 @@ Problem:
 
 If the goal is product value rather than pure architecture cleanup, the best next order is:
 
-1. entity and event review workflow
+1. extraction replay and versioned reprocessing
 2. graph editing and knowledge curation
 3. multimodal quality upgrade
-4. extraction replay and versioned reprocessing
-5. back-office operations surface
-6. API schema completion and read-side service cleanup
-7. collaboration and permissions
+4. back-office operations surface
+5. API schema completion and read-side service cleanup
+6. collaboration and permissions
+7. mobile experience
 
 ## Recommendation
 
 If we want the next phase to make the product feel materially more complete, the best next target is:
 
-- `Entity And Event Review Workflow`
+- `Extraction Replay And Versioned Reprocessing`
 
 Reason:
 
-- it directly improves graph quality
-- it reduces extraction noise
-- it unlocks trustworthy long-term knowledge accumulation
+- Phase A source-of-truth cleanup is done, so the next architectural multiplier is stronger version metadata and replay governance
+- it reduces future projection ambiguity before more graph depth is added
+- it keeps later graph and multimodal work on top of a safer replay model
 - it pairs naturally with the graph views that already exist

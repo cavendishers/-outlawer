@@ -12,6 +12,8 @@ from app.models.extraction import ExtractionEvidence, MergeCandidate
 from app.models.note import Note, NoteChunk
 from app.models.raw_asset import RawAsset
 from app.models.style_view import StyleView
+from app.services.embedding_service import upsert_embedding
+from app.services.entity_alias_service import upsert_entity_alias_value
 from app.utils.text import text_to_vector
 
 
@@ -134,7 +136,7 @@ def upsert_entity_from_payload(db: Session, user_id: str, payload: dict) -> Enti
         canonical_name=payload["canonical_name"],
         display_name=payload["name"],
         description=payload.get("description"),
-        alias_json=payload.get("aliases", []),
+        alias_json=[],
         normalized_name=normalized_name,
         confidence_score=payload.get("confidence"),
         first_seen_at=datetime.now(UTC),
@@ -263,15 +265,18 @@ def persist_extraction_projection(
         chunk_index=0,
         content=text,
         token_count=len(text),
-        embedding_vector=payload["embedding"],
     )
     db.add(note_chunk)
     clear_note_projection(db, note.id)
+    db.flush()
 
     temp_entity_map: dict[str, str] = {}
     for entity_payload in payload["entities"]:
         entity = upsert_entity_from_payload(db, note.user_id, entity_payload)
         clear_entity_projection(db, entity.id)
+        db.flush()
+        for alias in entity_payload.get("aliases", []):
+            upsert_entity_alias_value(db, entity=entity, alias=alias, alias_type="extracted")
         temp_entity_map[entity_payload["temp_id"]] = entity.id
         db.add(
             NoteEntity(
@@ -298,7 +303,7 @@ def persist_extraction_projection(
             )
         )
         entity_vector = text_to_vector(entity.display_name)
-        db.merge(Embedding(owner_type="entity", owner_id=entity.id, vector=entity_vector, model_name="heuristic-v1"))
+        upsert_embedding(db, owner_type="entity", owner_id=entity.id, vector=entity_vector, model_name="heuristic-v1")
         replace_merge_candidates(
             db,
             user_id=note.user_id,
@@ -312,6 +317,7 @@ def persist_extraction_projection(
     event_payload = payload["events"][0]
     event = upsert_event_from_payload(db, note.user_id, note.id, event_payload)
     clear_event_projection(db, event.id)
+    db.flush()
     db.add(
         NoteEvent(
             note_id=note.id,
@@ -361,6 +367,9 @@ def persist_extraction_projection(
     for relation_payload in payload["relations"]:
         source_ref = relation_payload["source_ref"]
         target_ref = relation_payload["target_ref"]
+        relation_type = relation_payload["relation_type"]
+        if relation_type == "participates_in" and {source_ref["type"], target_ref["type"]} == {"entity", "event"}:
+            continue
         source_id = resolve_relation_object_id(source_ref, object_id_map, note.id)
         target_id = resolve_relation_object_id(target_ref, object_id_map, note.id)
         if source_id and target_id:
@@ -369,7 +378,7 @@ def persist_extraction_projection(
                     user_id=note.user_id,
                     source_type=source_ref["type"],
                     source_id=source_id,
-                    relation_type=relation_payload["relation_type"],
+                    relation_type=relation_type,
                     target_type=target_ref["type"],
                     target_id=target_id,
                     evidence_count=max(1, len(relation_payload.get("evidence", []))),
@@ -386,8 +395,8 @@ def persist_extraction_projection(
                         source_asset_id=asset.id,
                         target_type="relation",
                         target_id=source_id,
-                        field_name=relation_payload["relation_type"],
-                        evidence_text=evidence.get("text") or relation_payload["relation_type"],
+                        field_name=relation_type,
+                        evidence_text=evidence.get("text") or relation_type,
                         evidence_offset_start=evidence.get("start"),
                         evidence_offset_end=evidence.get("end"),
                         extractor_name=payload["source"]["extractor_name"],
@@ -411,9 +420,9 @@ def persist_extraction_projection(
         )
     )
 
-    db.add(Embedding(owner_type="note", owner_id=note.id, vector=payload["embedding"], model_name="heuristic-v1"))
+    upsert_embedding(db, owner_type="note", owner_id=note.id, vector=payload["embedding"], model_name="heuristic-v1")
     event_vector = text_to_vector(event.title)
-    db.add(Embedding(owner_type="event", owner_id=event.id, vector=event_vector, model_name="heuristic-v1"))
+    upsert_embedding(db, owner_type="event", owner_id=event.id, vector=event_vector, model_name="heuristic-v1")
     replace_merge_candidates(
         db,
         user_id=note.user_id,

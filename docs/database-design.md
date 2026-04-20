@@ -114,14 +114,12 @@ note_id
 chunk_index
 content
 token_count
-embedding_vector
 created_at
 ```
 
 Notes:
 
-- `embedding_vector` is acceptable as a transitional MVP field
-- long term, embeddings should be centralized in the `embeddings` table only
+- note chunk text stays canonical for search and replay, but vectors now live in the dedicated `embeddings` table
 
 ## Entity and Event Modeling
 
@@ -151,7 +149,8 @@ Notes:
 - `display_name` is the preferred UI label
 - `normalized_name` supports matching and de-duplication
 - `first_seen_at` and `last_seen_at` should be stored as timezone-aware datetimes, not strings
-- `alias_json` is acceptable for MVP display payloads, but a dedicated alias table is the preferred long-term source of truth
+- `alias_json` is transitional cache/display data only
+- `entity_aliases` is the canonical alias source of truth
 
 ### entity_aliases
 
@@ -166,7 +165,7 @@ created_at
 
 Notes:
 
-- recommended as the long-term canonical alias store
+- canonical alias store
 - `alias_type`: extracted, manual, imported
 
 ### events

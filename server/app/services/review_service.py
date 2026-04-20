@@ -15,11 +15,9 @@ from app.models.extraction import ExtractionEvidence, MergeCandidate
 from app.models.note import Note
 from app.models.review import EntityMergeHistory, EventMergeHistory, ReviewAction
 from app.models.style_view import StyleView
+from app.services.entity_alias_service import list_entity_alias_rows, list_entity_alias_values, upsert_entity_alias_value
 from app.services.event_query_service import list_event_participants
 from app.services.graph_service import get_related_events_for_event, get_timeline_fragments_for_entity
-from app.utils.text import normalize_name
-
-
 def list_merge_candidates(
     db: Session,
     *,
@@ -91,7 +89,7 @@ def get_entity_review_context(db: Session, *, user_id: str, entity_id: str) -> d
     ).all()
 
     return {
-        "entity": serialize_entity(entity),
+        "entity": serialize_entity(entity, aliases=list_entity_alias_values(db, entity)),
         "aliases": [
             {
                 "id": alias.id,
@@ -203,7 +201,7 @@ def confirm_entity_alias(
     )
     db.commit()
     db.refresh(entity)
-    return {"entity_id": entity.id, "aliases": entity.alias_json}
+    return {"entity_id": entity.id, "aliases": list_entity_alias_values(db, entity)}
 
 
 def accept_merge_candidate(
@@ -379,7 +377,7 @@ def merge_entities(db: Session, *, user_id: str, survivor: Entity, merged: Entit
             payload_json={
                 "survivor_display_name": survivor.display_name,
                 "merged_display_name": merged.display_name,
-                "merged_aliases": merged.alias_json,
+                "merged_aliases": list_entity_alias_values(db, merged),
             },
         )
     )
@@ -492,7 +490,7 @@ def build_object_summary(db: Session, object_type: str, object_id: str, *, user_
             "label": entity.display_name,
             "href": f"/review/entities/{entity.id}",
             "stats": {"related_note_count": note_count, "related_event_count": event_count},
-            "data": serialize_entity(entity),
+            "data": serialize_entity(entity, aliases=list_entity_alias_values(db, entity)),
         }
     if object_type == "event":
         event = db.get(Event, object_id)
@@ -522,38 +520,11 @@ def build_object_summary(db: Session, object_type: str, object_id: str, *, user_
 
 
 def ensure_entity_alias(db: Session, entity: Entity, alias: str, *, alias_type: str) -> None:
-    cleaned = alias.strip()
-    if not cleaned:
-        return
-    normalized = normalize_name(cleaned)
-    if not normalized:
-        return
-    existing = db.scalar(
-        select(EntityAlias).where(
-            EntityAlias.entity_id == entity.id,
-            EntityAlias.normalized_alias == normalized,
-        )
-    )
-    if existing is None:
-        db.add(
-            EntityAlias(
-                entity_id=entity.id,
-                alias=cleaned,
-                normalized_alias=normalized,
-                alias_type=alias_type,
-            )
-        )
-    alias_list = list(entity.alias_json or [])
-    if cleaned not in alias_list and cleaned not in {entity.display_name, entity.canonical_name}:
-        alias_list.append(cleaned)
-        entity.alias_json = alias_list
-        db.add(entity)
+    upsert_entity_alias_value(db, entity=entity, alias=alias, alias_type=alias_type)
 
 
 def add_aliases_from_entity(db: Session, survivor: Entity, merged: Entity, *, alias_type: str) -> None:
-    alias_values = [merged.display_name, merged.canonical_name, *(merged.alias_json or [])]
-    merged_aliases = db.scalars(select(EntityAlias).where(EntityAlias.entity_id == merged.id)).all()
-    alias_values.extend(alias.alias for alias in merged_aliases)
+    alias_values = [merged.display_name, merged.canonical_name, *list_entity_alias_values(db, merged)]
     for value in alias_values:
         ensure_entity_alias(db, survivor, value, alias_type=alias_type)
 
@@ -589,13 +560,13 @@ def dedupe_embedding_owner(db: Session, *, owner_type: str, survivor_id: str, me
     merged_embeddings = db.scalars(
         select(Embedding).where(Embedding.owner_type == owner_type, Embedding.owner_id == merged_id)
     ).all()
-    if survivor_embeddings:
-        for embedding in merged_embeddings:
+    survivor_by_model = {embedding.model_name: embedding for embedding in survivor_embeddings}
+    for embedding in merged_embeddings:
+        if embedding.model_name in survivor_by_model:
             db.delete(embedding)
-    else:
-        for embedding in merged_embeddings:
-            embedding.owner_id = survivor_id
-            db.add(embedding)
+            continue
+        embedding.owner_id = survivor_id
+        db.add(embedding)
 
 
 def rewrite_merge_candidates(db: Session, *, user_id: str, object_type: str, survivor_id: str, merged_id: str) -> None:
@@ -641,9 +612,9 @@ def dedupe_note_events(db: Session, event_id: str) -> None:
 
 def dedupe_event_entities_for_entity(db: Session, entity_id: str) -> None:
     rows = db.scalars(select(EventEntity).where(EventEntity.entity_id == entity_id).order_by(EventEntity.created_at.asc())).all()
-    seen: set[tuple[str, str, str | None, str]] = set()
+    seen: set[tuple[str, str]] = set()
     for row in rows:
-        key = (row.event_id, row.entity_id, row.role, row.relation_type)
+        key = (row.event_id, row.entity_id)
         if key in seen:
             db.delete(row)
             continue
@@ -652,9 +623,9 @@ def dedupe_event_entities_for_entity(db: Session, entity_id: str) -> None:
 
 def dedupe_event_entities_for_event(db: Session, event_id: str) -> None:
     rows = db.scalars(select(EventEntity).where(EventEntity.event_id == event_id).order_by(EventEntity.created_at.asc())).all()
-    seen: set[tuple[str, str, str | None, str]] = set()
+    seen: set[tuple[str, str]] = set()
     for row in rows:
-        key = (row.event_id, row.entity_id, row.role, row.relation_type)
+        key = (row.event_id, row.entity_id)
         if key in seen:
             db.delete(row)
             continue
@@ -662,17 +633,13 @@ def dedupe_event_entities_for_event(db: Session, event_id: str) -> None:
 
 
 def dedupe_entity_aliases(db: Session, entity: Entity) -> None:
-    rows = db.scalars(select(EntityAlias).where(EntityAlias.entity_id == entity.id).order_by(EntityAlias.created_at.asc())).all()
+    rows = list_entity_alias_rows(db, entity.id)
     seen: set[str] = set()
-    alias_values: list[str] = []
     for row in rows:
         if row.normalized_alias in seen:
             db.delete(row)
             continue
         seen.add(row.normalized_alias)
-        alias_values.append(row.alias)
-    entity.alias_json = [alias for alias in alias_values if alias not in {entity.display_name, entity.canonical_name}]
-    db.add(entity)
 
 
 def dedupe_timeline_items(db: Session, event_id: str) -> None:

@@ -79,14 +79,14 @@ def serialize_job(job: AIJob, *, include_result: bool = False) -> dict:
     return payload
 
 
-def serialize_entity(entity: Entity) -> dict:
+def serialize_entity(entity: Entity, *, aliases: list[str] | None = None) -> dict:
     return {
         "id": entity.id,
         "entity_type": entity.entity_type,
         "canonical_name": entity.canonical_name,
         "display_name": entity.display_name,
         "description": entity.description,
-        "aliases": entity.alias_json,
+        "aliases": aliases or [],
         "status": entity.status,
         "confidence_score": entity.confidence_score,
         "first_seen_at": isoformat(entity.first_seen_at),

@@ -12,6 +12,7 @@ from app.models.event import Event, TimelineItem
 from app.models.note import Note
 from app.models.review import ReviewAction
 from app.models.style_view import StyleView
+from app.services.entity_alias_service import list_entity_alias_rows, list_entity_alias_values, upsert_entity_alias_value
 from app.services.entity_query_service import list_related_events_for_entity
 from app.services.event_query_service import list_event_participants
 from app.services.graph_service import get_timeline_fragments_for_entity
@@ -51,7 +52,7 @@ def get_entity_curation_context(db: Session, *, user_id: str, entity_id: str) ->
     note_count = int(db.scalar(select(func.count()).select_from(NoteEntity).where(NoteEntity.entity_id == entity.id)) or 0)
 
     return {
-        "entity": serialize_entity(entity),
+        "entity": serialize_entity(entity, aliases=list_entity_alias_values(db, entity)),
         "aliases": aliases,
         "related_events": related_events,
         "relations": relations,
@@ -89,7 +90,6 @@ def update_entity(
             setattr(entity, field, parse_optional_datetime(value))
 
     entity.normalized_name = normalize_name(entity.canonical_name)
-    compact_entity_alias_json(entity)
     db.add(entity)
     sync_entity_style_view_titles(db, entity)
     log_curation_action(
@@ -104,7 +104,7 @@ def update_entity(
     )
     db.commit()
     db.refresh(entity)
-    return serialize_entity(entity)
+    return serialize_entity(entity, aliases=list_entity_alias_values(db, entity))
 
 
 def add_entity_alias(
@@ -121,29 +121,14 @@ def add_entity_alias(
     if not normalized:
         raise ValueError("Alias is required")
 
-    row = db.scalar(
-        select(EntityAlias).where(
-            EntityAlias.entity_id == entity.id,
-            EntityAlias.normalized_alias == normalized,
-        )
+    row = upsert_entity_alias_value(
+        db,
+        entity=entity,
+        alias=cleaned,
+        alias_type=clean_optional_string(alias_type) or "manual",
     )
     if row is None:
-        row = EntityAlias(
-            entity_id=entity.id,
-            alias=cleaned,
-            normalized_alias=normalized,
-            alias_type=clean_optional_string(alias_type) or "manual",
-        )
-    else:
-        row.alias = cleaned
-        row.alias_type = clean_optional_string(alias_type) or row.alias_type or "manual"
-    db.add(row)
-
-    alias_list = list(entity.alias_json or [])
-    if cleaned not in alias_list and cleaned not in {entity.display_name, entity.canonical_name}:
-        alias_list.append(cleaned)
-        entity.alias_json = alias_list
-        db.add(entity)
+        raise ValueError("Alias conflicts with current canonical or display name")
 
     log_curation_action(
         db,
@@ -168,8 +153,6 @@ def remove_entity_alias(db: Session, *, user_id: str, entity_id: str, alias_id: 
 
     removed_value = alias.alias
     db.delete(alias)
-    entity.alias_json = [value for value in list(entity.alias_json or []) if normalize_name(value) != alias.normalized_alias]
-    db.add(entity)
     log_curation_action(
         db,
         user_id=user_id,
@@ -271,7 +254,6 @@ def upsert_event_participant(
         row.relation_type = normalized_relation_type
     db.add(row)
 
-    sync_participant_relation(db, user_id=user_id, entity=entity, event=event, relation_type=row.relation_type)
     db.commit()
     return {
         "event_id": event.id,
@@ -301,7 +283,8 @@ def remove_event_participant(db: Session, *, user_id: str, event_id: str, entity
         )
     ).all()
     for relation in relations:
-        db.delete(relation)
+        if is_hidden_participant_relation(relation):
+            db.delete(relation)
 
     db.commit()
     return {"event_id": event.id, "entity_id": entity.id, "status": "removed"}
@@ -682,7 +665,7 @@ def get_owned_entity(db: Session, *, user_id: str, entity_id: str) -> Entity:
 
 
 def build_entity_aliases(db: Session, entity_id: str) -> list[dict[str, Any]]:
-    rows = db.scalars(select(EntityAlias).where(EntityAlias.entity_id == entity_id).order_by(EntityAlias.created_at.asc())).all()
+    rows = list_entity_alias_rows(db, entity_id)
     return [serialize_entity_alias(row) for row in rows]
 
 
@@ -776,7 +759,7 @@ def get_owned_object_summary(
             "label": entity.display_name,
             "subtitle": entity.entity_type,
             "href": f"/story/entity/{entity.id}",
-            "data": serialize_entity(entity),
+            "data": serialize_entity(entity, aliases=list_entity_alias_values(db, entity)),
         }
     if object_type == "event":
         event = db.get(Event, object_id)
@@ -837,52 +820,6 @@ def sync_entity_style_view_titles(db: Session, entity: Entity) -> None:
     for row in rows:
         row.title = f"人物档案：{entity.display_name}"
         db.add(row)
-
-
-def sync_participant_relation(db: Session, *, user_id: str, entity: Entity, event: Event, relation_type: str) -> None:
-    rows = db.scalars(
-        select(Relation).where(
-            Relation.user_id == user_id,
-            Relation.source_type == "entity",
-            Relation.source_id == entity.id,
-            Relation.target_type == "event",
-            Relation.target_id == event.id,
-        )
-    ).all()
-    keeper = rows[0] if rows else None
-    if keeper is None:
-        keeper = Relation(
-            user_id=user_id,
-            source_type="entity",
-            source_id=entity.id,
-            relation_type=relation_type,
-            target_type="event",
-            target_id=event.id,
-            evidence_count=1,
-            meta_json={"source": "curation_participant"},
-        )
-    else:
-        keeper.relation_type = relation_type
-        keeper.meta_json = {"source": "curation_participant"}
-    db.add(keeper)
-    for row in rows[1:]:
-        db.delete(row)
-
-
-def compact_entity_alias_json(entity: Entity) -> None:
-    alias_values: list[str] = []
-    seen: set[str] = set()
-    reserved = {normalize_name(entity.display_name), normalize_name(entity.canonical_name)}
-    for alias in list(entity.alias_json or []):
-        cleaned = clean_optional_string(alias)
-        if cleaned is None:
-            continue
-        normalized = normalize_name(cleaned)
-        if not normalized or normalized in seen or normalized in reserved:
-            continue
-        seen.add(normalized)
-        alias_values.append(cleaned)
-    entity.alias_json = alias_values
 
 
 def log_curation_action(

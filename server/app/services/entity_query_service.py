@@ -9,6 +9,7 @@ from app.api.serializers import isoformat, serialize_entity
 from app.core.pagination import PageParams, paginate_query
 from app.models.entity import Entity, EventEntity
 from app.models.event import Event
+from app.services.entity_alias_service import build_entity_alias_map, list_entity_alias_values
 from app.services.graph_service import get_timeline_fragments_for_entity
 
 
@@ -22,7 +23,8 @@ def get_owned_entity(db: Session, *, user_id: str, entity_id: str) -> Entity:
 def list_entities(db: Session, *, user_id: str, params: PageParams) -> tuple[list[dict[str, Any]], int]:
     query = select(Entity).where(Entity.user_id == user_id).order_by(Entity.updated_at.desc())
     entities, total = paginate_query(db, query, params)
-    return [serialize_entity(entity) for entity in entities], total
+    alias_map = build_entity_alias_map(db, entities)
+    return [serialize_entity(entity, aliases=alias_map.get(entity.id, [])) for entity in entities], total
 
 
 def list_related_events_for_entity(db: Session, *, user_id: str, entity_id: str) -> list[dict[str, Any]]:
@@ -63,7 +65,7 @@ def get_entity_detail(db: Session, *, user_id: str, entity_id: str) -> dict[str,
     entity = get_owned_entity(db, user_id=user_id, entity_id=entity_id)
     related_events = list_related_events_for_entity(db, user_id=user_id, entity_id=entity.id)
     return {
-        **serialize_entity(entity),
+        **serialize_entity(entity, aliases=list_entity_alias_values(db, entity)),
         "related_events": related_events,
         "timeline_fragments": get_timeline_fragments_for_entity(db, user_id, entity.id),
     }

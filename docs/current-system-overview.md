@@ -1,6 +1,6 @@
 # Current System Overview
 
-Last updated: `2026-04-20`
+Last updated: `2026-04-21`
 
 ## Purpose
 
@@ -125,6 +125,8 @@ sequenceDiagram
 - `DONE`: Auth, asset, job, note, entity, event, timeline, and story-view core read APIs now publish explicit response schemas, including pagination envelopes, graph overview payloads, and extraction replay diff structures.
 - `DONE`: Search, review, and curation aggregation APIs now also publish explicit response schemas for unified search, merge-candidate review, review context, curation context, and relation/participant edit results.
 - `DONE`: Note, entity, event, and timeline read APIs now compose payloads through dedicated query services instead of route-level query assembly.
+- `DONE`: Phase A source-of-truth cleanup is now applied. `entity_aliases` is the canonical alias store, `embeddings` is the canonical vector store, and `event_entities` is the canonical participant store.
+- `DONE`: Participant facts are no longer duplicated into `relations(participates_in)`, which keeps graph semantics cleaner for future governance and replay.
 - `DONE`: Event detail and entity story pages now include a first graph-workspace slice for event associations and people timeline fragments.
 - `DONE`: Phase 26 Slice A now adds a shared `/graph` workspace route and `/api/v1/graph/workspace` read model so event, entity, and overview anchors can enter one unified graph shell.
 - `DONE`: Phase 26 Slice B now adds URL-driven node focus, a unified node inspector, and `/api/v1/graph/nodes/{node_type}/{node_id}` detail payloads so graph navigation can stay inside one workspace.
@@ -136,17 +138,18 @@ sequenceDiagram
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
-2. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
-3. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
-4. `LOW`: Plugin and integration system for external importers and third-party sync.
-5. `LOW`: Mobile-first ingestion and browsing experience.
+1. `MEDIUM`: Extraction/projection versioning is still incomplete. Source-of-truth cleanup is done, but model/prompt/schema registry and projection-version records are still missing.
+2. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
+3. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
+4. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
+5. `LOW`: Plugin and integration system for external importers and third-party sync.
+6. `LOW`: Mobile-first ingestion and browsing experience.
 
 ## Next Development Direction
 
-The next implementation slice should return to the remaining graph-depth gap. The expected scope is:
+The next implementation slice should move into blueprint Phase B while preserving the current graph/product surface. The expected scope is:
 
-- continue toward broader canvas-native graph editing beyond the current inspector-driven inline forms
-- consider saved viewpoints, bookmarked graph focus, or richer neighborhood refresh if they materially improve the workflow
+- enrich `extraction_runs` with stronger model, prompt, schema, and projection version metadata
+- make replay/apply history more explicit as a versioned projection workflow instead of a best-effort overwrite
 - preserve the existing review and curation governance APIs instead of duplicating write rules
-- keep `/api/v1/graph/*` and `/api/v1/operations/*` response schemas explicit in OpenAPI
+- keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI

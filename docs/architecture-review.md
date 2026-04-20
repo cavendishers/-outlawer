@@ -43,8 +43,9 @@ This iteration keeps the current stack and improves the internal structure so fu
 ### Data Model
 
 - `entities.first_seen_at` and `entities.last_seen_at` were stored as strings
-- aliases exist in both `alias_json` and `entity_aliases`, but usage is not unified yet
-- `note_chunks.embedding_vector` overlaps conceptually with the centralized `embeddings` table
+- `alias_json` still exists, but it is now transitional cache data while `entity_aliases` is canonical
+- vectors are now centralized in `embeddings`
+- participant facts are safest when they stay canonical in `event_entities` rather than being mirrored into generic `relations`
 
 ### Frontend Contract
 
@@ -113,6 +114,9 @@ Recommended long-term shape:
 - key list endpoints standardized on pagination metadata
 - entity first/last seen fields converted to real timestamp columns with Alembic migration
 - pipeline orchestration split so raw asset text derivation and graph projection writes are no longer embedded in one large service file
+- alias reads and writes now flow through `entity_aliases`
+- note chunk vectors were removed and vector truth now lives in `embeddings`
+- participant duplication into `relations(participates_in)` was removed so event participation stays canonical in `event_entities`
 
 ## Recommended Next Refactors
 
@@ -123,10 +127,10 @@ Recommended long-term shape:
 
 ### Next
 
-- move alias writes from `alias_json` into `entity_aliases`
-- treat `alias_json` as cache/display data only, or remove it entirely
-- migrate note chunk embeddings into the central `embeddings` table
-- add explicit merge-review endpoints instead of read-only candidate listing
+- enrich extraction and projection version metadata
+- treat `alias_json` as cache/display data only until it can be removed entirely
+- extend centralized embeddings with richer metadata when retrieval needs it
+- keep tightening replay-safe projection boundaries
 
 ### Later
 

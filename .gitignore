@@ -4,5 +4,6 @@ web/.env
 web/.env.local
 web/.next
 web/node_modules
+*.tsbuildinfo
 __pycache__/
 *.pyc
