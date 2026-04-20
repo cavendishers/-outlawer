@@ -83,6 +83,7 @@ Current implementation progress:
 - Slice C is now in place with inline participant editing for event nodes plus inline relation add/update/remove for event and entity nodes inside the shared graph workspace
 - Slice D is now in place with timeline-backbone rail navigation and workspace view filters so people and event flows can stay inside one shared graph shell
 - Slice E is now in place with graph-workspace loading skeletons, empty-state fallback, mobile focus emphasis, and clearer inline validation / mutation feedback
+- the next graph-depth step is now started with edge spotlighting, so visible relations can be focused directly instead of only being inferred from node cards
 
 ## Priority-ordered Next Work
 

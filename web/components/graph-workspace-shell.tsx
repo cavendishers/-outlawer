@@ -181,6 +181,10 @@ type PositionedNode = GraphNode & {
 
 type GraphWorkspaceViewMode = "all" | "events" | "people" | "timeline";
 
+function edgeKey(edge: GraphEdge): string {
+  return `${edge.source_id}-${edge.target_id}-${edge.edge_type}-${edge.label}`;
+}
+
 function toneForNode(node: GraphNode): PositionedNode["tone"] {
   if (node.is_anchor) return "neon";
   if (node.node_type === "event") return "peach";
@@ -243,6 +247,7 @@ export function GraphWorkspaceShell({
   onRemoveRelation,
 }: GraphWorkspaceShellProps) {
   const [viewMode, setViewMode] = useState<GraphWorkspaceViewMode>("all");
+  const [selectedEdgeKey, setSelectedEdgeKey] = useState("");
 
   const allPositionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
@@ -322,6 +327,9 @@ export function GraphWorkspaceShell({
 
   const activeNode = positionedNodes.find((node) => node.id === activeNodeId) ?? positionedNodes[0] ?? null;
   const nodeMap = new Map(positionedNodes.map((node) => [node.id, node]));
+  const selectedEdge = visibleEdges.find((edge) => edgeKey(edge) === selectedEdgeKey) ?? null;
+  const selectedEdgeSource = selectedEdge ? nodeMap.get(selectedEdge.source_id) ?? null : null;
+  const selectedEdgeTarget = selectedEdge ? nodeMap.get(selectedEdge.target_id) ?? null : null;
   const relatedEdges = activeNode
     ? visibleEdges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
     : [];
@@ -331,6 +339,13 @@ export function GraphWorkspaceShell({
   const effectiveActions = nodeDetail?.anchor_actions?.length
     ? [...(activeNode?.inspector.actions ?? []), ...nodeDetail.anchor_actions]
     : activeNode?.inspector.actions ?? [];
+
+  useEffect(() => {
+    if (!selectedEdgeKey) return;
+    if (!visibleEdges.some((edge) => edgeKey(edge) === selectedEdgeKey)) {
+      setSelectedEdgeKey("");
+    }
+  }, [selectedEdgeKey, visibleEdges]);
 
   if (!nodes.length) {
     return (
@@ -427,26 +442,38 @@ export function GraphWorkspaceShell({
           </div>
 
           <div className="relative hidden h-[36rem] overflow-hidden border-4 border-ink bg-white md:block">
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <rect x="0" y="0" width="100" height="100" fill="#fffdf5" />
               <circle cx="50" cy="48" r="18" fill="#fff3c2" opacity="0.42" />
-              {edges.map((edge) => {
+              {visibleEdges.map((edge) => {
                 const source = nodeMap.get(edge.source_id);
                 const target = nodeMap.get(edge.target_id);
                 if (!source || !target) return null;
                 const active = activeNodeId ? edge.source_id === activeNodeId || edge.target_id === activeNodeId : false;
+                const selected = selectedEdgeKey === edgeKey(edge);
                 return (
-                  <line
-                    key={`${edge.source_id}-${edge.target_id}-${edge.edge_type}`}
-                    x1={source.x}
-                    y1={source.y}
-                    x2={target.x}
-                    y2={target.y}
-                    stroke="#0f172a"
-                    strokeWidth={Math.max(0.22, edge.weight * 0.85)}
-                    strokeDasharray={edge.edge_type === "relates_to" ? "1.8 1.2" : undefined}
-                    opacity={activeNodeId ? (active ? 0.96 : 0.22) : 0.62}
-                  />
+                  <g key={edgeKey(edge)}>
+                    <line
+                      x1={source.x}
+                      y1={source.y}
+                      x2={target.x}
+                      y2={target.y}
+                      stroke={selected ? "#d8ff19" : "#0f172a"}
+                      strokeWidth={selected ? Math.max(0.55, edge.weight * 1.2) : Math.max(0.22, edge.weight * 0.85)}
+                      strokeDasharray={edge.edge_type === "relates_to" ? "1.8 1.2" : undefined}
+                      opacity={selected ? 1 : activeNodeId ? (active ? 0.96 : 0.22) : 0.62}
+                    />
+                    <line
+                      x1={source.x}
+                      y1={source.y}
+                      x2={target.x}
+                      y2={target.y}
+                      stroke="transparent"
+                      strokeWidth={6}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedEdgeKey(edgeKey(edge))}
+                    />
+                  </g>
                 );
               })}
               {positionedNodes.map((node) => (
@@ -484,6 +511,72 @@ export function GraphWorkspaceShell({
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="mt-5 border-4 border-ink bg-paper p-4 shadow-brutal">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em]">连线聚焦</p>
+              <span className="brutal-chip">{visibleEdges.length} visible edges</span>
+            </div>
+            {selectedEdge && selectedEdgeSource && selectedEdgeTarget ? (
+              <div className="mt-4 border-4 border-ink bg-neon px-4 py-4 shadow-brutal">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                  {selectedEdge.edge_type} / weight {selectedEdge.weight.toFixed(2)}
+                </p>
+                <p className="mt-2 text-lg font-black leading-tight">
+                  {selectedEdgeSource.label} → {selectedEdgeTarget.label}
+                </p>
+                <p className="mt-2 text-sm font-bold leading-relaxed">{selectedEdge.label}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => onSelectNode(selectedEdgeSource.id)} className="brutal-action brutal-action-secondary">
+                    聚焦源节点
+                  </button>
+                  <button type="button" onClick={() => onSelectNode(selectedEdgeTarget.id)} className="brutal-action brutal-action-secondary">
+                    聚焦目标节点
+                  </button>
+                  <button type="button" onClick={() => setSelectedEdgeKey("")} className="brutal-action brutal-action-secondary">
+                    清除连线焦点
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 border-4 border-dashed border-ink bg-white px-4 py-4">
+                <p className="text-sm font-bold leading-relaxed">
+                  点击画布中的任意连线，或在下方列表里挑一条连线，就能快速查看这条关系串起了哪两个节点。
+                </p>
+              </div>
+            )}
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {visibleEdges.map((edge) => {
+                const source = nodeMap.get(edge.source_id);
+                const target = nodeMap.get(edge.target_id);
+                if (!source || !target) return null;
+                const selected = selectedEdgeKey === edgeKey(edge);
+                return (
+                  <button
+                    key={`${edgeKey(edge)}-card`}
+                    type="button"
+                    onClick={() => setSelectedEdgeKey(edgeKey(edge))}
+                    className={`border-4 border-ink px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1 ${
+                      selected ? "bg-neon" : "bg-white"
+                    }`}
+                  >
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                      {edge.edge_type} / weight {edge.weight.toFixed(2)}
+                    </p>
+                    <p className="mt-2 text-base font-black leading-tight">
+                      {source.label} → {target.label}
+                    </p>
+                    <p className="mt-2 text-sm font-bold leading-relaxed">{edge.label}</p>
+                  </button>
+                );
+              })}
+              {visibleEdges.length === 0 ? (
+                <div className="border-4 border-dashed border-ink bg-white px-4 py-4 text-sm font-bold">
+                  当前视图模式下没有可聚焦的连线。
+                </div>
+              ) : null}
             </div>
           </div>
 

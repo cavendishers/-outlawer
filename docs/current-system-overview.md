@@ -131,6 +131,7 @@ sequenceDiagram
 - `DONE`: Phase 26 Slice C now adds inline relation editing and event-participant editing inside the shared graph workspace, with local refresh after each mutation.
 - `DONE`: Phase 26 Slice D now fuses timeline backbone navigation into the shared graph shell with mode filters and in-workspace timeline-node selection.
 - `DONE`: Phase 26 Slice E now hardens the shared graph workspace with skeleton loading states, empty-state fallback, stronger mobile focus cues, and clearer inline validation feedback.
+- `DONE`: Phase 26 now also lets visible graph edges be focused as first-class interaction targets, with edge spotlight cards and quick node pivot actions inside the shared workspace.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority

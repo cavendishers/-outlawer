@@ -134,6 +134,12 @@ Delivered in the seventh slice:
 - people-timeline and event-network navigation now coexist in one workspace instead of being split between separate page-local affordances
 - the shared graph workspace now has skeleton loading panels, empty-state fallback, active-node emphasis, and clearer inline validation / busy feedback for daily use
 
+Delivered in the eighth slice:
+
+- visible graph edges can now be focused directly inside the shared workspace instead of only being implied by node cards
+- graph workspace now exposes an edge spotlight rail with quick pivot actions to either endpoint
+- broader graph exploration has started moving from node-only inspection toward graph-native relation inspection
+
 Still missing:
 
 - broader graph canvas editing

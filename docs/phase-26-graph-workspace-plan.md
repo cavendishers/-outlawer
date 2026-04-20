@@ -445,6 +445,7 @@ Status update on `2026-04-20`:
 - stacked and mobile node cards now emphasize the active focus more clearly
 - inline governance forms now explain when the current neighborhood has no participant or relation targets available
 - long-running inline mutations now expose explicit `写入中...` feedback instead of ambiguous button labels
+- visible graph edges can now be spotlighted directly from the shared workspace, with endpoint pivot actions that move the flow beyond node-only inspection
 
 ## API And Service Implementation Notes
 
