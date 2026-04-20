@@ -438,6 +438,14 @@ Acceptance:
 
 - workspace remains readable and operable on both desktop and mobile
 
+Status update on `2026-04-20`:
+
+- graph workspace loading now uses skeleton panels for both route-entry and node-detail refresh states
+- workspace now exposes a dedicated empty state when the current neighborhood has no graph nodes to render
+- stacked and mobile node cards now emphasize the active focus more clearly
+- inline governance forms now explain when the current neighborhood has no participant or relation targets available
+- long-running inline mutations now expose explicit `写入中...` feedback instead of ambiguous button labels
+
 ## API And Service Implementation Notes
 
 ### Backend service seam

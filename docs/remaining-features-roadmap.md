@@ -132,16 +132,18 @@ Delivered in the seventh slice:
 - the shared graph workspace now includes `all / events / people / timeline` viewing modes
 - timeline backbone segments are now selectable inside the shared graph shell and can focus event nodes without route thrash
 - people-timeline and event-network navigation now coexist in one workspace instead of being split between separate page-local affordances
+- the shared graph workspace now has skeleton loading panels, empty-state fallback, active-node emphasis, and clearer inline validation / busy feedback for daily use
 
 Still missing:
 
 - broader graph canvas editing
+- deeper operations dashboards with stronger backlog, failure, and operator-routing signals
 
 Suggested deliverables:
 
-- graph workspace UX hardening on loading, empty, and error states
 - broader graph canvas editing
-- richer neighborhood refresh and validation feedback
+- queue and backlog signals in the operations console
+- richer operator routing into review, curation, and note detail pages
 
 Acceptance target:
 

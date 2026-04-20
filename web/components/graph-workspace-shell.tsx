@@ -332,6 +332,26 @@ export function GraphWorkspaceShell({
     ? [...(activeNode?.inspector.actions ?? []), ...nodeDetail.anchor_actions]
     : activeNode?.inspector.actions ?? [];
 
+  if (!nodes.length) {
+    return (
+      <Panel className="p-6 md:p-8" tone="default">
+        <p className="text-sm font-black uppercase tracking-[0.2em]">Graph Workspace</p>
+        <p className="mt-4 text-3xl font-black">当前没有可展开的图谱节点</p>
+        <p className="mt-4 text-base font-semibold leading-relaxed">
+          这个工作台还没有足够的事件或人物节点形成图谱。你可以先回到档案、人物或事件列表补充内容，再重新进入这里。
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/library" className="brutal-action brutal-action-secondary">
+            返回档案库
+          </Link>
+          <Link href="/timeline" className="brutal-action brutal-action-primary">
+            打开时间线
+          </Link>
+        </div>
+      </Panel>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -394,11 +414,14 @@ export function GraphWorkspaceShell({
                 type="button"
                 onClick={() => onSelectNode(node.id)}
                 className={`border-4 border-ink px-4 py-4 text-left shadow-brutal ${
+                  activeNodeId === node.id ? "-translate-y-1" : ""
+                } ${
                   node.is_anchor ? "bg-neon" : node.node_type === "event" ? "bg-peach" : "bg-aqua"
                 }`}
               >
                 <p className="text-[11px] font-black uppercase tracking-[0.14em]">{node.subtitle}</p>
                 <p className="mt-2 text-xl font-black">{node.label}</p>
+                {activeNodeId === node.id ? <p className="mt-2 text-xs font-black uppercase tracking-[0.14em]">当前焦点</p> : null}
               </button>
             ))}
           </div>
@@ -451,6 +474,8 @@ export function GraphWorkspaceShell({
                     type="button"
                     onClick={() => onSelectNode(node.id)}
                     className={`w-32 border-4 border-ink px-3 py-3 text-left shadow-brutal transition-transform hover:-translate-y-1 xl:w-36 ${
+                      activeNodeId === node.id ? "-translate-y-1" : ""
+                    } ${
                       node.tone === "neon" ? "bg-neon" : node.tone === "peach" ? "bg-peach" : node.tone === "aqua" ? "bg-aqua" : "bg-paper"
                     }`}
                   >
@@ -493,9 +518,14 @@ export function GraphWorkspaceShell({
                   </div>
                 ))}
                 {nodeDetailLoading ? (
-                  <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
-                    <p className="text-sm font-bold">正在展开当前节点的邻接详情...</p>
-                  </div>
+                  <>
+                    <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
+                      <div className="h-4 w-32 animate-pulse bg-white" />
+                    </div>
+                    <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
+                      <div className="h-4 w-40 animate-pulse bg-white" />
+                    </div>
+                  </>
                 ) : null}
                 <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
                   <p className="text-xs font-black uppercase tracking-[0.16em]">邻接连线</p>
@@ -913,7 +943,8 @@ function InlineGraphEditRail({
 
       {curationLoading ? (
         <div className="border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
-          <p className="text-sm font-bold">正在载入当前节点的治理上下文...</p>
+          <div className="h-4 w-36 animate-pulse bg-white" />
+          <div className="mt-3 h-16 animate-pulse border-4 border-dashed border-ink bg-white" />
         </div>
       ) : null}
 
@@ -979,6 +1010,11 @@ function InlineGraphEditRail({
                   <option value="">当前工作台没有可补充的人物节点</option>
                 )}
               </select>
+              {participantOptions.length === 0 ? (
+                <p className="text-sm font-bold leading-relaxed">
+                  当前图谱邻域里没有更多人物节点可加为参与者。需要更大范围的补充时，请打开完整校对页。
+                </p>
+              ) : null}
               <input
                 value={participantForm.role ?? ""}
                 onChange={(event) => setParticipantForm((current) => ({ ...current, role: event.target.value }))}
@@ -997,7 +1033,7 @@ function InlineGraphEditRail({
                 disabled={!participantOptions.length || !participantForm.entity_id || mutationBusyKey === `participant-submit-${curationContext.event.id}`}
                 className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
-                添加参与者
+                {mutationBusyKey === `participant-submit-${curationContext.event.id}` ? "写入中..." : "添加参与者"}
               </button>
             </div>
           </div>
@@ -1105,6 +1141,11 @@ function InlineGraphEditRail({
                 <option value="">当前工作台没有可选的关系目标</option>
               )}
             </select>
+            {relationTargetOptions.length === 0 ? (
+              <p className="text-sm font-bold leading-relaxed">
+                当前视图模式下没有可写入的关系目标。你可以切回 `全部` 或 `事件 / 人物` 视图，或者进入完整校对页。
+              </p>
+            ) : null}
 
             <select
               value={relationForm.relation_type}
@@ -1125,7 +1166,11 @@ function InlineGraphEditRail({
                 disabled={!relationForm.related_id || mutationBusyKey === `relation-submit-${curationContext.kind}-${curationContext.kind === "event" ? curationContext.event.id : curationContext.entity.id}`}
                 className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {editingRelationId ? "更新关系" : "添加关系"}
+                {mutationBusyKey === `relation-submit-${curationContext.kind}-${curationContext.kind === "event" ? curationContext.event.id : curationContext.entity.id}`
+                  ? "写入中..."
+                  : editingRelationId
+                    ? "更新关系"
+                    : "添加关系"}
               </button>
               {editingRelationId ? (
                 <button type="button" onClick={cancelRelationEdit} className="brutal-action brutal-action-secondary">

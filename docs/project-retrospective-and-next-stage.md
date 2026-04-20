@@ -82,10 +82,11 @@ Current implementation progress:
 - Slice B is now in place with a node-detail endpoint, URL-synced node focus, connected-node inspection, and timeline-context navigation inside the shared graph workspace
 - Slice C is now in place with inline participant editing for event nodes plus inline relation add/update/remove for event and entity nodes inside the shared graph workspace
 - Slice D is now in place with timeline-backbone rail navigation and workspace view filters so people and event flows can stay inside one shared graph shell
+- Slice E is now in place with graph-workspace loading skeletons, empty-state fallback, mobile focus emphasis, and clearer inline validation / mutation feedback
 
 ## Priority-ordered Next Work
 
-1. harden the shared graph workspace for mobile, loading, and validation feedback
-2. deepen operations dashboards and operator workflows
+1. deepen operations dashboards and operator workflows
+2. continue toward broader canvas-native graph editing when the graph workflow becomes the highest leverage gap again
 3. plan multi-user and permissions model
 4. design plugin and external importer seams

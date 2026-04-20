@@ -487,6 +487,26 @@ export function GraphPageLoadingPanel() {
       <p className="mt-4 text-base font-semibold leading-relaxed">
         系统正在组合事件、人物和时间线邻域，准备进入统一工作台。
       </p>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="border-4 border-ink bg-white p-4 shadow-brutal">
+          <div className="h-5 w-32 animate-pulse bg-paper" />
+          <div className="mt-4 h-64 animate-pulse border-4 border-dashed border-ink bg-paper" />
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="h-20 animate-pulse border-4 border-ink bg-paper" />
+            <div className="h-20 animate-pulse border-4 border-ink bg-paper" />
+            <div className="h-20 animate-pulse border-4 border-ink bg-paper" />
+          </div>
+        </div>
+        <div className="border-4 border-ink bg-white p-4 shadow-brutal">
+          <div className="h-5 w-28 animate-pulse bg-paper" />
+          <div className="mt-4 h-8 w-40 animate-pulse bg-paper" />
+          <div className="mt-4 space-y-3">
+            <div className="h-16 animate-pulse border-4 border-ink bg-paper" />
+            <div className="h-16 animate-pulse border-4 border-ink bg-paper" />
+            <div className="h-16 animate-pulse border-4 border-ink bg-paper" />
+          </div>
+        </div>
+      </div>
     </Panel>
   );
 }

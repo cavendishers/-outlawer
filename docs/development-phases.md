@@ -910,12 +910,12 @@ Current slice delivered:
 - inline graph edits now refresh the current workspace locally after each successful mutation and still preserve links to the full curation pages
 - shared graph workspace now includes `全部 / 事件 / 人物 / 时间主干` viewing modes
 - timeline backbone rail can now select visible event nodes directly inside the shared workspace instead of always leaving for detail pages
+- shared graph workspace now has skeleton loading states, a dedicated empty state, stronger active-node emphasis, and clearer inline validation feedback
 
 Remaining work:
 
-- harden loading, empty, and validation states for the shared graph workspace
-- improve mobile behavior for the graph workspace interaction rail
 - continue pushing graph editing toward a broader canvas-native experience after UX hardening
+- deepen operations dashboards and operator workflows as the next highest product gap
 
 Recommended next slices:
 
@@ -924,6 +924,7 @@ Recommended next slices:
 - Slice C: inline relation and participant editing
 - Slice D: timeline backbone fused into the shared workspace
 - Slice E: mobile, loading, and UX hardening
+- Slice F: broader canvas-native graph editing, if graph depth becomes the next priority again
 
 Phase 26 documents to update manually as work proceeds:
 
@@ -951,3 +952,6 @@ Slice A follow-up verification:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed with inline graph governance rail enabled
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after timeline backbone fusion
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed with timeline backbone rail and workspace view filters enabled
+- `cd web && npx tsc --noEmit` -> passed after Slice E UX hardening
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Slice E UX hardening
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Slice E UX hardening
