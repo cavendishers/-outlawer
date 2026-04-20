@@ -890,6 +890,12 @@ Goal:
 
 - evolve graph browsing and correction from form-driven pages into a stronger graph workspace
 
+Execution plan:
+
+- detailed implementation plan is tracked in `docs/phase-26-graph-workspace-plan.md`
+- Phase 26 should be delivered in slices rather than one large graph rewrite
+- each slice should preserve the existing review and curation governance flow
+
 Current slice delivered:
 
 - event detail page now includes an association workspace with an anchor event panel, vertical related-event rail, and focused node inspector
@@ -901,6 +907,23 @@ Remaining work:
 - expand event-to-event association editing beyond read-only stepping
 - add a stronger shared graph canvas for entity/event cross-editing
 - make graph editing feel less like separate pages and more like one connected workspace
+
+Recommended next slices:
+
+- Slice A: shared `/graph` route and workspace shell
+- Slice B: shared inspector and node-focused navigation
+- Slice C: inline relation and participant editing
+- Slice D: timeline backbone fused into the shared workspace
+- Slice E: mobile, loading, and UX hardening
+
+Phase 26 documents to update manually as work proceeds:
+
+- `README.md`
+- `docs/current-system-overview.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/phase-26-graph-workspace-plan.md`
+- `docs/development-phases.md`
 
 Verification completed for current slice:
 

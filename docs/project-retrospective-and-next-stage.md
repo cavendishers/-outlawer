@@ -72,6 +72,10 @@ This is the best next step because the architecture seams are now cleaner, which
 - add graph-first navigation and editing affordances beyond flat forms
 - preserve current curation and review governance while improving the graph mental model
 
+Detailed implementation plan:
+
+- [`docs/phase-26-graph-workspace-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-26-graph-workspace-plan.md)
+
 ## Priority-ordered Next Work
 
 1. expand graph editing into a canvas-oriented workflow
