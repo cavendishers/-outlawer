@@ -812,3 +812,34 @@ Documents updated manually after completion:
 - `docs/remaining-features-roadmap.md`
 - `docs/project-retrospective-and-next-stage.md`
 - `docs/development-phases.md`
+
+## Phase 24: Strongly Typed API Contracts
+
+Status: `DONE`
+
+Goal:
+
+- replace open-ended request dictionaries on core write APIs with explicit Pydantic contracts
+
+Work items:
+
+- type note create and extraction replay write requests
+- type merge review and alias confirmation write requests
+- type entity/event curation write requests
+- add OpenAPI contract tests that lock request bodies to explicit schemas
+
+Completion criteria:
+
+- core note, review, and curation write endpoints no longer accept generic `dict` payloads
+- OpenAPI publishes explicit request body schemas for those endpoints
+- automated verification proves the existing review and curation flows still work end to end
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/development-phases.md`

@@ -25,6 +25,31 @@ Standard response body:
 - Long-running AI tasks return a tracked `job_id`.
 - Upload and processing are separate operations.
 - Job status values are `pending`, `running`, `completed`, and `failed`.
+- Core write endpoints should publish explicit Pydantic request schemas in OpenAPI and reject undeclared body fields.
+
+## Typed Write Request Contracts
+
+The following write surfaces are now schema-driven rather than generic dictionary payloads:
+
+- `POST /api/v1/notes` uses `NoteCreateRequest`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply` uses `NoteReplayActionRequest`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/approve` uses `NoteReplayActionRequest`
+- `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject` uses `NoteReplayActionRequest`
+- `PATCH /api/v1/curation/entities/{entity_id}` uses `EntityUpdateRequest`
+- `POST /api/v1/curation/entities/{entity_id}/aliases` uses `EntityAliasCreateRequest`
+- `POST /api/v1/curation/entities/{entity_id}/relations` uses `EntityRelationUpsertRequest`
+- `PATCH /api/v1/curation/entities/{entity_id}/relations/{relation_id}` uses `EntityRelationUpdateRequest`
+- `PATCH /api/v1/curation/events/{event_id}` uses `EventUpdateRequest`
+- `POST /api/v1/curation/events/{event_id}/participants` uses `EventParticipantUpsertRequest`
+- `POST /api/v1/curation/events/{event_id}/relations` uses `EventRelationUpsertRequest`
+- `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}` uses `EventRelationUpdateRequest`
+- `POST /api/v1/review/merge-candidates/{candidate_id}/reject` uses `MergeCandidateRejectRequest`
+- `POST /api/v1/review/merge-candidates/{candidate_id}/accept` uses `MergeCandidateAcceptRequest`
+- `POST /api/v1/review/entities/{entity_id}/aliases` uses `ConfirmEntityAliasRequest`
+
+Verification rule:
+
+- `server/tests/api/test_openapi_contracts.py` should keep asserting these request bodies stay explicit and non-open-ended.
 
 ## Pagination Parameters
 

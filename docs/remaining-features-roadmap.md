@@ -260,16 +260,18 @@ Why it matters:
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
-What is missing:
+Delivered:
 
-- explicit Pydantic request/response schemas for all public APIs
-- consistent typed contracts between frontend and backend
+- note create and replay actions now use explicit Pydantic request schemas
+- review accept/reject and alias-confirm actions now use explicit request schemas
+- entity/event curation write endpoints now use explicit request schemas
+- OpenAPI contract tests now lock these request bodies against regressing back to open-ended payloads
 
 Why it matters:
 
-- current system works, but long-term API evolution is riskier without fully explicit schemas
+- contract drift risk is lower now that the broadest write surfaces are schema-driven
 
 ### 7. Query Service Layer For Read Models
 

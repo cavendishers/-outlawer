@@ -24,12 +24,13 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - graph quality work started early enough to avoid an extraction-only dead end
 - replay and audit capabilities were added incrementally instead of waiting for a big-bang redesign
 - docs, roadmap, and phase tracking stayed synchronized with implementation
+- broad write surfaces now have explicit API contracts, which lowers frontend/backend drift risk
 
 ## What Went Poorly
 
 - replay safety came later than it should have, so early reprocess behavior was too eager to overwrite current projections
 - multimodal prompt/version governance still needs stronger comparison tooling as prompts evolve
-- some APIs still rely on generic dictionaries rather than explicit request and response schemas
+- response models and some lower-priority endpoints still need the same level of explicit contract hardening as the main write surfaces
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
 - operations visibility now has a first dashboard, but deeper admin workflows and metrics are still thin
 - some route files still compose read models directly instead of using dedicated query services
@@ -43,7 +44,6 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 ### Platform and maintainability
 
-- strongly typed API contracts across public endpoints
 - dedicated read-model query services
 - deeper operations dashboard for jobs, assets, runs, and retries
 
@@ -57,24 +57,23 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 The next stage should be:
 
-- **Phase 24: Strongly Typed API Contracts**
+- **Phase 25: Query Service Layer For Read Models**
 
-This is the best next step because the product surface is now broad enough that implicit dictionaries are becoming the main source of ambiguity:
+This is the best next step because the request-side contracts are now much clearer, which makes the remaining route-level read composition the main architectural source of sprawl:
 
-- multiple endpoints still accept generic payload dictionaries
-- frontend pages increasingly depend on stable nullable and optional field behavior
-- stronger schemas will reduce regressions before later read-model and admin work expands further
+- note, entity, event, and timeline reads still mix query logic directly into route handlers
+- later operations work will be easier if read composition is centralized and reusable
+- graph-heavy pages are only going to get denser, so route files should stop owning read assembly
 
-## Phase 24 Scope
+## Phase 25 Scope
 
-- replace generic request dictionaries on core public endpoints with explicit Pydantic schemas
-- normalize response models for key read endpoints
-- document the contract changes in API docs without schema migrations
-- keep the current frontend working while tightening shape guarantees
+- move major read-side composition into dedicated query services
+- keep pagination and response envelopes stable while simplifying route files
+- document the read-model boundaries so future graph and operations features build on the same seam
 
 ## Priority-ordered Next Work
 
-1. tighten API contracts with explicit Pydantic schemas
-2. continue read-model query service extraction
-3. expand graph editing into a canvas-oriented workflow
+1. continue read-model query service extraction
+2. expand graph editing into a canvas-oriented workflow
+3. deepen operations dashboards and operator workflows
 4. plan multi-user and permissions model

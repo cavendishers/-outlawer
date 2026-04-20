@@ -2,6 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import DbSession, get_current_user
 from app.core.responses import ok
+from app.schemas.entity import (
+    EntityAliasCreateRequest,
+    EntityRelationUpdateRequest,
+    EntityRelationUpsertRequest,
+    EntityUpdateRequest,
+)
+from app.schemas.event import (
+    EventParticipantUpsertRequest,
+    EventRelationUpdateRequest,
+    EventRelationUpsertRequest,
+    EventUpdateRequest,
+)
 from app.services import curation_service
 
 router = APIRouter()
@@ -16,24 +28,31 @@ def get_entity_curation_context(entity_id: str, db: DbSession, user=Depends(get_
 
 
 @router.patch("/entities/{entity_id}")
-def update_entity(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def update_entity(entity_id: str, payload: EntityUpdateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.update_entity(db, user_id=user.id, entity_id=entity_id, payload=payload))
+        return ok(
+            curation_service.update_entity(
+                db,
+                user_id=user.id,
+                entity_id=entity_id,
+                payload=payload.model_dump(exclude_unset=True, mode="json"),
+            )
+        )
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/entities/{entity_id}/aliases")
-def add_entity_alias(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def add_entity_alias(entity_id: str, payload: EntityAliasCreateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(
             curation_service.add_entity_alias(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
-                alias=payload.get("alias") or "",
-                alias_type=payload.get("alias_type"),
+                alias=payload.alias,
+                alias_type=payload.alias_type,
             )
         )
     except ValueError as exc:
@@ -51,17 +70,22 @@ def remove_entity_alias(entity_id: str, alias_id: str, db: DbSession, user=Depen
 
 
 @router.post("/entities/{entity_id}/relations")
-def upsert_entity_relation(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def upsert_entity_relation(
+    entity_id: str,
+    payload: EntityRelationUpsertRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             curation_service.upsert_entity_relation(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
-                direction=payload.get("direction") or "",
-                related_type=payload.get("related_type") or "",
-                related_id=payload.get("related_id") or "",
-                relation_type=payload.get("relation_type") or "",
+                direction=payload.direction,
+                related_type=payload.related_type,
+                related_id=payload.related_id,
+                relation_type=payload.relation_type,
             )
         )
     except ValueError as exc:
@@ -70,7 +94,13 @@ def upsert_entity_relation(entity_id: str, payload: dict, db: DbSession, user=De
 
 
 @router.patch("/entities/{entity_id}/relations/{relation_id}")
-def update_entity_relation(entity_id: str, relation_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def update_entity_relation(
+    entity_id: str,
+    relation_id: str,
+    payload: EntityRelationUpdateRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             curation_service.update_entity_relation(
@@ -78,7 +108,7 @@ def update_entity_relation(entity_id: str, relation_id: str, payload: dict, db: 
                 user_id=user.id,
                 entity_id=entity_id,
                 relation_id=relation_id,
-                payload=payload,
+                payload=payload.model_dump(exclude_unset=True, mode="json"),
             )
         )
     except ValueError as exc:
@@ -104,25 +134,37 @@ def get_event_curation_context(event_id: str, db: DbSession, user=Depends(get_cu
 
 
 @router.patch("/events/{event_id}")
-def update_event(event_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def update_event(event_id: str, payload: EventUpdateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.update_event(db, user_id=user.id, event_id=event_id, payload=payload))
+        return ok(
+            curation_service.update_event(
+                db,
+                user_id=user.id,
+                event_id=event_id,
+                payload=payload.model_dump(exclude_unset=True, mode="json"),
+            )
+        )
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/events/{event_id}/participants")
-def upsert_event_participant(event_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def upsert_event_participant(
+    event_id: str,
+    payload: EventParticipantUpsertRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             curation_service.upsert_event_participant(
                 db,
                 user_id=user.id,
                 event_id=event_id,
-                entity_id=payload.get("entity_id") or "",
-                role=payload.get("role"),
-                relation_type=payload.get("relation_type"),
+                entity_id=payload.entity_id,
+                role=payload.role,
+                relation_type=payload.relation_type,
             )
         )
     except ValueError as exc:
@@ -140,17 +182,22 @@ def remove_event_participant(event_id: str, entity_id: str, db: DbSession, user=
 
 
 @router.post("/events/{event_id}/relations")
-def upsert_event_relation(event_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def upsert_event_relation(
+    event_id: str,
+    payload: EventRelationUpsertRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             curation_service.upsert_event_relation(
                 db,
                 user_id=user.id,
                 event_id=event_id,
-                direction=payload.get("direction") or "",
-                related_type=payload.get("related_type") or "",
-                related_id=payload.get("related_id") or "",
-                relation_type=payload.get("relation_type") or "",
+                direction=payload.direction,
+                related_type=payload.related_type,
+                related_id=payload.related_id,
+                relation_type=payload.relation_type,
             )
         )
     except ValueError as exc:
@@ -159,7 +206,13 @@ def upsert_event_relation(event_id: str, payload: dict, db: DbSession, user=Depe
 
 
 @router.patch("/events/{event_id}/relations/{relation_id}")
-def update_event_relation(event_id: str, relation_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def update_event_relation(
+    event_id: str,
+    relation_id: str,
+    payload: EventRelationUpdateRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             curation_service.update_event_relation(
@@ -167,7 +220,7 @@ def update_event_relation(event_id: str, relation_id: str, payload: dict, db: Db
                 user_id=user.id,
                 event_id=event_id,
                 relation_id=relation_id,
-                payload=payload,
+                payload=payload.model_dump(exclude_unset=True, mode="json"),
             )
         )
     except ValueError as exc:

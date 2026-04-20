@@ -43,7 +43,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `23` are implemented and verified in Docker.
+- Phase `0` through Phase `24` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -59,6 +59,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Image ingestion now preserves semantic derivative fields beyond OCR-only text, including scene, object, action, layout, and document-type hints.
 - Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
 - 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs。
+- note 创建/回放、review 审核、entity/event curation 写接口现在都使用显式 Pydantic 请求模型，并通过 OpenAPI 契约测试锁定字段边界。
 
 ## Quick Start
 
@@ -134,6 +135,7 @@ Verified on `2026-04-20`:
 ## API Conventions
 
 - Use REST endpoints under `/api/v1`.
+- Core write endpoints should use explicit Pydantic request schemas and forbid undeclared body fields.
 - Standard response shape:
 
 ```json

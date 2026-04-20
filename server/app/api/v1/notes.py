@@ -8,6 +8,7 @@ from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
+from app.schemas.note import NoteCreateRequest, NoteReplayActionRequest
 from app.services.asset_text_service import get_asset_text
 from app.services.extraction_run_service import (
     RUN_STATUS_REJECTED,
@@ -29,16 +30,15 @@ router = APIRouter()
 
 
 @router.post("")
-def create_note(payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
-    asset_id = payload.get("asset_id")
-    asset = db.get(RawAsset, asset_id)
+def create_note(payload: NoteCreateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
+    asset = db.get(RawAsset, payload.asset_id)
     if not asset or asset.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     note = Note(
         user_id=user.id,
         asset_id=asset.id,
-        title=payload.get("title") or asset.title,
+        title=payload.title or asset.title,
         status="processing",
     )
     db.add(note)
@@ -142,7 +142,7 @@ def apply_note_extraction_run(
     note_id: str,
     run_id: str,
     db: DbSession,
-    payload: dict | None = None,
+    payload: NoteReplayActionRequest | None = None,
     user=Depends(get_current_user),
 ) -> dict:
     note = db.get(Note, note_id)
@@ -160,7 +160,9 @@ def apply_note_extraction_run(
     text = get_asset_text(asset, db)
     if not text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No text available for replay")
-    operator_note = str((payload or {}).get("note") or "").strip() or None
+    operator_note = None
+    if payload is not None:
+        operator_note = str(payload.note or "").strip() or None
     projection_result = apply_extraction_run_projection(
         db,
         note=note,
@@ -196,7 +198,7 @@ def approve_note_extraction_run(
     note_id: str,
     run_id: str,
     db: DbSession,
-    payload: dict | None = None,
+    payload: NoteReplayActionRequest | None = None,
     user=Depends(get_current_user),
 ) -> dict:
     note = db.get(Note, note_id)
@@ -212,7 +214,9 @@ def approve_note_extraction_run(
     text = get_asset_text(asset, db)
     if not text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No text available for replay")
-    operator_note = str((payload or {}).get("note") or "").strip() or None
+    operator_note = None
+    if payload is not None:
+        operator_note = str(payload.note or "").strip() or None
     try:
         projection_result = approve_reviewable_extraction_run(
             db,
@@ -251,7 +255,7 @@ def reject_note_extraction_run(
     note_id: str,
     run_id: str,
     db: DbSession,
-    payload: dict | None = None,
+    payload: NoteReplayActionRequest | None = None,
     user=Depends(get_current_user),
 ) -> dict:
     note = db.get(Note, note_id)
@@ -260,7 +264,9 @@ def reject_note_extraction_run(
     run = get_extraction_run(db, user_id=user.id, note_id=note.id, run_id=run_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extraction run not found")
-    operator_note = str((payload or {}).get("note") or "").strip() or None
+    operator_note = None
+    if payload is not None:
+        operator_note = str(payload.note or "").strip() or None
     try:
         rejected_run = reject_reviewable_extraction_run(
             db,

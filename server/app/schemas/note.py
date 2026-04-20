@@ -1,9 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class NoteCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     asset_id: str
     title: str | None = None
+
+
+class NoteReplayActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str | None = None
 
 
 class NoteResponse(BaseModel):

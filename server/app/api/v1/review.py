@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import DbSession, get_current_user
 from app.core.pagination import normalize_page_params
 from app.core.responses import ok
+from app.schemas.review import ConfirmEntityAliasRequest, MergeCandidateAcceptRequest, MergeCandidateRejectRequest
 from app.services import review_service
 
 router = APIRouter()
@@ -39,15 +40,20 @@ def get_merge_candidate_detail(candidate_id: str, db: DbSession, user=Depends(ge
 
 
 @router.post("/merge-candidates/{candidate_id}/reject")
-def reject_merge_candidate(candidate_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def reject_merge_candidate(
+    candidate_id: str,
+    payload: MergeCandidateRejectRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             review_service.reject_merge_candidate(
                 db,
                 user_id=user.id,
                 candidate_id=candidate_id,
-                reason=payload.get("reason") or "rejected_by_user",
-                note=payload.get("note"),
+                reason=payload.reason,
+                note=payload.note,
             )
         )
     except ValueError as exc:
@@ -56,16 +62,21 @@ def reject_merge_candidate(candidate_id: str, payload: dict, db: DbSession, user
 
 
 @router.post("/merge-candidates/{candidate_id}/accept")
-def accept_merge_candidate(candidate_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
+def accept_merge_candidate(
+    candidate_id: str,
+    payload: MergeCandidateAcceptRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
     try:
         return ok(
             review_service.accept_merge_candidate(
                 db,
                 user_id=user.id,
                 candidate_id=candidate_id,
-                resolution=payload.get("resolution") or "merge",
-                survivor_id=payload.get("survivor_id"),
-                note=payload.get("note"),
+                resolution=payload.resolution,
+                survivor_id=payload.survivor_id,
+                note=payload.note,
             )
         )
     except ValueError as exc:
@@ -82,8 +93,13 @@ def get_entity_review_context(entity_id: str, db: DbSession, user=Depends(get_cu
 
 
 @router.post("/entities/{entity_id}/aliases")
-def confirm_entity_alias(entity_id: str, payload: dict, db: DbSession, user=Depends(get_current_user)) -> dict:
-    alias = (payload.get("alias") or "").strip()
+def confirm_entity_alias(
+    entity_id: str,
+    payload: ConfirmEntityAliasRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    alias = payload.alias.strip()
     if not alias:
         raise HTTPException(status_code=400, detail="Alias is required")
     try:
@@ -93,7 +109,7 @@ def confirm_entity_alias(entity_id: str, payload: dict, db: DbSession, user=Depe
                 user_id=user.id,
                 entity_id=entity_id,
                 alias=alias,
-                note=payload.get("note"),
+                note=payload.note,
             )
         )
     except ValueError as exc:
