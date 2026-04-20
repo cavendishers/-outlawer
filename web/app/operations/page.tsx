@@ -96,10 +96,75 @@ type ExtractionRunItem = {
   summary: ExtractionRunSummary;
 };
 
+type StatusCount = {
+  status: string;
+  count: number;
+};
+
+type OperationsOverview = {
+  jobs: {
+    total: number;
+    pending: number;
+    running: number;
+    failed: number;
+    completed: number;
+    by_status: StatusCount[];
+    recent_failed_jobs: JobItem[];
+  };
+  assets: {
+    total: number;
+    uploaded: number;
+    by_type: StatusCount[];
+  };
+  review: {
+    pending_total: number;
+    pending_entities: number;
+    pending_events: number;
+    recent_candidates: Array<{
+      id: string;
+      object_type: string;
+      status: string;
+      score: number;
+      source_label: string | null;
+      candidate_label: string | null;
+      href: string;
+    }>;
+  };
+  extraction: {
+    ready_for_review: number;
+    processing_notes: number;
+    recent_reviewable_runs: Array<{
+      run_id: string;
+      note_id: string;
+      note_title: string;
+      status: string;
+      extractor_name: string;
+      extractor_version: string;
+      created_at: string | null;
+      href: string;
+    }>;
+  };
+  activity: {
+    recent_actions: Array<{
+      id: string;
+      target_type: string;
+      target_id: string;
+      action_type: string;
+      status_before: string | null;
+      status_after: string | null;
+      created_at: string | null;
+      href: string;
+      href_label: string;
+      summary: string;
+    }>;
+  };
+};
+
 export default function OperationsPage() {
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [overview, setOverview] = useState<OperationsOverview | null>(null);
   const [jobTotal, setJobTotal] = useState(0);
   const [assetTotal, setAssetTotal] = useState(0);
   const [noteTotal, setNoteTotal] = useState(0);
@@ -118,14 +183,16 @@ export default function OperationsPage() {
   async function loadOverview() {
     setLoading(true);
     try {
-      const [jobData, assetData, noteData] = await Promise.all([
+      const [jobData, assetData, noteData, operationsData] = await Promise.all([
         apiFetch<ListResponse<JobItem>>("/jobs?page_size=16"),
         apiFetch<ListResponse<AssetItem>>("/assets?page_size=12"),
         apiFetch<ListResponse<NoteItem>>("/notes?page_size=12"),
+        apiFetch<OperationsOverview>("/operations/overview"),
       ]);
       setJobs(jobData.items);
       setAssets(assetData.items);
       setNotes(noteData.items);
+      setOverview(operationsData);
       setJobTotal(jobData.total);
       setAssetTotal(assetData.total);
       setNoteTotal(noteData.total);
@@ -174,9 +241,9 @@ export default function OperationsPage() {
     }
   }
 
-  const failedJobs = jobs.filter((job) => job.status === "failed");
-  const activeJobs = jobs.filter((job) => job.status === "pending" || job.status === "running");
-  const pendingRuns = runs.filter((run) => run.status === "ready_for_review");
+  const failedJobs = overview?.jobs.failed ?? jobs.filter((job) => job.status === "failed").length;
+  const activeJobs = overview ? overview.jobs.pending + overview.jobs.running : jobs.filter((job) => job.status === "pending" || job.status === "running").length;
+  const pendingRuns = overview?.extraction.ready_for_review ?? runs.filter((run) => run.status === "ready_for_review").length;
   const selectedNote = notes.find((note) => note.id === selectedNoteId);
 
   return (
@@ -191,11 +258,11 @@ export default function OperationsPage() {
             </p>
           </Panel>
 
-          <Panel className="p-6" tone={failedJobs.length ? "danger" : "success"}>
+          <Panel className="p-6" tone={failedJobs ? "danger" : "success"}>
             <p className="text-xs font-black uppercase tracking-[0.16em]">当前风险</p>
-            <p className="mt-3 text-5xl font-black">{failedJobs.length}</p>
+            <p className="mt-3 text-5xl font-black">{failedJobs}</p>
             <p className="mt-3 text-base font-bold leading-relaxed">
-              近 {jobs.length} 条任务里发现的失败任务数量。失败任务可以在下方任务详情里直接重试。
+              当前任务池中的失败任务数量。失败任务可以在下方任务详情里直接重试，待审草稿和 merge 候选也会在下方集中提示。
             </p>
             <button type="button" className="brutal-action brutal-action-secondary mt-5" onClick={loadOverview}>
               刷新后台
@@ -210,10 +277,127 @@ export default function OperationsPage() {
         ) : null}
 
         <section className="grid gap-4 md:grid-cols-4">
-          <MetricCard label="任务总数" value={jobTotal} description={`活跃 ${activeJobs.length} / 失败 ${failedJobs.length}`} tone="info" />
-          <MetricCard label="原始资产" value={assetTotal} description="文本、图片、音频、视频原始输入" tone="default" />
+          <MetricCard label="任务总数" value={overview?.jobs.total ?? jobTotal} description={`活跃 ${activeJobs} / 失败 ${failedJobs}`} tone="info" />
+          <MetricCard label="原始资产" value={overview?.assets.total ?? assetTotal} description="文本、图片、音频、视频原始输入" tone="default" />
           <MetricCard label="知识卷宗" value={noteTotal} description="已经创建或等待处理的 note" tone="story" />
-          <MetricCard label="待审草稿" value={pendingRuns.length} description="当前选中卷宗的抽取草稿" tone={pendingRuns.length ? "time" : "success"} />
+          <MetricCard label="待审草稿" value={pendingRuns} description="全局待审抽取草稿" tone={pendingRuns ? "time" : "success"} />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <Panel className="p-5" tone="danger">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black uppercase tracking-[0.16em]">Backlog Radar</p>
+              <Link href="/review" className="brutal-action text-sm">
+                打开审核队列
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <BacklogSignalCard
+                label="失败任务"
+                value={failedJobs}
+                description="优先检查失败 job 和错误信息"
+                tone={failedJobs ? "danger" : "success"}
+              />
+              <BacklogSignalCard
+                label="待审抽取"
+                value={overview?.extraction.ready_for_review ?? 0}
+                description="需要人工审批后才能成为新投影"
+                tone={overview?.extraction.ready_for_review ? "time" : "success"}
+              />
+              <BacklogSignalCard
+                label="待合并候选"
+                value={overview?.review.pending_total ?? 0}
+                description={`人物 ${overview?.review.pending_entities ?? 0} / 事件 ${overview?.review.pending_events ?? 0}`}
+                tone={overview?.review.pending_total ? "signal" : "success"}
+              />
+              <BacklogSignalCard
+                label="处理中卷宗"
+                value={overview?.extraction.processing_notes ?? 0}
+                description="仍在等待异步解析完成"
+                tone={overview?.extraction.processing_notes ? "info" : "success"}
+              />
+            </div>
+            <div className="mt-5 space-y-3">
+              {overview?.extraction.recent_reviewable_runs.length ? (
+                overview.extraction.recent_reviewable_runs.map((run) => (
+                  <Link key={run.run_id} href={run.href} className="surface-inset block border-4 border-ink p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.14em]">
+                        {run.extractor_name} / {run.extractor_version}
+                      </p>
+                      <StatusPill status={run.status} />
+                    </div>
+                    <p className="mt-3 text-lg font-black">{run.note_title}</p>
+                    <p className="mt-2 text-sm font-bold">{formatStamp(run.created_at)}</p>
+                  </Link>
+                ))
+              ) : (
+                <EmptyState text="当前没有待审抽取草稿。" />
+              )}
+            </div>
+          </Panel>
+
+          <Panel className="p-5" tone="paper">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">最近操作动作</p>
+            <div className="mt-5 space-y-3">
+              {overview?.activity.recent_actions.length ? (
+                overview.activity.recent_actions.map((item) => (
+                  <div key={item.id} className="surface-inset border-4 border-ink p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.14em]">
+                        {item.target_type} / {item.action_type}
+                      </p>
+                      <p className="text-xs font-black uppercase tracking-[0.12em]">{formatStamp(item.created_at)}</p>
+                    </div>
+                    <p className="mt-3 text-sm font-bold leading-relaxed">{item.summary}</p>
+                    <Link href={item.href} className="brutal-action brutal-action-secondary mt-4 text-sm">
+                      {item.href_label}
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <EmptyState text="当前还没有可追踪的审核或校对动作。" />
+              )}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <Panel className="p-5" tone="signal">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">待合并候选</p>
+            <div className="mt-5 space-y-3">
+              {overview?.review.recent_candidates.length ? (
+                overview.review.recent_candidates.map((candidate) => (
+                  <Link key={candidate.id} href={candidate.href} className="surface-inset block border-4 border-ink p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.14em]">
+                        {candidate.object_type} / {candidate.status}
+                      </p>
+                      <span className="brutal-chip">score {candidate.score.toFixed(2)}</span>
+                    </div>
+                    <p className="mt-3 text-base font-black">
+                      {candidate.source_label ?? "未知源对象"} ↔ {candidate.candidate_label ?? "未知候选对象"}
+                    </p>
+                  </Link>
+                ))
+              ) : (
+                <EmptyState text="当前没有待处理的 merge candidate。" />
+              )}
+            </div>
+          </Panel>
+
+          <Panel className="p-5" tone="default">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">资产类型分布</p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {(overview?.assets.by_type ?? []).map((item) => (
+                <div key={item.status} className="surface-inset border-4 border-ink p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.14em]">{item.status}</p>
+                  <p className="mt-3 text-3xl font-black">{item.count}</p>
+                </div>
+              ))}
+              {!overview?.assets.by_type.length ? <EmptyState text="当前还没有资产类型分布数据。" /> : null}
+            </div>
+          </Panel>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -435,6 +619,26 @@ function MetricCard({
     <Panel className="p-5" tone={tone}>
       <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
       <p className="mt-3 text-4xl font-black">{value}</p>
+      <p className="mt-3 text-sm font-bold leading-relaxed">{description}</p>
+    </Panel>
+  );
+}
+
+function BacklogSignalCard({
+  label,
+  value,
+  description,
+  tone,
+}: {
+  label: string;
+  value: number;
+  description: string;
+  tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger";
+}) {
+  return (
+    <Panel className="p-4" tone={tone}>
+      <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
+      <p className="mt-3 text-3xl font-black">{value}</p>
       <p className="mt-3 text-sm font-bold leading-relaxed">{description}</p>
     </Panel>
   );

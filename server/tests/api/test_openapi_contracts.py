@@ -254,3 +254,15 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "timeline_context",
         "anchor_actions",
     }
+
+
+def test_operations_overview_endpoint_publishes_explicit_response_model() -> None:
+    operations_schema = _response_data_schema("/api/v1/operations/overview", "get")
+
+    assert set(operations_schema["properties"]) == {
+        "jobs",
+        "assets",
+        "review",
+        "extraction",
+        "activity",
+    }

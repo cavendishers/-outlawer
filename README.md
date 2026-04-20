@@ -58,7 +58,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, trusted aliases, and entity-centered graph relations.
 - Image ingestion now preserves semantic derivative fields beyond OCR-only text, including scene, object, action, layout, and document-type hints.
 - Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
-- 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs。
+- 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs，并通过 `/api/v1/operations/overview` 汇总失败任务、待审抽取、待合并候选和最近操作动作。
 - note 创建/回放、review 审核、entity/event curation 写接口现在都使用显式 Pydantic 请求模型，并通过 OpenAPI 契约测试锁定字段边界。
 - auth、assets、jobs、notes、entities、events、timeline、story views 的核心响应模型也已经显式化，OpenAPI 可直接反映分页、详情、回放 diff 和图谱概览结构。
 - search、review、curation 的聚合响应也已经显式化，OpenAPI 现在能直接展示统一检索、merge candidate、review context、curation context 与关系编辑结果结构。

@@ -160,6 +160,10 @@ def main() -> None:
     assert "connected_nodes" in entity_node_detail
     overview_workspace = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers))
     assert overview_workspace["scope"] == "overview"
+    operations_overview = assert_ok(client.get(f"{args.base_url}/operations/overview", headers=headers))
+    assert operations_overview["jobs"]["total"] >= 1
+    assert operations_overview["assets"]["total"] >= 1
+    assert "recent_actions" in operations_overview["activity"]
 
     if args.phase == "phase3":
         print("Phase 3 e2e passed")

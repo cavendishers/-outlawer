@@ -72,6 +72,14 @@ When the async pipeline is unhealthy, inspect these first:
 3. `docker compose -f deploy/compose/docker-compose.dev.yml logs rabbitmq --tail=200`
 4. `docker compose -f deploy/compose/docker-compose.dev.yml logs postgres --tail=200`
 
+For product-level triage, open `/operations` in the web app. The operations console now summarizes:
+
+- failed and active jobs
+- reviewable extraction drafts
+- pending entity/event merge candidates
+- recent review and curation actions
+- routing links into note detail, review, and curation pages
+
 ## Release Smoke Checklist
 
 1. `docker compose -f deploy/compose/docker-compose.prod.yml config` succeeds.

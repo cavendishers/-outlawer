@@ -14,7 +14,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `25` are implemented and verified.
+- Phase `0` through Phase `25` are implemented and verified; Phase `26` slices A-E and Phase `27` are also implemented and verified, while broader graph canvas editing remains open.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.

@@ -137,13 +137,13 @@ Delivered in the seventh slice:
 Still missing:
 
 - broader graph canvas editing
-- deeper operations dashboards with stronger backlog, failure, and operator-routing signals
+- deeper operations dashboards beyond the current backlog and routing signals
 
 Suggested deliverables:
 
 - broader graph canvas editing
-- queue and backlog signals in the operations console
-- richer operator routing into review, curation, and note detail pages
+- saved viewpoints or stronger graph-neighborhood editing primitives
+- richer operator analytics around queue latency, asset actions, and admin workflows
 
 Acceptance target:
 
@@ -271,12 +271,18 @@ Delivered in the first slice:
 - asset detail now exposes derivative summaries and linked note refs for operator inspection
 - single-job detail now exposes payload and result data for runtime debugging
 
+Delivered in the second slice:
+
+- `/api/v1/operations/overview` now returns backlog-oriented operations signals instead of forcing the frontend to stitch them together
+- operations console now surfaces failed jobs, reviewable extraction drafts, pending merge candidates, recent operator actions, and asset type distribution in one place
+- operators now get direct routing links from backlog signals into note detail, review, and curation pages
+
 What is missing:
 
 - richer job monitoring dashboard
 - raw asset management actions
-- merge/review queue dashboard
 - queue analytics and operator metrics
+- broader admin workflows beyond monitoring and routing
 
 Why it matters:
 

@@ -915,7 +915,6 @@ Current slice delivered:
 Remaining work:
 
 - continue pushing graph editing toward a broader canvas-native experience after UX hardening
-- deepen operations dashboards and operator workflows as the next highest product gap
 
 Recommended next slices:
 
@@ -955,3 +954,43 @@ Slice A follow-up verification:
 - `cd web && npx tsc --noEmit` -> passed after Slice E UX hardening
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Slice E UX hardening
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Slice E UX hardening
+
+## Phase 27: Operations Console Deepening
+
+Status: `DONE`
+
+Goal:
+
+- turn the first operations page from a recent-list dashboard into a backlog-oriented operator console
+
+Work items:
+
+- add a dedicated `/api/v1/operations/overview` read endpoint for top-level operational signals
+- surface failed jobs, extraction-review backlog, merge-candidate backlog, asset type distribution, and recent operator activity in the web console
+- route operators directly from global signals into note detail, review, and curation pages
+- keep the new operations read model explicit in OpenAPI and covered by API e2e
+
+Completion criteria:
+
+- operators can see the main backlog and failure signals without stitching multiple list views together mentally
+- the operations console can route directly into the most relevant action pages
+- OpenAPI publishes an explicit response model for the new operations overview endpoint
+- full API e2e verifies the new operations overview surface
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/operations.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/development-phases.md`
+
+Verification completed for current slice:
+
+- `cd web && npx tsc --noEmit`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`

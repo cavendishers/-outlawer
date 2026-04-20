@@ -114,6 +114,7 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
 - `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`
 - `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`
+- `GET /api/v1/operations/overview` returns `Envelope[OperationsOverviewResponse]`
 
 Verification rules:
 
@@ -309,6 +310,16 @@ Responsibilities:
 - retry failed jobs
 - return payload and result details from single-job inspection
 - expose paginated job history for inbox and retry UIs
+
+### Operations
+
+- `GET /api/v1/operations/overview`
+
+Responsibilities:
+
+- aggregate failed-job alerts, raw asset type counts, extraction-review backlog, merge-candidate backlog, and recent operator actions
+- provide operator-routing links into note detail, review, and curation pages
+- keep the operations console from stitching together unrelated list endpoints for top-level health signals
 
 ### Story Views
 

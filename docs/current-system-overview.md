@@ -120,6 +120,7 @@ sequenceDiagram
 - `DONE`: Event curation page and API for event fields, participants, and event-centered relation add/update/remove.
 - `DONE`: Entity curation page and API for canonical/display fields, type, status, seen timestamps, alias governance, and entity-centered relation maintenance.
 - `DONE`: Operations dashboard foundation for jobs, retries, raw assets, derivative summaries, and note extraction-run inspection.
+- `DONE`: Operations console now has `/api/v1/operations/overview` and a backlog radar for failed jobs, reviewable extraction drafts, pending merge candidates, asset type distribution, and recent operator actions.
 - `DONE`: Core note replay, review, and curation write APIs now use explicit Pydantic request schemas with OpenAPI contract coverage.
 - `DONE`: Auth, asset, job, note, entity, event, timeline, and story-view core read APIs now publish explicit response schemas, including pagination envelopes, graph overview payloads, and extraction replay diff structures.
 - `DONE`: Search, review, and curation aggregation APIs now also publish explicit response schemas for unified search, merge-candidate review, review context, curation context, and relation/participant edit results.
@@ -135,16 +136,16 @@ sequenceDiagram
 ## Unimplemented Or Partial Capabilities By Priority
 
 1. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
-2. `MEDIUM`: Back-office operations depth is still incomplete. The first dashboard is in place, but queue analytics, merge/review dashboards, and broader admin workflows are still thin.
+2. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
 3. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
 4. `LOW`: Plugin and integration system for external importers and third-party sync.
 5. `LOW`: Mobile-first ingestion and browsing experience.
 
 ## Next Development Direction
 
-The next implementation slice should deepen operator workflows on top of the first operations dashboard. The expected scope is:
+The next implementation slice should return to the remaining graph-depth gap. The expected scope is:
 
-- add stronger queue and failure summaries beyond the current recent-job list
-- surface review and curation backlog signals from the operations console
-- connect operators from backend health signals into the right review, curation, and note detail pages
-- keep reusing explicit response schemas and query-service seams instead of slipping back into route-level data assembly
+- continue toward broader canvas-native graph editing beyond the current inspector-driven inline forms
+- consider saved viewpoints, bookmarked graph focus, or richer neighborhood refresh if they materially improve the workflow
+- preserve the existing review and curation governance APIs instead of duplicating write rules
+- keep `/api/v1/graph/*` and `/api/v1/operations/*` response schemas explicit in OpenAPI

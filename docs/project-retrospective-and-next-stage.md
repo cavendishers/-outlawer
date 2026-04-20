@@ -86,7 +86,7 @@ Current implementation progress:
 
 ## Priority-ordered Next Work
 
-1. deepen operations dashboards and operator workflows
-2. continue toward broader canvas-native graph editing when the graph workflow becomes the highest leverage gap again
+1. continue toward broader canvas-native graph editing when the graph workflow becomes the highest leverage gap again
+2. keep deepening operations dashboards where queue analytics, asset actions, or admin workflows are still thin
 3. plan multi-user and permissions model
 4. design plugin and external importer seams
