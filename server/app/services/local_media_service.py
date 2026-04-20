@@ -65,14 +65,44 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
             observed_actions=observed_actions,
         )
         parser_name = "local_tesseract_ocr"
+        speaker_hints = []
+        observed_topics = []
+        observed_decisions = []
+        observed_follow_ups = []
+        conversation_type = None
+        audio_segments = []
     elif asset_type == "audio":
-        text = extract_audio_text(content, mime_type)
+        audio_observation = extract_audio_observations(content, mime_type, title=title)
+        text = str(audio_observation.get("text") or "")
         normalized_text = normalize_media_text(text)
         source_attribution = build_source_attribution_from_text(
             source_type="audio_transcript",
             label="audio_transcript",
             text=normalized_text,
             confidence=0.68,
+        )
+        audio_segments = list(audio_observation.get("audio_segments") or [])
+        source_attribution.extend(build_source_attribution_from_audio_segments(audio_segments))
+        speaker_hints = dedupe_named_items(
+            [
+                *extract_people_candidates(normalized_text),
+                *normalize_multivalue_candidates(audio_observation.get("speaker_hints")),
+            ],
+            min_length=2,
+            max_items=6,
+        )
+        observed_topics = normalize_multivalue_candidates(audio_observation.get("observed_topics"))
+        observed_decisions = normalize_multivalue_candidates(audio_observation.get("observed_decisions"))
+        observed_follow_ups = normalize_multivalue_candidates(audio_observation.get("observed_follow_ups"))
+        conversation_type = str(audio_observation.get("conversation_type") or "").strip() or None
+        text = build_audio_semantic_canonical_text(
+            normalized_text=normalized_text,
+            conversation_type=conversation_type,
+            speaker_hints=speaker_hints,
+            observed_topics=observed_topics,
+            observed_decisions=observed_decisions,
+            observed_follow_ups=observed_follow_ups,
+            audio_segments=audio_segments,
         )
         parser_name = "local_vosk_asr"
         observed_scene = []
@@ -91,6 +121,12 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
         observed_actions = []
         document_type = None
         image_layout = None
+        speaker_hints = []
+        observed_topics = []
+        observed_decisions = []
+        observed_follow_ups = []
+        conversation_type = None
+        audio_segments = []
     else:
         return None
 
@@ -110,6 +146,12 @@ def build_local_media_derivative(asset_type: str, title: str, mime_type: str, co
         "observed_actions": observed_actions,
         "document_type": document_type,
         "image_layout": image_layout,
+        "speaker_hints": speaker_hints,
+        "observed_topics": observed_topics,
+        "observed_decisions": observed_decisions,
+        "observed_follow_ups": observed_follow_ups,
+        "conversation_type": conversation_type,
+        "audio_segments": audio_segments if asset_type == "audio" else [],
         "confidence": 0.68,
         "parsing_notes": f"{parser_name} generated normalized text from the uploaded media.",
         "parser_name": parser_name,
@@ -148,9 +190,13 @@ def extract_image_text(content: bytes, mime_type: str) -> str:
 
 
 def extract_audio_text(content: bytes, mime_type: str) -> str:
+    return str(extract_audio_observations(content, mime_type).get("text") or "")
+
+
+def extract_audio_observations(content: bytes, mime_type: str, *, title: str = "") -> dict[str, object]:
     settings = get_settings()
     if not shutil.which(settings.local_media_ffmpeg_bin):
-        return ""
+        return {"text": "", "audio_segments": []}
 
     with tempfile.TemporaryDirectory(prefix="outlawer-audio-") as tmpdir:
         tmp_path = Path(tmpdir)
@@ -178,14 +224,40 @@ def extract_audio_text(content: bytes, mime_type: str) -> str:
         )
         if convert.returncode != 0:
             logger.warning("local_audio_ffmpeg_failed code=%s stderr=%s", convert.returncode, convert.stderr.strip())
-            return ""
+            return {"text": "", "audio_segments": []}
 
-        transcripts: list[str] = []
+        observations: list[dict[str, object]] = []
         for language in ("zh", "en"):
-            transcript = transcribe_wave_file(pcm_path, language)
-            if transcript:
-                transcripts.append(transcript)
-        return choose_best_transcript(transcripts)
+            transcript = transcribe_wave_file_detailed(pcm_path, language)
+            if transcript.get("text"):
+                observations.append(transcript)
+
+        best = choose_best_audio_observation(observations)
+        normalized_text = normalize_media_text(str(best.get("text") or ""))
+        audio_segments = normalize_audio_segments(best.get("audio_segments"))
+        speaker_hints = dedupe_named_items(
+            [
+                *extract_people_candidates(normalized_text),
+                *[segment["speaker_hint"] for segment in audio_segments if segment.get("speaker_hint")],
+            ],
+            min_length=2,
+            max_items=6,
+        )
+        observed_topics = extract_audio_topic_candidates(title, normalized_text)
+        observed_decisions = extract_audio_decision_candidates(normalized_text)
+        observed_follow_ups = extract_audio_follow_up_candidates(normalized_text)
+        conversation_type = infer_audio_conversation_type(title, normalized_text)
+        if not normalized_text and not any([speaker_hints, observed_topics, observed_decisions, observed_follow_ups, conversation_type]):
+            return {"text": "", "audio_segments": []}
+        return {
+            "text": normalized_text,
+            "audio_segments": audio_segments,
+            "speaker_hints": speaker_hints,
+            "observed_topics": observed_topics,
+            "observed_decisions": observed_decisions,
+            "observed_follow_ups": observed_follow_ups,
+            "conversation_type": conversation_type,
+        }
 
 
 def extract_video_observations(content: bytes, mime_type: str) -> dict[str, object]:
@@ -307,22 +379,39 @@ def extract_video_text(content: bytes, mime_type: str) -> str:
 
 
 def transcribe_wave_file(path: Path, language: str) -> str:
+    return str(transcribe_wave_file_detailed(path, language).get("text") or "")
+
+
+def transcribe_wave_file_detailed(path: Path, language: str) -> dict[str, object]:
     model_path = ensure_vosk_model(language)
     if model_path is None:
-        return ""
+        return {"text": "", "audio_segments": []}
 
     with wave.open(str(path), "rb") as wav_file:
         recognizer = KaldiRecognizer(Model(str(model_path)), wav_file.getframerate())
         recognizer.SetWords(True)
-        parts: list[str] = []
+        payloads: list[dict[str, object]] = []
         while True:
             chunk = wav_file.readframes(4000)
             if not chunk:
                 break
             if recognizer.AcceptWaveform(chunk):
-                parts.append(json.loads(recognizer.Result()).get("text", ""))
-        parts.append(json.loads(recognizer.FinalResult()).get("text", ""))
-    return normalize_media_text(" ".join(parts))
+                payloads.append(json.loads(recognizer.Result()))
+        payloads.append(json.loads(recognizer.FinalResult()))
+
+    texts = [str(item.get("text") or "") for item in payloads if item.get("text")]
+    words: list[dict[str, object]] = []
+    for payload in payloads:
+        result_items = payload.get("result")
+        if isinstance(result_items, list):
+            for item in result_items:
+                if isinstance(item, dict) and item.get("word"):
+                    words.append(item)
+
+    return {
+        "text": normalize_media_text(" ".join(texts)),
+        "audio_segments": build_audio_segments_from_words(words),
+    }
 
 
 def ensure_vosk_model(language: str) -> Path | None:
@@ -364,6 +453,20 @@ def choose_best_transcript(transcripts: list[str]) -> str:
     scored = [(score_transcript(text), text) for text in transcripts if text]
     if not scored:
         return ""
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return scored[0][1]
+
+
+def choose_best_audio_observation(observations: list[dict[str, object]]) -> dict[str, object]:
+    scored = []
+    for observation in observations:
+        text = normalize_media_text(str(observation.get("text") or ""))
+        if not text:
+            continue
+        score = score_transcript(text) + len(normalize_audio_segments(observation.get("audio_segments"))) * 12
+        scored.append((score, observation))
+    if not scored:
+        return {"text": "", "audio_segments": []}
     scored.sort(key=lambda item: item[0], reverse=True)
     return scored[0][1]
 
@@ -454,6 +557,228 @@ def build_source_attribution_from_text(
             "evidence_type": evidence_type,
         }
     ]
+
+
+def build_source_attribution_from_audio_segments(segments: list[dict[str, object]]) -> list[dict[str, object]]:
+    attribution: list[dict[str, object]] = []
+    for segment in segments[:6]:
+        transcript = normalize_media_text(str(segment.get("transcript") or ""))
+        if not transcript:
+            continue
+        attribution.append(
+            {
+                "source_type": "audio_segment_transcript",
+                "label": str(segment.get("label") or f"segment_{segment.get('segment_index') or '?'}"),
+                "timecode": str(segment.get("start_timecode") or "") or None,
+                "text": transcript,
+                "confidence": segment.get("confidence") if isinstance(segment.get("confidence"), (int, float)) else 0.62,
+                "evidence_type": "direct_observation",
+            }
+        )
+    return attribution
+
+
+def build_audio_segments_from_words(words: list[dict[str, object]]) -> list[dict[str, object]]:
+    segments: list[dict[str, object]] = []
+    current_words: list[dict[str, object]] = []
+    last_end: float | None = None
+
+    def flush_segment() -> None:
+        nonlocal current_words
+        if not current_words:
+            return
+        transcript = normalize_media_text(" ".join(str(item.get("word") or "") for item in current_words))
+        if not transcript:
+            current_words = []
+            return
+        start_seconds = float(current_words[0].get("start") or 0)
+        end_seconds = float(current_words[-1].get("end") or start_seconds)
+        segment_index = len(segments) + 1
+        segments.append(
+            {
+                "segment_index": segment_index,
+                "label": f"segment_{segment_index:02d}",
+                "start_timecode": format_timecode(int(start_seconds)),
+                "end_timecode": format_timecode(max(int(math.ceil(end_seconds)), int(start_seconds))),
+                "transcript": transcript,
+                "speaker_hint": infer_speaker_hint_from_segment(transcript),
+                "confidence": 0.62,
+                "evidence_type": "direct_observation",
+            }
+        )
+        current_words = []
+
+    for item in words:
+        word = str(item.get("word") or "").strip()
+        start = float(item.get("start") or 0)
+        end = float(item.get("end") or start)
+        if not word:
+            continue
+        gap = start - last_end if last_end is not None else 0
+        if current_words and (gap >= 1.6 or len(current_words) >= 16):
+            flush_segment()
+        current_words.append({"word": word, "start": start, "end": end})
+        last_end = end
+
+    flush_segment()
+    return segments[:8]
+
+
+def normalize_audio_segments(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    segments: list[dict[str, object]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        transcript = normalize_media_text(str(item.get("transcript") or item.get("text") or ""))
+        if not transcript:
+            continue
+        segment_index = item.get("segment_index")
+        start_timecode = str(item.get("start_timecode") or "").strip() or None
+        end_timecode = str(item.get("end_timecode") or "").strip() or None
+        speaker_hint = str(item.get("speaker_hint") or item.get("speaker") or "").strip() or None
+        segments.append(
+            {
+                "segment_index": int(segment_index) if isinstance(segment_index, int) else len(segments) + 1,
+                "label": str(item.get("label") or f"segment_{len(segments) + 1:02d}"),
+                "start_timecode": start_timecode,
+                "end_timecode": end_timecode,
+                "transcript": transcript,
+                "speaker_hint": speaker_hint,
+                "confidence": float(item.get("confidence")) if isinstance(item.get("confidence"), (int, float)) else None,
+                "evidence_type": str(item.get("evidence_type") or "direct_observation"),
+            }
+        )
+    return segments
+
+
+def infer_speaker_hint_from_segment(transcript: str) -> str | None:
+    match = re.match(r"^([\u4e00-\u9fff]{2,4})(?:说|表示|提出|确认|汇报)", transcript)
+    if match:
+        return match.group(1)
+    return None
+
+
+def normalize_multivalue_candidates(value: object) -> list[str]:
+    if isinstance(value, list):
+        return dedupe_named_items([str(item) for item in value], min_length=2, max_items=8)
+    if isinstance(value, str) and value.strip():
+        return dedupe_named_items([value], min_length=2, max_items=8)
+    return []
+
+
+def extract_audio_topic_candidates(title: str, text: str) -> list[str]:
+    haystack = f"{title}\n{text}"
+    keyword_map = {
+        "启动": "项目启动",
+        "图谱": "知识图谱",
+        "导入": "数据导入",
+        "流程": "流程梳理",
+        "复盘": "复盘总结",
+        "汇报": "进展汇报",
+        "计划": "计划安排",
+        "待办": "后续待办",
+    }
+    candidates = [label for keyword, label in keyword_map.items() if keyword in haystack]
+    return dedupe_named_items(candidates, min_length=2, max_items=6)
+
+
+def extract_audio_decision_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    patterns = [
+        r"(确认[^。；;\n]{2,24})",
+        r"(决定[^。；;\n]{2,24})",
+        r"(通过[^。；;\n]{2,24})",
+    ]
+    for pattern in patterns:
+        candidates.extend(match.strip() for match in re.findall(pattern, text))
+    return dedupe_named_items(candidates, min_length=2, max_items=5)
+
+
+def extract_audio_follow_up_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    patterns = [
+        r"(后续[^。；;\n]{2,24})",
+        r"(下一步[^。；;\n]{2,24})",
+        r"(待办[^。；;\n]{2,24})",
+        r"(跟进[^。；;\n]{2,24})",
+    ]
+    for pattern in patterns:
+        candidates.extend(match.strip() for match in re.findall(pattern, text))
+    return dedupe_named_items(candidates, min_length=2, max_items=5)
+
+
+def infer_audio_conversation_type(title: str, text: str) -> str | None:
+    haystack = f"{title}\n{text}"
+    if any(keyword in haystack for keyword in ["采访", "访谈"]):
+        return "采访对话"
+    if any(keyword in haystack for keyword in ["培训", "授课", "讲座"]):
+        return "培训讲解"
+    if any(keyword in haystack for keyword in ["汇报", "复盘", "启动会", "会议", "讨论"]):
+        return "会议讨论"
+    if any(keyword in haystack for keyword in ["语音", "录音", "消息"]):
+        return "语音记录"
+    return None
+
+
+def build_audio_semantic_canonical_text(
+    *,
+    normalized_text: str,
+    conversation_type: str | None,
+    speaker_hints: list[str],
+    observed_topics: list[str],
+    observed_decisions: list[str],
+    observed_follow_ups: list[str],
+    audio_segments: list[dict[str, object]],
+) -> str:
+    sections: list[str] = []
+    if normalized_text:
+        sections.append("音频转写：")
+        sections.append(normalized_text)
+    semantic_hint = build_audio_semantic_hint(
+        conversation_type=conversation_type,
+        speaker_hints=speaker_hints,
+        observed_topics=observed_topics,
+        observed_decisions=observed_decisions,
+        observed_follow_ups=observed_follow_ups,
+    )
+    if semantic_hint:
+        sections.append("音频上下文提示：")
+        sections.append(semantic_hint)
+    if audio_segments:
+        sections.append("音频片段：")
+        for segment in audio_segments[:6]:
+            label = str(segment.get("label") or "segment")
+            interval = format_timecode_range(segment.get("start_timecode"), segment.get("end_timecode"))
+            speaker_hint = str(segment.get("speaker_hint") or "").strip()
+            prefix = f"{label}{interval}"
+            if speaker_hint:
+                prefix = f"{prefix} [{speaker_hint}]"
+            sections.append(f"- {prefix}: {segment.get('transcript')}")
+    return "\n".join(section for section in sections if section).strip()
+
+
+def build_audio_semantic_hint(
+    *,
+    conversation_type: str | None,
+    speaker_hints: list[str],
+    observed_topics: list[str],
+    observed_decisions: list[str],
+    observed_follow_ups: list[str],
+) -> str:
+    parts: list[str] = []
+    if conversation_type:
+        parts.append(f"对话类型：{conversation_type}")
+    if speaker_hints:
+        parts.append(f"可能发言人：{'、'.join(speaker_hints)}")
+    if observed_topics:
+        parts.append(f"涉及议题：{'、'.join(observed_topics)}")
+    if observed_decisions:
+        parts.append(f"可见决策：{'、'.join(observed_decisions)}")
+    if observed_follow_ups:
+        parts.append(f"后续事项：{'、'.join(observed_follow_ups)}")
+    return "；".join(parts)
 
 
 def extract_image_metadata(content: bytes, mime_type: str) -> dict[str, int | str | None]:
@@ -743,6 +1068,16 @@ def format_timecode(total_seconds: int) -> str:
     minutes, seconds = divmod(total_seconds, 60)
     hours, minutes = divmod(minutes, 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def format_timecode_range(start_timecode: object, end_timecode: object) -> str:
+    start = str(start_timecode or "").strip()
+    end = str(end_timecode or "").strip()
+    if start and end:
+        return f"@{start}-{end}"
+    if start:
+        return f"@{start}"
+    return ""
 
 
 def guess_suffix(mime_type: str, asset_type: str) -> str:

@@ -39,7 +39,7 @@ Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, and image semantic derivative verification
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, image semantic derivative verification, and audio context derivative verification
 
 ## Phase 0: Foundation and Conventions
 
@@ -735,6 +735,40 @@ Completion criteria:
 - image semantic fields are queryable from `asset_derivatives.analysis_json`
 - normalized derivative text includes scene, object, action, document-type, and layout sections
 - automated verification covers service-level merging and full image upload-to-derivative flow
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
+- `docs/database-design.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/development-phases.md`
+
+## Phase 22: Audio Speaker And Context Enrichment
+
+Status: `DONE`
+
+Goal:
+
+- improve audio ingestion quality by preserving conversation context and transcript segments beyond flat ASR text
+
+Work items:
+
+- add local audio context fallback fields for conversation type, speaker hints, topics, decisions, and follow-ups
+- build time-ordered audio transcript segments when ASR word timing is available
+- allow audio derivatives to be generated even when transcript text is empty, using title-level context as conservative hints
+- extend OpenRouter multimodal prompts to request the same audio context and segment fields
+- merge audio context fields into `analysis_json`, `normalized_text`, and canonical multimodal text
+- extend full API e2e to verify audio upload through derived semantic payloads
+
+Completion criteria:
+
+- audio assets can produce useful derivative text even when ASR transcript is unavailable or empty
+- audio context fields are queryable from `asset_derivatives.analysis_json`
+- normalized derivative text includes conversation type, topics, follow-ups, and transcript segment sections when available
+- automated verification covers service-level merging and full audio upload-to-derivative flow
 
 Documents updated manually after completion:
 

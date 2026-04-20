@@ -269,9 +269,10 @@ def build_multimodal_messages(
         "Use Chinese by default. Preserve observed facts and avoid unsupported speculation. "
         "The JSON object must contain: canonical_text, short_summary, observed_people, "
         "observed_events, observed_time, observed_location, observed_scene, observed_objects, "
-        "observed_actions, document_type, image_layout, confidence, parsing_notes, "
+        "observed_actions, document_type, image_layout, speaker_hints, observed_topics, observed_decisions, "
+        "observed_follow_ups, conversation_type, audio_segments, confidence, parsing_notes, "
         "source_attribution, video_scene_segments. "
-        "For images, include OCR text when visible plus scene, objects, likely activity, and document or photo type. For audio, include transcript when speech exists. "
+        "For images, include OCR text when visible plus scene, objects, likely activity, and document or photo type. For audio, include transcript when speech exists plus likely speakers, topic context, decisions, follow-ups, and time-ordered segments. "
         "For video, include visible scene description, spoken transcript if available, and key moments. "
         "Use evidence_type=direct_observation only for text that is directly visible or transcribed. "
         "Use evidence_type=model_inference for inferred descriptions or context. "
@@ -311,11 +312,28 @@ def build_multimodal_messages(
                                 "observed_actions": ["string"],
                                 "document_type": "string | null",
                                 "image_layout": "string | null",
+                                "speaker_hints": ["string"],
+                                "observed_topics": ["string"],
+                                "observed_decisions": ["string"],
+                                "observed_follow_ups": ["string"],
+                                "conversation_type": "string | null",
+                                "audio_segments": [
+                                    {
+                                        "segment_index": "integer",
+                                        "label": "string",
+                                        "start_timecode": "HH:MM:SS string or null",
+                                        "end_timecode": "HH:MM:SS string or null",
+                                        "speaker_hint": "string | null",
+                                        "transcript": "string",
+                                        "confidence": "number between 0 and 1",
+                                        "evidence_type": "direct_observation | model_inference | mixed",
+                                    }
+                                ],
                                 "confidence": "number between 0 and 1",
                                 "parsing_notes": "string",
                                 "source_attribution": [
                                     {
-                                        "source_type": "image_ocr | image_visual_observation | image_scene_inference | audio_transcript | video_frame_ocr | video_audio_transcript | video_scene_inference",
+                                        "source_type": "image_ocr | image_visual_observation | image_scene_inference | audio_transcript | audio_segment_transcript | video_frame_ocr | video_audio_transcript | video_scene_inference",
                                         "label": "string",
                                         "timecode": "HH:MM:SS string or null",
                                         "text": "observed or inferred snippet",

@@ -62,6 +62,12 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
             "observed_actions": local_payload.get("observed_actions"),
             "document_type": local_payload.get("document_type"),
             "image_layout": local_payload.get("image_layout"),
+            "speaker_hints": local_payload.get("speaker_hints"),
+            "observed_topics": local_payload.get("observed_topics"),
+            "observed_decisions": local_payload.get("observed_decisions"),
+            "observed_follow_ups": local_payload.get("observed_follow_ups"),
+            "conversation_type": local_payload.get("conversation_type"),
+            "audio_segments": local_payload.get("audio_segments"),
             "confidence": local_payload.get("confidence"),
             "source_attribution": local_payload.get("source_attribution"),
         }
@@ -89,6 +95,12 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
                 "observed_actions": derivative_payload.get("observed_actions"),
                 "document_type": derivative_payload.get("document_type"),
                 "image_layout": derivative_payload.get("image_layout"),
+                "speaker_hints": derivative_payload.get("speaker_hints"),
+                "observed_topics": derivative_payload.get("observed_topics"),
+                "observed_decisions": derivative_payload.get("observed_decisions"),
+                "observed_follow_ups": derivative_payload.get("observed_follow_ups"),
+                "conversation_type": derivative_payload.get("conversation_type"),
+                "audio_segments": derivative_payload.get("audio_segments"),
                 "confidence": derivative_payload.get("confidence"),
                 "parsing_notes": derivative_payload.get("parsing_notes"),
                 "source_attribution": derivative_payload.get("source_attribution"),
@@ -211,6 +223,26 @@ def build_multimodal_canonical_text(asset: RawAsset, payload: dict[str, object])
     if image_layout:
         sections.append(f"画面布局：{image_layout}")
 
+    conversation_type = safe_multimodal_string(payload.get("conversation_type"))
+    if conversation_type:
+        sections.append(f"对话类型：{conversation_type}")
+
+    speaker_hints = normalize_multimodal_list(payload.get("speaker_hints"))
+    if speaker_hints:
+        sections.append(f"说话提示：{', '.join(speaker_hints)}")
+
+    observed_topics = normalize_multimodal_list(payload.get("observed_topics"))
+    if observed_topics:
+        sections.append(f"识别议题：{', '.join(observed_topics)}")
+
+    observed_decisions = normalize_multimodal_list(payload.get("observed_decisions"))
+    if observed_decisions:
+        sections.append(f"识别决策：{', '.join(observed_decisions)}")
+
+    observed_follow_ups = normalize_multimodal_list(payload.get("observed_follow_ups"))
+    if observed_follow_ups:
+        sections.append(f"后续跟进：{', '.join(observed_follow_ups)}")
+
     parsing_notes = safe_multimodal_string(payload.get("parsing_notes"))
     if parsing_notes:
         sections.append(f"解析说明：{parsing_notes}")
@@ -236,6 +268,16 @@ def build_multimodal_canonical_text(asset: RawAsset, payload: dict[str, object])
                 continue
             prefix = f"{label}{interval}"
             sections.append(f"- [{evidence_label}] {prefix}: {body}")
+
+    audio_segments = normalize_audio_segments(payload.get("audio_segments"))
+    if audio_segments:
+        sections.append("音频片段：")
+        for item in audio_segments[:8]:
+            label = item["label"] or f"segment_{item['segment_index'] or '?'}"
+            interval = format_scene_interval(item["start_timecode"], item["end_timecode"])
+            speaker_hint = f" [{item['speaker_hint']}]" if item["speaker_hint"] else ""
+            evidence_label = format_evidence_type(item["evidence_type"])
+            sections.append(f"- [{evidence_label}] {label}{interval}{speaker_hint}: {item['transcript']}")
 
     source_attribution = normalize_source_attribution(payload.get("source_attribution"))
     if source_attribution:
@@ -299,6 +341,10 @@ def merge_multimodal_payloads(
         local_payload.get("video_scene_segments"),
         ai_payload.get("video_scene_segments"),
     )
+    audio_segments = merge_audio_segments(
+        local_payload.get("audio_segments"),
+        ai_payload.get("audio_segments"),
+    )
 
     return {
         "canonical_text": choose_richer_multimodal_text(
@@ -324,6 +370,14 @@ def merge_multimodal_payloads(
             safe_multimodal_string(ai_payload.get("image_layout")),
             safe_multimodal_string(local_payload.get("image_layout")),
         ),
+        "speaker_hints": merge_multimodal_lists(local_payload.get("speaker_hints"), ai_payload.get("speaker_hints")),
+        "observed_topics": merge_multimodal_lists(local_payload.get("observed_topics"), ai_payload.get("observed_topics")),
+        "observed_decisions": merge_multimodal_lists(local_payload.get("observed_decisions"), ai_payload.get("observed_decisions")),
+        "observed_follow_ups": merge_multimodal_lists(local_payload.get("observed_follow_ups"), ai_payload.get("observed_follow_ups")),
+        "conversation_type": choose_non_empty_multimodal_value(
+            safe_multimodal_string(ai_payload.get("conversation_type")),
+            safe_multimodal_string(local_payload.get("conversation_type")),
+        ),
         "confidence": max_multimodal_confidence(local_payload.get("confidence"), ai_payload.get("confidence")),
         "parsing_notes": "；".join(
             item
@@ -336,6 +390,7 @@ def merge_multimodal_payloads(
         "parser_name": "local_plus_openrouter_multimodal",
         "source_attribution": deduped_source,
         "video_scene_segments": video_scene_segments,
+        "audio_segments": audio_segments,
     }
 
 
@@ -438,6 +493,51 @@ def merge_video_scene_segments(left: object, right: object) -> list[dict[str, st
             str(item["observed_text"]),
             str(item["inferred_context"]),
             str(item["description"]),
+        )
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def normalize_audio_segments(value: object) -> list[dict[str, str | int | float | None]]:
+    if not isinstance(value, list):
+        return []
+    segments: list[dict[str, str | int | float | None]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        transcript = safe_multimodal_string(item.get("transcript")) or safe_multimodal_string(item.get("text"))
+        if not transcript:
+            continue
+        segment_index = item.get("segment_index")
+        confidence = item.get("confidence")
+        segments.append(
+            {
+                "segment_index": int(segment_index) if isinstance(segment_index, int) else None,
+                "label": safe_multimodal_string(item.get("label")),
+                "start_timecode": safe_multimodal_string(item.get("start_timecode")) or None,
+                "end_timecode": safe_multimodal_string(item.get("end_timecode")) or None,
+                "speaker_hint": safe_multimodal_string(item.get("speaker_hint") or item.get("speaker")) or None,
+                "transcript": transcript,
+                "confidence": float(confidence) if isinstance(confidence, (int, float)) else None,
+                "evidence_type": normalize_evidence_type(item.get("evidence_type")),
+            }
+        )
+    return segments
+
+
+def merge_audio_segments(left: object, right: object) -> list[dict[str, str | int | float | None]]:
+    merged = [*normalize_audio_segments(left), *normalize_audio_segments(right)]
+    deduped: list[dict[str, str | int | float | None]] = []
+    seen_keys: set[tuple[str | None, str | None, str, str | None]] = set()
+    for item in merged:
+        key = (
+            item["start_timecode"],
+            item["end_timecode"],
+            str(item["transcript"]),
+            item["speaker_hint"],
         )
         if key in seen_keys:
             continue

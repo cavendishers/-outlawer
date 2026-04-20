@@ -128,6 +128,48 @@ def test_build_multimodal_canonical_text_includes_video_scene_segments() -> None
     assert "- [模型推断] scene_02@00:00:06-00:00:12: 可能正在确认导入流程。；两位参与者围绕白板讨论。" in text
 
 
+def test_build_multimodal_canonical_text_includes_audio_context() -> None:
+    asset = RawAsset(
+        id="asset-5",
+        user_id="user-1",
+        asset_type="audio",
+        source_type="manual",
+        title="启动会录音",
+        status="uploaded",
+    )
+
+    text = build_multimodal_canonical_text(
+        asset,
+        {
+            "canonical_text": "张三确认后续跟进导入流程。",
+            "conversation_type": "会议讨论",
+            "speaker_hints": ["张三"],
+            "observed_topics": ["项目启动", "数据导入"],
+            "observed_decisions": ["确认导入流程"],
+            "observed_follow_ups": ["后续跟进导入流程"],
+            "audio_segments": [
+                {
+                    "segment_index": 1,
+                    "label": "segment_01",
+                    "start_timecode": "00:00:00",
+                    "end_timecode": "00:00:04",
+                    "speaker_hint": "张三",
+                    "transcript": "张三确认后续跟进导入流程",
+                    "confidence": 0.62,
+                    "evidence_type": "direct_observation",
+                }
+            ],
+        },
+    )
+
+    assert "对话类型：会议讨论" in text
+    assert "说话提示：张三" in text
+    assert "识别议题：项目启动, 数据导入" in text
+    assert "识别决策：确认导入流程" in text
+    assert "后续跟进：后续跟进导入流程" in text
+    assert "- [直接证据] segment_01@00:00:00-00:00:04 [张三]: 张三确认后续跟进导入流程" in text
+
+
 def test_build_multimodal_fallback_text_preserves_basic_metadata() -> None:
     asset = RawAsset(
         id="asset-2",
@@ -165,6 +207,19 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
             "observed_objects": ["白板"],
             "document_type": "会议现场照片",
             "image_layout": "横向 1600x900",
+            "conversation_type": "会议讨论",
+            "observed_topics": ["项目启动"],
+            "audio_segments": [
+                {
+                    "segment_index": 1,
+                    "label": "segment_01",
+                    "start_timecode": "00:00:00",
+                    "end_timecode": "00:00:04",
+                    "transcript": "张三介绍项目启动安排",
+                    "confidence": 0.62,
+                    "evidence_type": "direct_observation",
+                }
+            ],
             "parsing_notes": "本地 OCR 提取。",
             "source_attribution": [
                 {
@@ -197,6 +252,10 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
             "observed_scene": ["会议现场", "投影演示"],
             "observed_objects": ["白板", "投影幕布"],
             "observed_actions": ["讲解"],
+            "speaker_hints": ["张三"],
+            "observed_topics": ["数据导入"],
+            "observed_decisions": ["确认导入流程"],
+            "observed_follow_ups": ["后续跟进导入流程"],
             "parsing_notes": "AI 识别出现场发言内容。",
             "source_attribution": [
                 {
@@ -232,9 +291,16 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
     assert merged["observed_actions"] == ["讲解"]
     assert merged["document_type"] == "会议现场照片"
     assert merged["image_layout"] == "横向 1600x900"
+    assert merged["conversation_type"] == "会议讨论"
+    assert merged["speaker_hints"] == ["张三"]
+    assert merged["observed_topics"] == ["项目启动", "数据导入"]
+    assert merged["observed_decisions"] == ["确认导入流程"]
+    assert merged["observed_follow_ups"] == ["后续跟进导入流程"]
     assert merged["confidence"] == 0.74
     assert len(merged["source_attribution"]) == 2
     assert merged["source_attribution"][0]["evidence_type"] == "direct_observation"
     assert len(merged["video_scene_segments"]) == 2
     assert merged["video_scene_segments"][0]["observed_text"] == "项目启动会"
     assert merged["video_scene_segments"][1]["evidence_type"] == "model_inference"
+    assert len(merged["audio_segments"]) == 1
+    assert merged["audio_segments"][0]["transcript"] == "张三介绍项目启动安排"

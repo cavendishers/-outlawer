@@ -87,6 +87,7 @@ Notes:
 
 - `derivative_type`: transcript, ocr, frame_caption, normalized_text, analysis_json
 - image `analysis_json` payloads can include `observed_scene`, `observed_objects`, `observed_actions`, `document_type`, and `image_layout`
+- audio `analysis_json` payloads can include `speaker_hints`, `observed_topics`, `observed_decisions`, `observed_follow_ups`, `conversation_type`, and `audio_segments`
 
 ### notes
 

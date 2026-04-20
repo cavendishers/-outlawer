@@ -36,13 +36,14 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - image: local Tesseract OCR first, then optional OpenRouter enrichment
 - image derivatives also include structured semantic hints for likely scene, visible objects, visible actions, image layout, and document/photo type
 - audio: local Vosk speech transcription, then optional OpenRouter enrichment
+- audio derivatives also include conversation type, speaker hints, topic hints, decision hints, follow-up hints, and time-ordered transcript segments when available
 - video: sampled frame OCR plus audio transcription, then optional OpenRouter enrichment
 - multimodal derivatives now preserve source attribution snippets so later extraction can see what came from OCR frames versus audio transcript
 - video derivatives also preserve sampled scene time ranges and label direct OCR/ASR evidence separately from model-inferred context
 
 ## Current Delivery Status
 
-- Phase `0` through Phase `21` are implemented and verified in Docker.
+- Phase `0` through Phase `22` are implemented and verified in Docker.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -56,6 +57,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
 - Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, trusted aliases, and entity-centered graph relations.
 - Image ingestion now preserves semantic derivative fields beyond OCR-only text, including scene, object, action, layout, and document-type hints.
+- Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
 
 ## Quick Start
 

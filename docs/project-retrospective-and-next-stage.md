@@ -9,7 +9,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - infrastructure baseline: Docker Compose deployment, PostgreSQL, pgvector, RabbitMQ, Redis, MinIO, FastAPI, Next.js, Alembic
 - authentication baseline: username/password login with bearer-token auth
 - ingestion baseline: text, image, audio, and video upload with raw material preservation
-- multimodal derivative baseline: local OCR and ASR fallback, image semantic hints, optional OpenRouter enhancement, source attribution, video scene evidence typing
+- multimodal derivative baseline: local OCR and ASR fallback, image semantic hints, audio context hints, optional OpenRouter enhancement, source attribution, video scene evidence typing
 - knowledge graph baseline: notes, entities, events, relations, timeline items, embeddings, style views, extraction evidence
 - browse baseline: library, people, events, timeline, search, note detail, story views
 - governance baseline: merge review, alias governance, event curation, entity curation, relation edit-in-place
@@ -27,7 +27,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 ## What Went Poorly
 
 - replay safety came later than it should have, so early reprocess behavior was too eager to overwrite current projections
-- multimodal semantic quality is still uneven, especially around audio speaker/context extraction
+- multimodal prompt/version governance still needs stronger comparison tooling as prompts evolve
 - some APIs still rely on generic dictionaries rather than explicit request and response schemas
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
 - operations visibility is still developer-centric; there is no true runtime dashboard
@@ -37,8 +37,8 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 ### Highest-value product depth
 
-- stronger audio speaker and context extraction
 - broader graph canvas editing
+- prompt-version comparison before extraction projection replay
 
 ### Platform and maintainability
 
@@ -56,26 +56,25 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 The next stage should be:
 
-- **Phase 22: Audio Speaker And Context Enrichment**
+- **Phase 23: Operations Dashboard Foundation**
 
-This is the best next step because replay governance and image semantic hints are now in place, and the biggest remaining multimodal quality gap is audio understanding:
+This is the best next step because the system can now ingest, extract, replay, review, and curate, but runtime visibility is still developer-centric:
 
-- audio uploads still produce a flat transcript without speaker or context structure
-- meeting-style recordings need speaker turns, likely roles, and conversation context to improve entity/event extraction
-- richer audio evidence should flow into later search, timeline, and graph quality work
+- failed jobs and retries require API or database knowledge
+- raw assets and derivative payloads are hard to inspect from the product surface
+- extraction runs and replay state need an operator-friendly inspection entry point
 
-## Phase 22 Scope
+## Phase 23 Scope
 
-- enrich audio derivatives with speaker-turn-like segments when available
-- preserve structured context hints for likely conversation type, topics, decisions, and follow-ups
-- merge audio context hints with transcript text into canonical multimodal text
-- extend service tests and full API e2e to cover enriched audio derivatives
+- build an operations page for jobs, failed retries, recent assets, and extraction runs
+- add backend read endpoints or reuse existing endpoints where possible without schema changes
+- expose derivative inspection summaries for raw assets
+- keep the page admin-only under the current simple auth model
 
 ## Priority-ordered Next Work
 
-1. improve audio speaker and context extraction
-2. build first operations dashboard for jobs and extraction runs
-3. tighten API contracts with explicit Pydantic schemas
-4. continue read-model query service extraction
-5. expand graph editing into a canvas-oriented workflow
-6. plan multi-user and permissions model
+1. build first operations dashboard for jobs and extraction runs
+2. tighten API contracts with explicit Pydantic schemas
+3. continue read-model query service extraction
+4. expand graph editing into a canvas-oriented workflow
+5. plan multi-user and permissions model

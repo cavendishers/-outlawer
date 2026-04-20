@@ -29,7 +29,7 @@ Current status as of `2026-04-20`:
 | Username/password login | `DONE` | basic bearer-token auth is available |
 | Text ingestion | `DONE` | upload, note creation, extraction flow available |
 | Image ingestion | `DONE` | raw storage plus OCR, semantic hints, and derivative text available |
-| Audio ingestion | `DONE` | raw storage plus ASR/derivative text available |
+| Audio ingestion | `DONE` | raw storage plus ASR, context hints, transcript segments, and derivative text available |
 | Video ingestion | `PARTIAL` | raw storage, sampled OCR/ASR derivatives, scene time ranges, and evidence labels exist; deeper semantic quality is still MVP-grade |
 | Raw asset preservation | `DONE` | MinIO-backed storage and raw reads available |
 | AI-assisted organization and categorization | `PARTIAL` | extraction and normalization exist, but governance workflows are incomplete |
@@ -136,7 +136,6 @@ Why it matters:
 
 What is missing:
 
-- better audio speaker/context extraction
 - prompt versioning and result comparison before projection replay
 
 Delivered in the first upgrade slice:
@@ -162,11 +161,17 @@ Delivered in the third upgrade slice:
 - OpenRouter multimodal prompts now request the same image semantic fields for model-enhanced parsing
 - full API e2e verifies image upload through derived `analysis_json` and `normalized_text`
 
+Delivered in the fourth upgrade slice:
+
+- audio derivatives now include conversation type, speaker hints, topic hints, decision hints, follow-up hints, and time-ordered transcript segments when available
+- audio files with little or no transcript can still produce conservative context fallback text from title-level signals
+- OpenRouter multimodal prompts now request the same audio context and segment fields for model-enhanced parsing
+- full API e2e verifies audio upload through derived `analysis_json` and `normalized_text`
+
 Suggested deliverables:
 
 - multimodal extraction prompt versioning
 - richer derivative payload schema
-- audio speaker/context extraction
 
 Acceptance target:
 

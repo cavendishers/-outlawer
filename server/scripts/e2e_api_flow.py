@@ -2,7 +2,9 @@ import argparse
 import json
 import struct
 import time
+import wave
 import zlib
+from io import BytesIO
 
 import httpx
 from sqlalchemy import and_, select
@@ -33,6 +35,17 @@ def build_test_png(width: int = 2, height: int = 1) -> bytes:
     row = b"\x00" + b"\xff\xff\xff" * width
     idat = zlib.compress(row * height)
     return signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+def build_test_wav(duration_seconds: int = 1, sample_rate: int = 16000) -> bytes:
+    buffer = BytesIO()
+    frame_count = duration_seconds * sample_rate
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(b"\x00\x00" * frame_count)
+    return buffer.getvalue()
 
 
 def main() -> None:
@@ -170,6 +183,59 @@ def main() -> None:
         assert "会议现场" in analysis_payload.get("observed_scene", [])
         assert "白板" in analysis_payload.get("observed_objects", [])
         assert analysis_payload.get("document_type")
+
+    audio_asset = assert_ok(
+        client.post(
+            f"{args.base_url}/assets/upload",
+            headers=headers,
+            data={
+                "title": "项目启动会议后续待办录音",
+                "asset_type": "audio",
+            },
+            files={
+                "file": (
+                    "followup.wav",
+                    build_test_wav(),
+                    "audio/wav",
+                )
+            },
+        )
+    )
+    audio_note_create = assert_ok(client.post(f"{args.base_url}/notes", headers=headers, json={"asset_id": audio_asset["id"]}))
+    audio_job_id = audio_note_create["job_id"]
+    audio_job_status = None
+    for _ in range(max(1, args.job_timeout_seconds // max(1, args.poll_interval_seconds))):
+        audio_job_status = assert_ok(client.get(f"{args.base_url}/jobs/{audio_job_id}", headers=headers))
+        if audio_job_status["status"] == "completed":
+            break
+        time.sleep(args.poll_interval_seconds)
+    assert audio_job_status is not None
+    assert audio_job_status["status"] == "completed", audio_job_status
+
+    with SessionLocal() as db:
+        normalized_derivative = db.scalar(
+            select(AssetDerivative).where(
+                and_(
+                    AssetDerivative.asset_id == audio_asset["id"],
+                    AssetDerivative.derivative_type == "normalized_text",
+                )
+            )
+        )
+        analysis_derivative = db.scalar(
+            select(AssetDerivative).where(
+                and_(
+                    AssetDerivative.asset_id == audio_asset["id"],
+                    AssetDerivative.derivative_type == "analysis_json",
+                )
+            )
+        )
+        assert normalized_derivative is not None
+        assert "对话类型：" in normalized_derivative.content
+        assert "识别议题：" in normalized_derivative.content
+        assert analysis_derivative is not None
+        analysis_payload = json.loads(analysis_derivative.content)
+        assert analysis_payload.get("conversation_type")
+        assert analysis_payload.get("observed_topics")
 
     reprocess = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/reprocess", headers=headers))
     replay_job_id = reprocess["job_id"]

@@ -1,5 +1,6 @@
 from app.services.local_media_service import (
     build_local_media_derivative,
+    build_audio_segments_from_words,
     build_source_attribution_from_text,
     choose_best_transcript,
     choose_video_frame_interval,
@@ -65,6 +66,45 @@ def test_build_local_media_derivative_generates_image_semantics_without_ocr(monk
     assert "白板" in payload["observed_objects"]
     assert "讨论" in payload["observed_actions"]
     assert "图像语义提示：" in payload["canonical_text"]
+
+
+def test_build_audio_segments_from_words_groups_words_by_pause() -> None:
+    segments = build_audio_segments_from_words(
+        [
+            {"word": "项目", "start": 0.1, "end": 0.3},
+            {"word": "启动", "start": 0.31, "end": 0.6},
+            {"word": "会议", "start": 0.61, "end": 0.9},
+            {"word": "后续", "start": 3.0, "end": 3.2},
+            {"word": "待办", "start": 3.21, "end": 3.5},
+        ]
+    )
+
+    assert len(segments) == 2
+    assert segments[0]["transcript"] == "项目 启动 会议"
+    assert segments[1]["transcript"] == "后续 待办"
+
+
+def test_build_local_media_derivative_generates_audio_context_without_transcript(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.services.local_media_service.extract_audio_observations",
+        lambda content, mime_type, title="": {
+            "text": "",
+            "audio_segments": [],
+            "speaker_hints": [],
+            "observed_topics": ["项目启动", "后续待办"],
+            "observed_decisions": [],
+            "observed_follow_ups": ["后续跟进导入流程"],
+            "conversation_type": "会议讨论",
+        },
+    )
+
+    payload = build_local_media_derivative("audio", "项目启动会议后续待办录音", "audio/wav", b"wav-bytes")
+
+    assert payload is not None
+    assert payload["conversation_type"] == "会议讨论"
+    assert payload["observed_topics"] == ["项目启动", "后续待办"]
+    assert payload["observed_follow_ups"] == ["后续跟进导入流程"]
+    assert "音频上下文提示：" in payload["canonical_text"]
 
 
 def test_video_sampling_scales_with_duration() -> None:
