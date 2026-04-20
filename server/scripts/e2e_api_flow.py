@@ -92,6 +92,8 @@ def main() -> None:
     note_create = assert_ok(client.post(f"{args.base_url}/notes", headers=headers, json={"asset_id": asset["id"]}))
     job_id = note_create["job_id"]
     note_id = note_create["note_id"]
+    job_detail = assert_ok(client.get(f"{args.base_url}/jobs/{job_id}", headers=headers))
+    assert job_detail["payload_json"]["asset_id"] == asset["id"]
     job_status = None
     for _ in range(max(1, args.job_timeout_seconds // max(1, args.poll_interval_seconds))):
         job_status = assert_ok(client.get(f"{args.base_url}/jobs/{job_id}", headers=headers))
@@ -183,6 +185,9 @@ def main() -> None:
         assert "会议现场" in analysis_payload.get("observed_scene", [])
         assert "白板" in analysis_payload.get("observed_objects", [])
         assert analysis_payload.get("document_type")
+    image_asset_detail = assert_ok(client.get(f"{args.base_url}/assets/{image_asset['id']}", headers=headers))
+    assert image_asset_detail["derivatives"], image_asset_detail
+    assert any(item["derivative_type"] == "normalized_text" for item in image_asset_detail["derivatives"])
 
     audio_asset = assert_ok(
         client.post(
@@ -236,6 +241,9 @@ def main() -> None:
         analysis_payload = json.loads(analysis_derivative.content)
         assert analysis_payload.get("conversation_type")
         assert analysis_payload.get("observed_topics")
+    audio_asset_detail = assert_ok(client.get(f"{args.base_url}/assets/{audio_asset['id']}", headers=headers))
+    assert audio_asset_detail["derivatives"], audio_asset_detail
+    assert any(item["derivative_type"] == "analysis_json" for item in audio_asset_detail["derivatives"])
 
     reprocess = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/reprocess", headers=headers))
     replay_job_id = reprocess["job_id"]

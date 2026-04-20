@@ -73,6 +73,7 @@ Responsibilities:
 
 - upload text, audio, image, and video
 - fetch asset metadata
+- inspect derivative summaries and linked note refs from asset detail
 - fetch raw material references
 - proxy file uploads into MinIO from the API layer
 - return original text or a presigned `raw_url` for raw reads
@@ -212,6 +213,7 @@ Responsibilities:
 
 - async pipeline status
 - retry failed jobs
+- return payload and result details from single-job inspection
 - expose paginated job history for inbox and retry UIs
 
 ### Story Views

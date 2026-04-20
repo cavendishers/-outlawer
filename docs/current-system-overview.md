@@ -119,21 +119,22 @@ sequenceDiagram
 - `DONE`: Merge review queue with accept/reject, entity merge, event merge, alias confirmation, and audit history.
 - `DONE`: Event curation page and API for event fields, participants, and event-centered relation add/update/remove.
 - `DONE`: Entity curation page and API for canonical/display fields, type, status, seen timestamps, alias governance, and entity-centered relation maintenance.
+- `DONE`: Operations dashboard foundation for jobs, retries, raw assets, derivative summaries, and note extraction-run inspection.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Back-office operations dashboard. Job monitoring, failed-task retry center, raw asset management, and extraction-run inspection still require developer-level visibility.
-2. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
-3. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
+1. `MEDIUM`: Strongly typed API contracts across all public endpoints. Some endpoints still accept generic dictionaries and should move toward explicit request/response schemas.
+2. `MEDIUM`: Dedicated read-model query service layer. Several route files still compose read data directly instead of using dedicated query services.
+3. `MEDIUM`: Back-office operations depth is still incomplete. The first dashboard is in place, but queue analytics, merge/review dashboards, and broader admin workflows are still thin.
 4. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
 5. `LOW`: Plugin and integration system for external importers and third-party sync.
 6. `LOW`: Mobile-first ingestion and browsing experience.
 
 ## Next Development Direction
 
-The next implementation slice should improve operator visibility now that the main ingestion, replay, review, and multimodal baseline are in place. The expected scope is:
+The next implementation slice should harden contract stability now that operator visibility is in place. The expected scope is:
 
-- add a jobs and extraction-runs operations dashboard
-- surface failed tasks and retry actions without requiring direct database access
-- expose raw asset and derivative inspection entry points
+- replace generic request dictionaries with explicit Pydantic request schemas
+- normalize key read and write response models across the public API
+- reduce frontend guesswork around nullable and optional fields

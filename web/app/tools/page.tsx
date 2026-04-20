@@ -20,6 +20,12 @@ const toolLinks = [
     tone: "info" as const,
   },
   {
+    label: "运维后台",
+    description: "检查任务失败、原始资产、派生内容和 extraction runs 的运行状态。",
+    href: "/operations",
+    tone: "danger" as const,
+  },
+  {
     label: "档案库",
     description: "浏览已经归档的原始记录与风格化卷宗。",
     href: "/library",
@@ -128,7 +134,7 @@ export default function ToolsPage() {
       apiFetch<ListResponse<{ id: string }>>("/entities"),
       apiFetch<ListResponse<{ id: string }>>("/events"),
       apiFetch<ListResponse<{ id: string }>>("/timeline"),
-      apiFetch<ListResponse<JobItem>>("/jobs?limit=4"),
+      apiFetch<ListResponse<JobItem>>("/jobs?page_size=4"),
     ])
       .then(([user, notes, entities, events, timeline, jobs]) => {
         setMe(user);

@@ -39,7 +39,7 @@ Verified on `2026-04-20` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/services/test_asset_text_service.py tests/services/test_local_media_service.py` -> passed
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, image semantic derivative verification, and audio context derivative verification
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with extraction reprocess draft approval, rejection, historical replay, image semantic derivative verification, audio context derivative verification, and operations API detail verification
 
 ## Phase 0: Foundation and Conventions
 
@@ -777,5 +777,38 @@ Documents updated manually after completion:
 - `docs/current-system-overview.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/database-design.md`
+- `docs/project-retrospective-and-next-stage.md`
+- `docs/development-phases.md`
+
+## Phase 23: Operations Dashboard Foundation
+
+Status: `DONE`
+
+Goal:
+
+- provide an operator-facing page for jobs, retries, raw assets, derivative summaries, and extraction-run inspection
+
+Work items:
+
+- build a dedicated operations page in the web app
+- expose job payload/result inspection for runtime debugging
+- expose asset derivative summaries and linked note refs from asset detail
+- allow failed jobs to be retried directly from the operations page
+- show note extraction runs from an operator-oriented dashboard entry point
+
+Completion criteria:
+
+- operators can inspect recent jobs and retry failed jobs without leaving the product
+- operators can inspect raw assets together with derivative summaries from the product surface
+- operators can inspect extraction runs for recent notes from the operations page
+- automated verification covers the API detail shapes used by the operations console
+
+Documents updated manually after completion:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/api-contract.md`
+- `docs/current-system-overview.md`
+- `docs/remaining-features-roadmap.md`
 - `docs/project-retrospective-and-next-stage.md`
 - `docs/development-phases.md`

@@ -14,6 +14,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - browse baseline: library, people, events, timeline, search, note detail, story views
 - governance baseline: merge review, alias governance, event curation, entity curation, relation edit-in-place
 - replay baseline: extraction run history, run diffs, historical run re-apply, replay audit history, operator note on manual replay, and draft approval/rejection before reprocess replaces the active projection
+- operations baseline: jobs, retries, raw assets, derivative summaries, and extraction-run inspection from a dedicated operations page
 
 ## What Went Well
 
@@ -30,7 +31,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 - multimodal prompt/version governance still needs stronger comparison tooling as prompts evolve
 - some APIs still rely on generic dictionaries rather than explicit request and response schemas
 - graph editing is functional but still feels like back-office form editing more than a real graph workspace
-- operations visibility is still developer-centric; there is no true runtime dashboard
+- operations visibility now has a first dashboard, but deeper admin workflows and metrics are still thin
 - some route files still compose read models directly instead of using dedicated query services
 
 ## Future Capability Groups
@@ -44,7 +45,7 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 - strongly typed API contracts across public endpoints
 - dedicated read-model query services
-- operations dashboard for jobs, assets, runs, and retries
+- deeper operations dashboard for jobs, assets, runs, and retries
 
 ### Product expansion
 
@@ -56,25 +57,24 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 The next stage should be:
 
-- **Phase 23: Operations Dashboard Foundation**
+- **Phase 24: Strongly Typed API Contracts**
 
-This is the best next step because the system can now ingest, extract, replay, review, and curate, but runtime visibility is still developer-centric:
+This is the best next step because the product surface is now broad enough that implicit dictionaries are becoming the main source of ambiguity:
 
-- failed jobs and retries require API or database knowledge
-- raw assets and derivative payloads are hard to inspect from the product surface
-- extraction runs and replay state need an operator-friendly inspection entry point
+- multiple endpoints still accept generic payload dictionaries
+- frontend pages increasingly depend on stable nullable and optional field behavior
+- stronger schemas will reduce regressions before later read-model and admin work expands further
 
-## Phase 23 Scope
+## Phase 24 Scope
 
-- build an operations page for jobs, failed retries, recent assets, and extraction runs
-- add backend read endpoints or reuse existing endpoints where possible without schema changes
-- expose derivative inspection summaries for raw assets
-- keep the page admin-only under the current simple auth model
+- replace generic request dictionaries on core public endpoints with explicit Pydantic schemas
+- normalize response models for key read endpoints
+- document the contract changes in API docs without schema migrations
+- keep the current frontend working while tightening shape guarantees
 
 ## Priority-ordered Next Work
 
-1. build first operations dashboard for jobs and extraction runs
-2. tighten API contracts with explicit Pydantic schemas
-3. continue read-model query service extraction
-4. expand graph editing into a canvas-oriented workflow
-5. plan multi-user and permissions model
+1. tighten API contracts with explicit Pydantic schemas
+2. continue read-model query service extraction
+3. expand graph editing into a canvas-oriented workflow
+4. plan multi-user and permissions model

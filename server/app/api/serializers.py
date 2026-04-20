@@ -4,6 +4,7 @@ from app.models.ai_job import AIJob
 from app.models.entity import Entity
 from app.models.event import Event, TimelineItem
 from app.models.note import Note
+from app.models.asset_derivative import AssetDerivative
 from app.models.raw_asset import RawAsset
 
 
@@ -19,8 +20,28 @@ def serialize_asset(asset: RawAsset, *, raw_url: str | None = None) -> dict:
         "status": asset.status,
         "mime_type": asset.mime_type,
         "object_key": asset.object_key,
+        "file_size": asset.file_size,
+        "checksum": asset.checksum,
         "original_text": asset.original_text,
         "raw_url": raw_url,
+        "created_at": isoformat(asset.created_at),
+        "updated_at": isoformat(asset.updated_at),
+    }
+
+
+def serialize_asset_derivative(derivative: AssetDerivative) -> dict:
+    content = derivative.content or ""
+    preview = content[:320]
+    if len(content) > 320:
+        preview += "..."
+    return {
+        "id": derivative.id,
+        "derivative_type": derivative.derivative_type,
+        "version": derivative.version,
+        "content_preview": preview,
+        "meta_json": derivative.meta_json,
+        "created_at": isoformat(derivative.created_at),
+        "updated_at": isoformat(derivative.updated_at),
     }
 
 
@@ -53,6 +74,7 @@ def serialize_job(job: AIJob, *, include_result: bool = False) -> dict:
         "finished_at": isoformat(job.finished_at),
     }
     if include_result:
+        payload["payload_json"] = job.payload_json
         payload["result_json"] = job.result_json
     return payload
 

@@ -237,15 +237,20 @@ Acceptance target:
 
 Status:
 
-- `TODO`
+- `PARTIAL`
+
+Delivered in the first slice:
+
+- operations page for recent jobs, failed retry actions, recent assets, and note extraction-run inspection
+- asset detail now exposes derivative summaries and linked note refs for operator inspection
+- single-job detail now exposes payload and result data for runtime debugging
 
 What is missing:
 
-- job monitoring dashboard
-- failed task retry center
-- raw asset management page
-- extraction run inspection page
+- richer job monitoring dashboard
+- raw asset management actions
 - merge/review queue dashboard
+- queue analytics and operator metrics
 
 Why it matters:
 

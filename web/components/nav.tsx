@@ -8,6 +8,7 @@ const items = [
   { href: "/inbox", label: "导入" },
   { href: "/search", label: "搜索" },
   { href: "/review", label: "审核" },
+  { href: "/operations", label: "运维" },
   { href: "/library", label: "档案" },
   { href: "/people", label: "人物" },
   { href: "/events", label: "事件" },

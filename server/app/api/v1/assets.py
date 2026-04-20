@@ -4,12 +4,14 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 
-from app.api.serializers import serialize_asset
+from app.api.serializers import serialize_asset, serialize_asset_derivative
 from app.api.deps import DbSession, get_current_user
 from app.core.config import get_settings
 from app.core.minio import get_presigned_url, upload_bytes
 from app.core.pagination import normalize_page_params, paginate_query
 from app.core.responses import ok, paginated
+from app.models.asset_derivative import AssetDerivative
+from app.models.note import Note
 from app.models.raw_asset import RawAsset
 
 router = APIRouter()
@@ -89,7 +91,32 @@ def get_asset(asset_id: str, db: DbSession, user=Depends(get_current_user)) -> d
     asset = db.get(RawAsset, asset_id)
     if not asset or asset.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return ok(serialize_asset(asset, raw_url=get_presigned_url(asset.object_key) if asset.object_key else None))
+    derivatives = db.scalars(
+        select(AssetDerivative)
+        .where(AssetDerivative.asset_id == asset.id)
+        .order_by(AssetDerivative.created_at.desc())
+    ).all()
+    notes = db.scalars(
+        select(Note)
+        .where(Note.asset_id == asset.id)
+        .order_by(Note.created_at.desc())
+    ).all()
+    return ok(
+        {
+            **serialize_asset(asset, raw_url=get_presigned_url(asset.object_key) if asset.object_key else None),
+            "derivatives": [serialize_asset_derivative(item) for item in derivatives],
+            "notes": [
+                {
+                    "id": note.id,
+                    "title": note.title,
+                    "status": note.status,
+                    "created_at": note.created_at.isoformat() if note.created_at else None,
+                    "processed_at": note.processed_at.isoformat() if note.processed_at else None,
+                }
+                for note in notes
+            ],
+        }
+    )
 
 
 @router.get("/{asset_id}/raw")
