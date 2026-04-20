@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AuthGate } from "@/components/auth-gate";
@@ -95,6 +95,73 @@ type GraphNodeDetail = {
   }>;
 };
 
+type GraphRelationItem = {
+  id: string;
+  direction: string;
+  relation_type: string;
+  peer: {
+    id: string;
+    object_type: string;
+    label: string;
+    subtitle: string | null;
+    href: string;
+  };
+  source_type: string;
+  source_id: string;
+  target_type: string;
+  target_id: string;
+};
+
+type EventParticipantItem = {
+  id: string;
+  display_name: string;
+  entity_type: string;
+  role: string | null;
+  relation_type: string | null;
+};
+
+type EventNodeCurationContext = {
+  kind: "event";
+  event: {
+    id: string;
+    title: string;
+  };
+  participants: EventParticipantItem[];
+  relations: GraphRelationItem[];
+  stats: {
+    participant_count: number;
+    relation_count: number;
+  };
+};
+
+type EntityNodeCurationContext = {
+  kind: "entity";
+  entity: {
+    id: string;
+    display_name: string;
+    entity_type: string;
+  };
+  relations: GraphRelationItem[];
+  stats: {
+    relation_count: number;
+  };
+};
+
+type GraphNodeCurationContext = EventNodeCurationContext | EntityNodeCurationContext;
+
+type GraphRelationPayload = {
+  direction: string;
+  related_type: string;
+  related_id: string;
+  relation_type: string;
+};
+
+type GraphParticipantPayload = {
+  entity_id: string;
+  role: string | null;
+  relation_type: string | null;
+};
+
 export function GraphPageClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -105,24 +172,106 @@ export function GraphPageClient() {
   const [workspace, setWorkspace] = useState<GraphWorkspaceData | null>(null);
   const [nodeDetail, setNodeDetail] = useState<GraphNodeDetail | null>(null);
   const [nodeDetailLoading, setNodeDetailLoading] = useState(false);
+  const [curationContext, setCurationContext] = useState<GraphNodeCurationContext | null>(null);
+  const [curationLoading, setCurationLoading] = useState(false);
+  const [mutationBusyKey, setMutationBusyKey] = useState("");
+  const [mutationMessage, setMutationMessage] = useState("");
+  const [mutationError, setMutationError] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  function buildScopeParams() {
     const params = new URLSearchParams();
     if (eventId) params.set("event_id", eventId);
     if (entityId) params.set("entity_id", entityId);
-    const query = params.toString();
+    return params;
+  }
 
-    apiFetch<GraphWorkspaceData>(`/graph/workspace${query ? `?${query}` : ""}`)
+  async function fetchWorkspaceData(): Promise<GraphWorkspaceData> {
+    const query = buildScopeParams().toString();
+    return apiFetch<GraphWorkspaceData>(`/graph/workspace${query ? `?${query}` : ""}`);
+  }
+
+  async function fetchNodeDetailData(node: GraphWorkspaceData["nodes"][number]): Promise<GraphNodeDetail> {
+    const query = buildScopeParams().toString();
+    return apiFetch<GraphNodeDetail>(`/graph/nodes/${node.node_type}/${node.id}${query ? `?${query}` : ""}`);
+  }
+
+  async function fetchCurationContextData(
+    node: GraphWorkspaceData["nodes"][number]
+  ): Promise<GraphNodeCurationContext | null> {
+    if (node.node_type === "event") {
+      const data = await apiFetch<{
+        event: { id: string; title: string };
+        participants: EventParticipantItem[];
+        relations: GraphRelationItem[];
+        stats: { participant_count: number; relation_count: number };
+      }>(`/curation/events/${node.id}`);
+      return {
+        kind: "event",
+        event: data.event,
+        participants: data.participants,
+        relations: data.relations,
+        stats: data.stats,
+      };
+    }
+    if (node.node_type === "entity") {
+      const data = await apiFetch<{
+        entity: { id: string; display_name: string; entity_type: string };
+        relations: GraphRelationItem[];
+        stats: { relation_count: number };
+      }>(`/curation/entities/${node.id}`);
+      return {
+        kind: "entity",
+        entity: data.entity,
+        relations: data.relations,
+        stats: data.stats,
+      };
+    }
+    return null;
+  }
+
+  async function refreshGraphStateForNode(nodeType: string, nodeId: string) {
+    const refreshedWorkspace = await fetchWorkspaceData();
+    const refreshedNode =
+      refreshedWorkspace.nodes.find((node) => node.id === nodeId && node.node_type === nodeType) ?? null;
+
+    startTransition(() => {
+      setWorkspace(refreshedWorkspace);
+      setNodeDetail(null);
+      setCurationContext(null);
+    });
+
+    if (!refreshedNode) {
+      return;
+    }
+
+    const [detail, curation] = await Promise.all([
+      fetchNodeDetailData(refreshedNode).catch(() => null),
+      fetchCurationContextData(refreshedNode).catch(() => null),
+    ]);
+    startTransition(() => {
+      setNodeDetail(detail);
+      setCurationContext(curation);
+    });
+  }
+
+  useEffect(() => {
+    fetchWorkspaceData()
       .then((data) => {
-        setWorkspace(data);
-        setNodeDetail(null);
-        setError("");
+        startTransition(() => {
+          setWorkspace(data);
+          setNodeDetail(null);
+          setCurationContext(null);
+          setError("");
+        });
       })
       .catch((err) => {
-        setWorkspace(null);
-        setNodeDetail(null);
-        setError(err instanceof Error ? err.message : "图谱工作台加载失败");
+        startTransition(() => {
+          setWorkspace(null);
+          setNodeDetail(null);
+          setCurationContext(null);
+          setError(err instanceof Error ? err.message : "图谱工作台加载失败");
+        });
       });
   }, [entityId, eventId]);
 
@@ -145,30 +294,147 @@ export function GraphPageClient() {
   }, [activeNode, pathname, router, searchParams, workspace]);
 
   useEffect(() => {
-    if (!activeNode) return;
-
-    const params = new URLSearchParams();
-    if (eventId) params.set("event_id", eventId);
-    if (entityId) params.set("entity_id", entityId);
-    const query = params.toString();
+    if (!activeNode) {
+      startTransition(() => {
+        setNodeDetail(null);
+        setCurationContext(null);
+      });
+      return;
+    }
 
     setNodeDetailLoading(true);
-    apiFetch<GraphNodeDetail>(`/graph/nodes/${activeNode.node_type}/${activeNode.id}${query ? `?${query}` : ""}`)
+    fetchNodeDetailData(activeNode)
       .then((data) => {
-        setNodeDetail(data);
+        startTransition(() => {
+          setNodeDetail(data);
+        });
       })
       .catch(() => {
-        setNodeDetail(null);
+        startTransition(() => {
+          setNodeDetail(null);
+        });
       })
       .finally(() => {
         setNodeDetailLoading(false);
       });
   }, [activeNode, entityId, eventId]);
 
+  useEffect(() => {
+    if (!activeNode) {
+      startTransition(() => {
+        setCurationContext(null);
+      });
+      return;
+    }
+
+    setCurationLoading(true);
+    fetchCurationContextData(activeNode)
+      .then((data) => {
+        startTransition(() => {
+          setCurationContext(data);
+        });
+      })
+      .catch(() => {
+        startTransition(() => {
+          setCurationContext(null);
+        });
+      })
+      .finally(() => {
+        setCurationLoading(false);
+      });
+  }, [activeNode]);
+
   function handleSelectNode(nodeId: string) {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("active_node_id", nodeId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  async function handleUpsertEventParticipant(eventNodeId: string, payload: GraphParticipantPayload) {
+    setMutationBusyKey(`participant-submit-${eventNodeId}`);
+    try {
+      await apiFetch(`/curation/events/${eventNodeId}/participants`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      await refreshGraphStateForNode("event", eventNodeId);
+      startTransition(() => {
+        setMutationMessage("事件参与者已在图谱工作台内更新。");
+        setMutationError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setMutationError(err instanceof Error ? err.message : "事件参与者更新失败");
+      });
+    } finally {
+      setMutationBusyKey("");
+    }
+  }
+
+  async function handleRemoveEventParticipant(eventNodeId: string, relatedEntityId: string) {
+    setMutationBusyKey(`participant-remove-${eventNodeId}-${relatedEntityId}`);
+    try {
+      await apiFetch(`/curation/events/${eventNodeId}/participants/${relatedEntityId}`, {
+        method: "DELETE",
+      });
+      await refreshGraphStateForNode("event", eventNodeId);
+      startTransition(() => {
+        setMutationMessage("事件参与者已从图谱里移除。");
+        setMutationError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setMutationError(err instanceof Error ? err.message : "移除事件参与者失败");
+      });
+    } finally {
+      setMutationBusyKey("");
+    }
+  }
+
+  async function handleUpsertRelation(
+    nodeType: "event" | "entity",
+    nodeId: string,
+    payload: GraphRelationPayload,
+    relationId?: string
+  ) {
+    setMutationBusyKey(`relation-submit-${nodeType}-${nodeId}`);
+    const basePath = nodeType === "event" ? `/curation/events/${nodeId}/relations` : `/curation/entities/${nodeId}/relations`;
+    try {
+      await apiFetch(relationId ? `${basePath}/${relationId}` : basePath, {
+        method: relationId ? "PATCH" : "POST",
+        body: JSON.stringify(payload),
+      });
+      await refreshGraphStateForNode(nodeType, nodeId);
+      startTransition(() => {
+        setMutationMessage(relationId ? "图谱关系已在当前工作台更新。" : "新的图谱关系已写入当前工作台。");
+        setMutationError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setMutationError(err instanceof Error ? err.message : relationId ? "图谱关系更新失败" : "图谱关系写入失败");
+      });
+    } finally {
+      setMutationBusyKey("");
+    }
+  }
+
+  async function handleRemoveRelation(nodeType: "event" | "entity", nodeId: string, relationId: string) {
+    setMutationBusyKey(`relation-remove-${relationId}`);
+    const basePath = nodeType === "event" ? `/curation/events/${nodeId}/relations` : `/curation/entities/${nodeId}/relations`;
+    try {
+      await apiFetch(`${basePath}/${relationId}`, { method: "DELETE" });
+      await refreshGraphStateForNode(nodeType, nodeId);
+      startTransition(() => {
+        setMutationMessage("图谱关系已删除。");
+        setMutationError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setMutationError(err instanceof Error ? err.message : "图谱关系删除失败");
+      });
+    } finally {
+      setMutationBusyKey("");
+    }
   }
 
   return (
@@ -193,6 +459,17 @@ export function GraphPageClient() {
             onSelectNode={handleSelectNode}
             nodeDetail={nodeDetail}
             nodeDetailLoading={nodeDetailLoading}
+            curationContext={curationContext}
+            curationLoading={curationLoading}
+            mutationBusyKey={mutationBusyKey}
+            mutationMessage={mutationMessage}
+            mutationError={mutationError}
+            onDismissMutationMessage={() => setMutationMessage("")}
+            onDismissMutationError={() => setMutationError("")}
+            onUpsertEventParticipant={handleUpsertEventParticipant}
+            onRemoveEventParticipant={handleRemoveEventParticipant}
+            onUpsertRelation={handleUpsertRelation}
+            onRemoveRelation={handleRemoveRelation}
           />
         ) : (
           <GraphPageLoadingPanel />

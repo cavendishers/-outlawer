@@ -121,16 +121,21 @@ Delivered in the fifth slice:
 - a dedicated node-detail API now returns connected nodes, connected edges, time context, and anchor actions for the current focus node
 - the graph inspector can now keep users inside one workspace while traversing adjacent nodes and timeline anchors
 
+Delivered in the sixth slice:
+
+- the shared graph workspace now supports inline add/remove for event participants using the active graph neighborhood
+- event and entity nodes can now add, update, and remove graph relations directly inside the node inspector
+- graph mutations now refresh the shared workspace locally after each successful inline edit instead of forcing a navigation back to standalone curation pages
+
 Still missing:
 
 - broader graph canvas editing
 
 Suggested deliverables:
 
-- graph curation page
-- event editor
-- entity editor
-- relation editor
+- stronger timeline-backbone fusion inside the shared graph workspace
+- broader graph canvas editing
+- richer neighborhood refresh and validation feedback
 
 Acceptance target:
 

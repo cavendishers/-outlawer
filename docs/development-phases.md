@@ -906,12 +906,14 @@ Current slice delivered:
 - event detail page, entity story page, and timeline page now expose direct entry links into the shared graph workspace
 - `/api/v1/graph/nodes/{node_type}/{node_id}` now provides node-detail neighborhoods for the shared inspector
 - shared graph workspace now keeps `active_node_id` in the URL and supports connected-node plus timeline-context navigation in-place
+- shared graph workspace now supports inline event participant edits plus event/entity relation add, update, and remove directly in the node inspector
+- inline graph edits now refresh the current workspace locally after each successful mutation and still preserve links to the full curation pages
 
 Remaining work:
 
 - expand event-to-event association editing beyond read-only stepping
-- add inline relation and participant editing inside the shared graph workspace
-- make graph editing feel less like separate pages and more like one connected workspace after the mutation rail lands
+- fuse timeline backbone and event stepping more deeply into the shared graph workspace
+- make graph editing feel less like separate pages and more like one connected workspace as the timeline rail lands
 
 Recommended next slices:
 
@@ -943,3 +945,5 @@ Slice A follow-up verification:
 - `cd web && npx tsc --noEmit` -> passed
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed with graph node detail coverage
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after wrapping `/graph` search-param reads in a Suspense-backed client boundary
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after inline graph edit integration
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed with inline graph governance rail enabled

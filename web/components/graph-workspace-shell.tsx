@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Panel } from "@/components/panel";
 
@@ -70,6 +70,73 @@ type GraphNodeDetail = {
   anchor_actions: GraphAction[];
 };
 
+type GraphRelationItem = {
+  id: string;
+  direction: string;
+  relation_type: string;
+  peer: {
+    id: string;
+    object_type: string;
+    label: string;
+    subtitle: string | null;
+    href: string;
+  };
+  source_type: string;
+  source_id: string;
+  target_type: string;
+  target_id: string;
+};
+
+type GraphEventParticipant = {
+  id: string;
+  display_name: string;
+  entity_type: string;
+  role: string | null;
+  relation_type: string | null;
+};
+
+type GraphEventCurationContext = {
+  kind: "event";
+  event: {
+    id: string;
+    title: string;
+  };
+  participants: GraphEventParticipant[];
+  relations: GraphRelationItem[];
+  stats: {
+    participant_count: number;
+    relation_count: number;
+  };
+};
+
+type GraphEntityCurationContext = {
+  kind: "entity";
+  entity: {
+    id: string;
+    display_name: string;
+    entity_type: string;
+  };
+  relations: GraphRelationItem[];
+  stats: {
+    relation_count: number;
+  };
+};
+
+type GraphNodeCurationContext = GraphEventCurationContext | GraphEntityCurationContext;
+
+type GraphRelationPayload = {
+  direction: string;
+  related_type: string;
+  related_id: string;
+  relation_type: string;
+};
+
+type GraphParticipantPayload = {
+  entity_id: string;
+  role: string | null;
+  relation_type: string | null;
+};
+
 type GraphWorkspaceShellProps = {
   title: string;
   description: string;
@@ -88,6 +155,22 @@ type GraphWorkspaceShellProps = {
   onSelectNode: (nodeId: string) => void;
   nodeDetail: GraphNodeDetail | null;
   nodeDetailLoading?: boolean;
+  curationContext: GraphNodeCurationContext | null;
+  curationLoading?: boolean;
+  mutationBusyKey?: string;
+  mutationMessage?: string;
+  mutationError?: string;
+  onDismissMutationMessage: () => void;
+  onDismissMutationError: () => void;
+  onUpsertEventParticipant: (eventNodeId: string, payload: GraphParticipantPayload) => Promise<void>;
+  onRemoveEventParticipant: (eventNodeId: string, relatedEntityId: string) => Promise<void>;
+  onUpsertRelation: (
+    nodeType: "event" | "entity",
+    nodeId: string,
+    payload: GraphRelationPayload,
+    relationId?: string
+  ) => Promise<void>;
+  onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
 };
 
 type PositionedNode = GraphNode & {
@@ -103,6 +186,36 @@ function toneForNode(node: GraphNode): PositionedNode["tone"] {
   return "paper";
 }
 
+const EVENT_RELATION_TYPE_OPTIONS = [
+  "related_to",
+  "occurs_before",
+  "occurs_after",
+  "source_of",
+  "located_in",
+  "blocks",
+  "supports",
+];
+
+const ENTITY_RELATION_TYPE_OPTIONS = [
+  "related_to",
+  "supports",
+  "blocks",
+  "source_of",
+  "located_in",
+  "member_of",
+  "mentions",
+];
+
+function defaultRelatedTypeForNode(activeNode: GraphNode, nodes: GraphNode[]): "event" | "entity" {
+  const candidateTypes = nodes
+    .filter((node) => node.id !== activeNode.id)
+    .map((node) => node.node_type)
+    .filter((value): value is "event" | "entity" => value === "event" || value === "entity");
+  if (activeNode.node_type === "event" && candidateTypes.includes("entity")) return "entity";
+  if (activeNode.node_type === "entity" && candidateTypes.includes("event")) return "event";
+  return candidateTypes[0] ?? "event";
+}
+
 export function GraphWorkspaceShell({
   title,
   description,
@@ -115,6 +228,17 @@ export function GraphWorkspaceShell({
   onSelectNode,
   nodeDetail,
   nodeDetailLoading = false,
+  curationContext,
+  curationLoading = false,
+  mutationBusyKey = "",
+  mutationMessage = "",
+  mutationError = "",
+  onDismissMutationMessage,
+  onDismissMutationError,
+  onUpsertEventParticipant,
+  onRemoveEventParticipant,
+  onUpsertRelation,
+  onRemoveRelation,
 }: GraphWorkspaceShellProps) {
   const positionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
@@ -385,6 +509,21 @@ export function GraphWorkspaceShell({
                   </Link>
                 ))}
               </div>
+              <InlineGraphEditRail
+                activeNode={activeNode}
+                nodes={nodes}
+                curationContext={curationContext}
+                curationLoading={curationLoading}
+                mutationBusyKey={mutationBusyKey}
+                mutationMessage={mutationMessage}
+                mutationError={mutationError}
+                onDismissMutationMessage={onDismissMutationMessage}
+                onDismissMutationError={onDismissMutationError}
+                onUpsertEventParticipant={onUpsertEventParticipant}
+                onRemoveEventParticipant={onRemoveEventParticipant}
+                onUpsertRelation={onUpsertRelation}
+                onRemoveRelation={onRemoveRelation}
+              />
             </>
           ) : (
             <p className="mt-4 text-base font-bold">当前没有可用节点。</p>
@@ -411,6 +550,447 @@ export function GraphWorkspaceShell({
           ) : null}
         </div>
       </Panel>
+    </div>
+  );
+}
+
+type InlineGraphEditRailProps = {
+  activeNode: GraphNode;
+  nodes: GraphNode[];
+  curationContext: GraphNodeCurationContext | null;
+  curationLoading: boolean;
+  mutationBusyKey: string;
+  mutationMessage: string;
+  mutationError: string;
+  onDismissMutationMessage: () => void;
+  onDismissMutationError: () => void;
+  onUpsertEventParticipant: (eventNodeId: string, payload: GraphParticipantPayload) => Promise<void>;
+  onRemoveEventParticipant: (eventNodeId: string, relatedEntityId: string) => Promise<void>;
+  onUpsertRelation: (
+    nodeType: "event" | "entity",
+    nodeId: string,
+    payload: GraphRelationPayload,
+    relationId?: string
+  ) => Promise<void>;
+  onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
+};
+
+function InlineGraphEditRail({
+  activeNode,
+  nodes,
+  curationContext,
+  curationLoading,
+  mutationBusyKey,
+  mutationMessage,
+  mutationError,
+  onDismissMutationMessage,
+  onDismissMutationError,
+  onUpsertEventParticipant,
+  onRemoveEventParticipant,
+  onUpsertRelation,
+  onRemoveRelation,
+}: InlineGraphEditRailProps) {
+  const [participantForm, setParticipantForm] = useState<GraphParticipantPayload>({
+    entity_id: "",
+    role: "参与者",
+    relation_type: "participates_in",
+  });
+  const [relationForm, setRelationForm] = useState<GraphRelationPayload>({
+    direction: "outgoing",
+    related_type: defaultRelatedTypeForNode(activeNode, nodes),
+    related_id: "",
+    relation_type: activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS[0] : ENTITY_RELATION_TYPE_OPTIONS[0],
+  });
+  const [editingRelationId, setEditingRelationId] = useState("");
+
+  const currentRelations = curationContext?.relations ?? [];
+  const currentEditingRelation = currentRelations.find((relation) => relation.id === editingRelationId) ?? null;
+  const participantIds =
+    curationContext?.kind === "event" ? new Set(curationContext.participants.map((participant) => participant.id)) : new Set<string>();
+  const participantOptions = nodes.filter((node) => node.node_type === "entity" && node.id !== activeNode.id && !participantIds.has(node.id));
+  const relationTypeOptions = activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS : ENTITY_RELATION_TYPE_OPTIONS;
+  const relationTargetTypeChoices = ["event", "entity"].filter((choice) => {
+    if (choice === currentEditingRelation?.peer.object_type) return true;
+    return nodes.some((node) => node.id !== activeNode.id && node.node_type === choice);
+  });
+
+  const relationTargetOptions = useMemo(() => {
+    const baseOptions = nodes
+      .filter((node) => node.id !== activeNode.id && node.node_type === relationForm.related_type)
+      .map((node) => ({
+        id: node.id,
+        label: `${node.label} / ${node.subtitle}`,
+      }));
+
+    if (
+      currentEditingRelation &&
+      currentEditingRelation.peer.object_type === relationForm.related_type &&
+      !baseOptions.some((option) => option.id === currentEditingRelation.peer.id)
+    ) {
+      baseOptions.unshift({
+        id: currentEditingRelation.peer.id,
+        label: [currentEditingRelation.peer.subtitle, currentEditingRelation.peer.label].filter(Boolean).join(" / "),
+      });
+    }
+
+    return baseOptions;
+  }, [activeNode.id, currentEditingRelation, nodes, relationForm.related_type]);
+
+  useEffect(() => {
+    setEditingRelationId("");
+    setParticipantForm({
+      entity_id: "",
+      role: "参与者",
+      relation_type: "participates_in",
+    });
+    setRelationForm({
+      direction: "outgoing",
+      related_type: defaultRelatedTypeForNode(activeNode, nodes),
+      related_id: "",
+      relation_type: activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS[0] : ENTITY_RELATION_TYPE_OPTIONS[0],
+    });
+  }, [activeNode.id, activeNode.node_type, nodes]);
+
+  useEffect(() => {
+    if (!relationTargetTypeChoices.includes(relationForm.related_type)) {
+      setRelationForm((current) => ({
+        ...current,
+        related_type: relationTargetTypeChoices[0] ?? "event",
+        related_id: "",
+      }));
+    }
+  }, [relationForm.related_type, relationTargetTypeChoices]);
+
+  useEffect(() => {
+    if (participantOptions.length === 0) {
+      if (participantForm.entity_id) {
+        setParticipantForm((current) => ({ ...current, entity_id: "" }));
+      }
+      return;
+    }
+    if (!participantOptions.some((option) => option.id === participantForm.entity_id)) {
+      setParticipantForm((current) => ({ ...current, entity_id: participantOptions[0]?.id ?? "" }));
+    }
+  }, [participantForm.entity_id, participantOptions]);
+
+  useEffect(() => {
+    if (relationTargetOptions.length === 0) {
+      if (relationForm.related_id) {
+        setRelationForm((current) => ({ ...current, related_id: "" }));
+      }
+      return;
+    }
+    if (!relationTargetOptions.some((option) => option.id === relationForm.related_id)) {
+      setRelationForm((current) => ({ ...current, related_id: relationTargetOptions[0]?.id ?? "" }));
+    }
+  }, [relationForm.related_id, relationTargetOptions]);
+
+  async function handleParticipantSubmit() {
+    if (curationContext?.kind !== "event" || !participantForm.entity_id) return;
+    await onUpsertEventParticipant(curationContext.event.id, participantForm);
+    setParticipantForm({
+      entity_id: "",
+      role: "参与者",
+      relation_type: "participates_in",
+    });
+  }
+
+  async function handleRelationSubmit() {
+    if (!curationContext || !relationForm.related_id) return;
+    const nodeId = curationContext.kind === "event" ? curationContext.event.id : curationContext.entity.id;
+    await onUpsertRelation(curationContext.kind, nodeId, relationForm, editingRelationId || undefined);
+    setEditingRelationId("");
+    setRelationForm({
+      direction: "outgoing",
+      related_type: defaultRelatedTypeForNode(activeNode, nodes),
+      related_id: "",
+      relation_type: activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS[0] : ENTITY_RELATION_TYPE_OPTIONS[0],
+    });
+  }
+
+  function beginRelationEdit(relation: GraphRelationItem) {
+    setEditingRelationId(relation.id);
+    setRelationForm({
+      direction: relation.direction,
+      related_type: relation.peer.object_type,
+      related_id: relation.peer.id,
+      relation_type: relation.relation_type,
+    });
+  }
+
+  function cancelRelationEdit() {
+    setEditingRelationId("");
+    setRelationForm({
+      direction: "outgoing",
+      related_type: defaultRelatedTypeForNode(activeNode, nodes),
+      related_id: "",
+      relation_type: activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS[0] : ENTITY_RELATION_TYPE_OPTIONS[0],
+    });
+  }
+
+  const fullCurationHref = activeNode.node_type === "event" ? `/curation/events/${activeNode.id}` : `/curation/entities/${activeNode.id}`;
+
+  return (
+    <div className="mt-8 space-y-4 border-t-4 border-ink pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em]">Inline Curation</p>
+          <p className="mt-2 text-base font-bold leading-relaxed">
+            在当前图谱节点下直接调整参与者和关系，提交后会立即刷新这个工作台。
+          </p>
+        </div>
+        <Link href={fullCurationHref} className="brutal-action brutal-action-secondary">
+          打开完整校对页
+        </Link>
+      </div>
+
+      {mutationMessage ? (
+        <div className="border-4 border-ink bg-green-200 px-4 py-3 shadow-brutal">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-bold leading-relaxed">{mutationMessage}</p>
+            <button type="button" onClick={onDismissMutationMessage} className="text-sm font-black uppercase tracking-[0.14em]">
+              关闭
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {mutationError ? (
+        <div className="border-4 border-ink bg-red-200 px-4 py-3 shadow-brutal">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-bold leading-relaxed">{mutationError}</p>
+            <button type="button" onClick={onDismissMutationError} className="text-sm font-black uppercase tracking-[0.14em]">
+              关闭
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {curationLoading ? (
+        <div className="border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
+          <p className="text-sm font-bold">正在载入当前节点的治理上下文...</p>
+        </div>
+      ) : null}
+
+      {!curationLoading && !curationContext ? (
+        <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+          当前节点暂时没有可用的内联治理上下文，你仍然可以先跳到完整校对页继续操作。
+        </div>
+      ) : null}
+
+      {curationContext?.kind === "event" ? (
+        <div className="space-y-4">
+          <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black uppercase tracking-[0.16em]">参与者治理</p>
+              <span className="brutal-chip">{curationContext.stats.participant_count} participants</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              {curationContext.participants.length ? (
+                curationContext.participants.map((participant) => (
+                  <div key={`${curationContext.event.id}-${participant.id}`} className="border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em]">{participant.entity_type}</p>
+                        <p className="mt-2 text-lg font-black leading-tight">{participant.display_name}</p>
+                        <p className="mt-2 text-sm font-bold">
+                          {[participant.role ?? "未标注角色", participant.relation_type ?? "participates_in"].join(" / ")}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`确认移除 ${participant.display_name} 吗？`)) {
+                            void onRemoveEventParticipant(curationContext.event.id, participant.id);
+                          }
+                        }}
+                        disabled={mutationBusyKey === `participant-remove-${curationContext.event.id}-${participant.id}`}
+                        className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        移除
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+                  当前事件还没有参与者记录。
+                </div>
+              )}
+            </div>
+            <div className="mt-4 grid gap-3">
+              <select
+                value={participantForm.entity_id}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, entity_id: event.target.value }))}
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              >
+                {participantOptions.length ? (
+                  participantOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label} / {option.subtitle}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">当前工作台没有可补充的人物节点</option>
+                )}
+              </select>
+              <input
+                value={participantForm.role ?? ""}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, role: event.target.value }))}
+                placeholder="角色，例如：主持人"
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              />
+              <input
+                value={participantForm.relation_type ?? ""}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, relation_type: event.target.value }))}
+                placeholder="关系类型，例如：participates_in"
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => void handleParticipantSubmit()}
+                disabled={!participantOptions.length || !participantForm.entity_id || mutationBusyKey === `participant-submit-${curationContext.event.id}`}
+                className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                添加参与者
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {curationContext ? (
+        <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">关系治理</p>
+            <span className="brutal-chip">{curationContext.stats.relation_count} relations</span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {curationContext.relations.length ? (
+              curationContext.relations.map((relation) => {
+                const canEditInline = relation.peer.object_type === "event" || relation.peer.object_type === "entity";
+                const nodeId = curationContext.kind === "event" ? curationContext.event.id : curationContext.entity.id;
+                return (
+                  <div key={relation.id} className="border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                          {relation.direction} / {relation.peer.object_type}
+                        </p>
+                        <p className="mt-2 text-lg font-black leading-tight">{relation.peer.label}</p>
+                        <p className="mt-2 text-sm font-bold">
+                          {[relation.relation_type, relation.peer.subtitle].filter(Boolean).join(" / ")}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {canEditInline ? (
+                          <button
+                            type="button"
+                            onClick={() => beginRelationEdit(relation)}
+                            className="brutal-action brutal-action-secondary"
+                          >
+                            编辑
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`确认删除与 ${relation.peer.label} 的这条关系吗？`)) {
+                              void onRemoveRelation(curationContext.kind, nodeId, relation.id);
+                            }
+                          }}
+                          disabled={mutationBusyKey === `relation-remove-${relation.id}`}
+                          className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+                当前节点还没有额外的治理关系。
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select
+                value={relationForm.direction}
+                onChange={(event) => setRelationForm((current) => ({ ...current, direction: event.target.value }))}
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              >
+                <option value="outgoing">outgoing</option>
+                <option value="incoming">incoming</option>
+              </select>
+              <select
+                value={relationForm.related_type}
+                onChange={(event) =>
+                  setRelationForm((current) => ({
+                    ...current,
+                    related_type: event.target.value,
+                    related_id: "",
+                  }))
+                }
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              >
+                {relationTargetTypeChoices.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <select
+              value={relationForm.related_id}
+              onChange={(event) => setRelationForm((current) => ({ ...current, related_id: event.target.value }))}
+              className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+            >
+              {relationTargetOptions.length ? (
+                relationTargetOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))
+              ) : (
+                <option value="">当前工作台没有可选的关系目标</option>
+              )}
+            </select>
+
+            <select
+              value={relationForm.relation_type}
+              onChange={(event) => setRelationForm((current) => ({ ...current, relation_type: event.target.value }))}
+              className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+            >
+              {relationTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void handleRelationSubmit()}
+                disabled={!relationForm.related_id || mutationBusyKey === `relation-submit-${curationContext.kind}-${curationContext.kind === "event" ? curationContext.event.id : curationContext.entity.id}`}
+                className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {editingRelationId ? "更新关系" : "添加关系"}
+              </button>
+              {editingRelationId ? (
+                <button type="button" onClick={cancelRelationEdit} className="brutal-action brutal-action-secondary">
+                  取消编辑
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

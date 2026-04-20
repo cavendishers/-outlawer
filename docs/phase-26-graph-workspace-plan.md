@@ -391,6 +391,13 @@ Acceptance:
 - user can correct common graph edges without leaving the workspace
 - graph refresh happens locally after a successful mutation
 
+Status update on `2026-04-20`:
+
+- delivered in the shared `/graph` workspace inspector instead of separate graph-only edit pages
+- event nodes now support inline participant add/remove within the current graph neighborhood
+- event and entity nodes now support inline relation add/update/remove with local workspace refresh
+- full curation pages remain available as the escape hatch for edits outside the current graph neighborhood
+
 ### Slice D: Timeline And Event Backbone Fusion
 
 Goal:

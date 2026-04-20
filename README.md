@@ -66,6 +66,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - 事件详情页和人物故事页现在都带有第一版图谱工作台，可直接沿关联事件和时间片段继续跳转。
 - `/graph` 共享图谱工作台和 `/api/v1/graph/workspace` 读接口已经上线，支持以事件、人物或全局总览作为工作台锚点进入统一图谱视图。
 - 图谱工作台现在支持 URL 驱动的节点聚焦、统一节点检查器，以及 `/api/v1/graph/nodes/{node_type}/{node_id}` 节点详情接口，可直接沿邻接节点和时间上下文继续导航。
+- 图谱工作台现在也支持事件参与者增删、事件/人物关系增删改的内联治理，常见图谱修正不再必须跳回独立校对页。
 
 ## Quick Start
 
