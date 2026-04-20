@@ -908,12 +908,14 @@ Current slice delivered:
 - shared graph workspace now keeps `active_node_id` in the URL and supports connected-node plus timeline-context navigation in-place
 - shared graph workspace now supports inline event participant edits plus event/entity relation add, update, and remove directly in the node inspector
 - inline graph edits now refresh the current workspace locally after each successful mutation and still preserve links to the full curation pages
+- shared graph workspace now includes `全部 / 事件 / 人物 / 时间主干` viewing modes
+- timeline backbone rail can now select visible event nodes directly inside the shared workspace instead of always leaving for detail pages
 
 Remaining work:
 
-- expand event-to-event association editing beyond read-only stepping
-- fuse timeline backbone and event stepping more deeply into the shared graph workspace
-- make graph editing feel less like separate pages and more like one connected workspace as the timeline rail lands
+- harden loading, empty, and validation states for the shared graph workspace
+- improve mobile behavior for the graph workspace interaction rail
+- continue pushing graph editing toward a broader canvas-native experience after UX hardening
 
 Recommended next slices:
 
@@ -947,3 +949,5 @@ Slice A follow-up verification:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after wrapping `/graph` search-param reads in a Suspense-backed client boundary
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after inline graph edit integration
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed with inline graph governance rail enabled
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after timeline backbone fusion
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed with timeline backbone rail and workspace view filters enabled

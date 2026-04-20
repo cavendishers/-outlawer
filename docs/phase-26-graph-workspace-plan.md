@@ -414,6 +414,12 @@ Acceptance:
 
 - user can traverse from person timeline to event neighborhood and back without route thrash
 
+Status update on `2026-04-20`:
+
+- shared graph canvas now supports `all`, `events`, `people`, and `timeline` viewing modes
+- timeline backbone segments can now select visible event nodes directly inside the shared workspace
+- timeline backbone cards and event neighborhood stepping now stay inside the graph shell before falling back to page navigation
+
 ### Slice E: UX Hardening
 
 Goal:

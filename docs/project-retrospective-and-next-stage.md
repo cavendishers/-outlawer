@@ -81,10 +81,11 @@ Current implementation progress:
 - Slice A is now in place with a shared `/graph` route, a unified graph workspace shell, and a dedicated `/api/v1/graph/workspace` read endpoint for event, entity, and overview anchors
 - Slice B is now in place with a node-detail endpoint, URL-synced node focus, connected-node inspection, and timeline-context navigation inside the shared graph workspace
 - Slice C is now in place with inline participant editing for event nodes plus inline relation add/update/remove for event and entity nodes inside the shared graph workspace
+- Slice D is now in place with timeline-backbone rail navigation and workspace view filters so people and event flows can stay inside one shared graph shell
 
 ## Priority-ordered Next Work
 
-1. fuse timeline backbone and event-association stepping more deeply into the shared graph workspace
+1. harden the shared graph workspace for mobile, loading, and validation feedback
 2. deepen operations dashboards and operator workflows
 3. plan multi-user and permissions model
 4. design plugin and external importer seams

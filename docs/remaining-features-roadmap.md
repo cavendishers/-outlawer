@@ -127,13 +127,19 @@ Delivered in the sixth slice:
 - event and entity nodes can now add, update, and remove graph relations directly inside the node inspector
 - graph mutations now refresh the shared workspace locally after each successful inline edit instead of forcing a navigation back to standalone curation pages
 
+Delivered in the seventh slice:
+
+- the shared graph workspace now includes `all / events / people / timeline` viewing modes
+- timeline backbone segments are now selectable inside the shared graph shell and can focus event nodes without route thrash
+- people-timeline and event-network navigation now coexist in one workspace instead of being split between separate page-local affordances
+
 Still missing:
 
 - broader graph canvas editing
 
 Suggested deliverables:
 
-- stronger timeline-backbone fusion inside the shared graph workspace
+- graph workspace UX hardening on loading, empty, and error states
 - broader graph canvas editing
 - richer neighborhood refresh and validation feedback
 

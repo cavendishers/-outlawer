@@ -179,6 +179,8 @@ type PositionedNode = GraphNode & {
   tone: "paper" | "aqua" | "peach" | "neon";
 };
 
+type GraphWorkspaceViewMode = "all" | "events" | "people" | "timeline";
+
 function toneForNode(node: GraphNode): PositionedNode["tone"] {
   if (node.is_anchor) return "neon";
   if (node.node_type === "event") return "peach";
@@ -240,7 +242,9 @@ export function GraphWorkspaceShell({
   onUpsertRelation,
   onRemoveRelation,
 }: GraphWorkspaceShellProps) {
-  const positionedNodes = useMemo<PositionedNode[]>(() => {
+  const [viewMode, setViewMode] = useState<GraphWorkspaceViewMode>("all");
+
+  const allPositionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
     const eventNodes = nodes.filter((node) => node.node_type === "event" && !node.is_anchor);
     const entityNodes = nodes.filter((node) => node.node_type === "entity" && !node.is_anchor);
@@ -286,12 +290,43 @@ export function GraphWorkspaceShell({
     return positioned;
   }, [nodes]);
 
+  const timelineEventIds = useMemo(
+    () => new Set(timelineFocus.map((item) => item.event_id).filter((value): value is string => Boolean(value))),
+    [timelineFocus]
+  );
+
+  const positionedNodes = useMemo(() => {
+    return allPositionedNodes.filter((node) => {
+      if (node.is_anchor) return true;
+      if (viewMode === "all") return true;
+      if (viewMode === "events") return node.node_type === "event";
+      if (viewMode === "people") return node.node_type === "entity";
+      if (viewMode === "timeline") {
+        return node.node_type === "event" ? timelineEventIds.has(node.id) : false;
+      }
+      return true;
+    });
+  }, [allPositionedNodes, timelineEventIds, viewMode]);
+
+  const visibleNodeIds = useMemo(() => new Set(positionedNodes.map((node) => node.id)), [positionedNodes]);
+  const visibleEdges = useMemo(
+    () => edges.filter((edge) => visibleNodeIds.has(edge.source_id) && visibleNodeIds.has(edge.target_id)),
+    [edges, visibleNodeIds]
+  );
+
+  useEffect(() => {
+    if (activeNodeId && visibleNodeIds.has(activeNodeId)) return;
+    if (!positionedNodes[0]) return;
+    onSelectNode(positionedNodes[0].id);
+  }, [activeNodeId, onSelectNode, positionedNodes, visibleNodeIds]);
+
   const activeNode = positionedNodes.find((node) => node.id === activeNodeId) ?? positionedNodes[0] ?? null;
   const nodeMap = new Map(positionedNodes.map((node) => [node.id, node]));
   const relatedEdges = activeNode
-    ? edges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
+    ? visibleEdges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
     : [];
   const effectiveTimelineContext = nodeDetail?.timeline_context?.length ? nodeDetail.timeline_context : timelineFocus;
+  const backboneTimeline = effectiveTimelineContext.length ? effectiveTimelineContext : timelineFocus;
   const effectiveConnectedNodes = nodeDetail?.connected_nodes ?? [];
   const effectiveActions = nodeDetail?.anchor_actions?.length
     ? [...(activeNode?.inspector.actions ?? []), ...nodeDetail.anchor_actions]
@@ -330,7 +365,28 @@ export function GraphWorkspaceShell({
 
       <section className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
         <Panel className="p-6 md:p-8" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">共享画布</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">共享画布</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "all", label: "全部" },
+                { id: "events", label: "事件" },
+                { id: "people", label: "人物" },
+                { id: "timeline", label: "时间主干" },
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setViewMode(mode.id as GraphWorkspaceViewMode)}
+                  className={`border-4 border-ink px-3 py-2 text-xs font-black uppercase tracking-[0.14em] shadow-brutal ${
+                    viewMode === mode.id ? "bg-neon" : "bg-white"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mt-5 grid gap-3 md:hidden">
             {positionedNodes.map((node) => (
               <button
@@ -405,6 +461,13 @@ export function GraphWorkspaceShell({
               ))}
             </div>
           </div>
+
+          <TimelineBackboneRail
+            items={backboneTimeline}
+            activeEventId={activeNode?.node_type === "event" ? activeNode.id : backboneTimeline[0]?.event_id ?? null}
+            selectableEventIds={visibleNodeIds}
+            onSelectNode={onSelectNode}
+          />
         </Panel>
 
         <Panel className="p-6" tone="story">
@@ -532,24 +595,106 @@ export function GraphWorkspaceShell({
       </section>
 
       <Panel className="p-6" tone="time">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">时间焦点带</p>
+        <p className="text-sm font-black uppercase tracking-[0.16em]">时间主干展开</p>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {timelineFocus.map((item) => (
-            <Link key={`${item.kind}-${item.id}`} href={item.href}>
-              <div className="h-full border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+          {backboneTimeline.map((item) => (
+            visibleNodeIds.has(item.event_id ?? "") ? (
+              <button
+                key={`${item.kind}-${item.id}`}
+                type="button"
+                onClick={() => {
+                  if (item.event_id) onSelectNode(item.event_id);
+                }}
+                className="h-full border-4 border-ink bg-white px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1"
+              >
                 <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
                 <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
                 <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
-              </div>
-            </Link>
+              </button>
+            ) : (
+              <Link key={`${item.kind}-${item.id}`} href={item.href}>
+                <div className="h-full border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
+                  <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
+                  <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
+                </div>
+              </Link>
+            )
           ))}
-          {timelineFocus.length === 0 ? (
+          {backboneTimeline.length === 0 ? (
             <div className="surface-inset border-4 border-dashed border-ink p-5 text-base font-bold">
               当前工作台还没有时间焦点带，等更多事件进入后这里会形成一条可读骨架。
             </div>
           ) : null}
         </div>
       </Panel>
+    </div>
+  );
+}
+
+type TimelineBackboneRailProps = {
+  items: TimelineFocusItem[];
+  activeEventId: string | null;
+  selectableEventIds: Set<string>;
+  onSelectNode: (nodeId: string) => void;
+};
+
+function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSelectNode }: TimelineBackboneRailProps) {
+  return (
+    <div className="mt-5 border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em]">Timeline Backbone</p>
+          <p className="mt-2 text-sm font-bold leading-relaxed">
+            把时间骨架直接压进图谱工作台里，优先在这里选中事件节点，再决定是否离开当前工作区。
+          </p>
+        </div>
+        <span className="brutal-chip">{items.length} segments</span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {items.length ? (
+          items.map((item, index) => {
+            const isActive = Boolean(item.event_id && activeEventId && item.event_id === activeEventId);
+            const canSelect = Boolean(item.event_id && selectableEventIds.has(item.event_id));
+
+            if (canSelect && item.event_id) {
+              return (
+                <button
+                  key={`${item.kind}-${item.id}`}
+                  type="button"
+                  onClick={() => onSelectNode(item.event_id!)}
+                  className={`border-4 border-ink px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1 ${
+                    isActive ? "bg-neon" : "bg-white"
+                  }`}
+                >
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                    #{index + 1} / {item.kind}
+                  </p>
+                  <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
+                  <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
+                </button>
+              );
+            }
+
+            return (
+              <Link key={`${item.kind}-${item.id}`} href={item.href}>
+                <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                    #{index + 1} / {item.kind}
+                  </p>
+                  <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
+                  <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+            当前工作台还没有形成可点击的时间主干。
+          </div>
+        )}
+      </div>
     </div>
   );
 }
