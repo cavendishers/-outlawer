@@ -76,6 +76,10 @@ Detailed implementation plan:
 
 - [`docs/phase-26-graph-workspace-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-26-graph-workspace-plan.md)
 
+Current implementation progress:
+
+- Slice A is now in place with a shared `/graph` route, a unified graph workspace shell, and a dedicated `/api/v1/graph/workspace` read endpoint for event, entity, and overview anchors
+
 ## Priority-ordered Next Work
 
 1. expand graph editing into a canvas-oriented workflow

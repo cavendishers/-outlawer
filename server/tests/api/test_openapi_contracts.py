@@ -231,3 +231,18 @@ def test_curation_endpoints_publish_explicit_response_models() -> None:
     assert set(participant_remove_schema["properties"]) == {"event_id", "entity_id", "status"}
     assert set(event_relation_schema["properties"]) >= {"id", "direction", "relation_type", "peer"}
     assert set(event_relation_remove_schema["properties"]) == {"relation_id", "status"}
+
+
+def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
+    graph_workspace_schema = _response_data_schema("/api/v1/graph/workspace", "get")
+
+    assert set(graph_workspace_schema["properties"]) == {
+        "scope",
+        "title",
+        "description",
+        "anchor",
+        "nodes",
+        "edges",
+        "timeline_focus",
+        "stats",
+    }

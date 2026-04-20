@@ -120,11 +120,11 @@ export default function EventDetailPage() {
           <Panel className="p-6" tone="info">
             <p className="text-sm font-black uppercase tracking-[0.16em]">来源卷宗</p>
             {event?.source_note_id ? (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link
-                  href={`/notes/${event.source_note_id}`}
-                  className="brutal-action brutal-action-secondary text-lg"
-                >
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/notes/${event.source_note_id}`}
+                className="brutal-action brutal-action-secondary text-lg"
+              >
                   {event.source_note_title ?? "查看来源笔记"}
                 </Link>
                 <Link
@@ -147,6 +147,16 @@ export default function EventDetailPage() {
                 ) : null}
               </div>
             )}
+            {event ? (
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href={`/graph?event_id=${event.id}`}
+                  className="brutal-action brutal-action-secondary text-lg"
+                >
+                  打开图谱工作台
+                </Link>
+              </div>
+            ) : null}
           </Panel>
         </section>
 

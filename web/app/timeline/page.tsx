@@ -75,6 +75,11 @@ export default function TimelinePage() {
             <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
               把零散记录压成一条可阅读的时间轨。每个时间点都能继续跳向事件详情，追溯上下文与参与者。
             </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/graph" className="brutal-action brutal-action-primary text-lg">
+                进入图谱工作台
+              </Link>
+            </div>
           </Panel>
 
           <Panel className="p-5" tone="signal">

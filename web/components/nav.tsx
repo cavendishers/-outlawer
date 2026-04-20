@@ -13,6 +13,7 @@ const items = [
   { href: "/people", label: "人物" },
   { href: "/events", label: "事件" },
   { href: "/timeline", label: "图谱" },
+  { href: "/graph", label: "工作台" },
 ];
 
 export function Navigation() {

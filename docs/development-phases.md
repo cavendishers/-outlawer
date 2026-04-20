@@ -901,6 +901,9 @@ Current slice delivered:
 - event detail page now includes an association workspace with an anchor event panel, vertical related-event rail, and focused node inspector
 - entity story page now includes a timeline workspace with fragment stepping, previous/next context, and side-axis event echoes
 - graph-first navigation shortcuts now connect event and entity workspaces back to review and curation flows
+- shared `/graph` route now provides one unified graph workspace shell
+- `/api/v1/graph/workspace` now provides event-anchored, entity-anchored, and overview workspace payloads
+- event detail page, entity story page, and timeline page now expose direct entry links into the shared graph workspace
 
 Remaining work:
 
@@ -930,3 +933,10 @@ Verification completed for current slice:
 - `npm run build` in `web/`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m compileall app`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_health.py tests/integration/test_e2e_api_flow.py tests/integration/test_e2e_review_flow.py tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py`
+
+Slice A follow-up verification:
+
+- `python3 -m compileall server/app server/tests web/app web/components web/lib web/pages` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed
+- `docker compose -f deploy/compose/docker-compose.dev.yml run --rm web npm run build` -> still blocked by existing Next.js `/404` prerender issue (`<Html> should not be imported outside of pages/_document`)

@@ -118,10 +118,30 @@ def main() -> None:
     assert "edges" in graph_overview
     event_detail = assert_ok(client.get(f"{args.base_url}/events/{events['items'][0]['id']}", headers=headers))
     assert "related_events" in event_detail
+    event_workspace = assert_ok(
+        client.get(
+            f"{args.base_url}/graph/workspace",
+            headers=headers,
+            params={"event_id": events["items"][0]["id"]},
+        )
+    )
+    assert event_workspace["scope"] == "event"
+    assert event_workspace["nodes"], event_workspace
     story = assert_ok(client.get(f"{args.base_url}/views/story/note/{note_id}", headers=headers))
     assert story["title"]
     search = assert_ok(client.get(f"{args.base_url}/search", headers=headers, params={"q": "启动"}))
     assert search["items"], search
+    entity_workspace = assert_ok(
+        client.get(
+            f"{args.base_url}/graph/workspace",
+            headers=headers,
+            params={"entity_id": entities["items"][0]["id"]},
+        )
+    )
+    assert entity_workspace["scope"] == "entity"
+    assert entity_workspace["timeline_focus"] is not None
+    overview_workspace = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers))
+    assert overview_workspace["scope"] == "overview"
 
     if args.phase == "phase3":
         print("Phase 3 e2e passed")

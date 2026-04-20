@@ -64,6 +64,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - search、review、curation 的聚合响应也已经显式化，OpenAPI 现在能直接展示统一检索、merge candidate、review context、curation context 与关系编辑结果结构。
 - note、entity、event、timeline 的主要读接口现在都通过独立 query service 组装，路由层只保留参数与响应封装。
 - 事件详情页和人物故事页现在都带有第一版图谱工作台，可直接沿关联事件和时间片段继续跳转。
+- `/graph` 共享图谱工作台和 `/api/v1/graph/workspace` 读接口已经上线，支持以事件、人物或全局总览作为工作台锚点进入统一图谱视图。
 
 ## Quick Start
 

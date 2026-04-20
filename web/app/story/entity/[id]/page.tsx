@@ -98,6 +98,9 @@ export default function EntityStoryPage() {
                 <Link href={`/review/entities/${entity.id}`} className="brutal-action brutal-action-info text-lg">
                   查看审核页
                 </Link>
+                <Link href={`/graph?entity_id=${entity.id}`} className="brutal-action brutal-action-secondary text-lg">
+                  打开图谱工作台
+                </Link>
               </div>
             ) : null}
           </Panel>
