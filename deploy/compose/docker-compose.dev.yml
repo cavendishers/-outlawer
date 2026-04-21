@@ -147,7 +147,7 @@ services:
       - ../../web:/app
       - /app/node_modules
       - /app/.next
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "find .next -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true; npm install && npm run dev"
     depends_on:
       api:
         condition: service_healthy

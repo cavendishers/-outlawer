@@ -130,6 +130,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 - `api` and `worker` images include `ffmpeg` and `tesseract`; backend Python dependencies include `vosk` for local ASR fallback.
 - New read-heavy APIs should prefer query services over route-level query composition.
 - The `web` dev container stays on `NODE_ENV=development`, but production build verification must override to `NODE_ENV=production`.
+- The `web` dev container clears its mounted `.next` cache on startup so a prior production build cannot leave stale Next.js artifacts in the dev runtime.
 
 ## Verification Baseline
 
@@ -146,6 +147,7 @@ Verified on `2026-04-21`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py`
+- frontend route smoke against `http://127.0.0.1:3000` and `http://localhost:3000` for home, auth, library, people, events, timeline, graph, tools, search, review, operations, inbox, and sample detail/curation routes
 
 ## Database Migration Rules
 

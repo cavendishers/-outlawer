@@ -13,6 +13,16 @@ docker compose -f deploy/compose/docker-compose.dev.yml logs api --tail=200
 docker compose -f deploy/compose/docker-compose.dev.yml logs worker --tail=200
 ```
 
+## Frontend Dev Runtime Recovery
+
+The local `web` service mounts `.next` as a container volume for Next.js dev speed. If a production build is run inside the same dev container, the dev server can briefly read incompatible `.next` artifacts and return 500/502 on some routes. The dev compose command clears the mounted `.next` contents on startup, so a clean web recreation is the preferred recovery step:
+
+```bash
+docker compose -f deploy/compose/docker-compose.dev.yml up -d --no-deps --force-recreate --renew-anon-volumes web
+```
+
+When scripting local frontend smoke checks from Python on macOS, build the HTTP opener with proxies disabled or prefer `127.0.0.1`; system proxy settings may otherwise route `localhost` through a local proxy and report a false 502.
+
 ## Backup
 
 ### PostgreSQL
