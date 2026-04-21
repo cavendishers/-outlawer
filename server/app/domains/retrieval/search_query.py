@@ -8,7 +8,7 @@ from app.models.entity import Entity, EntityAlias
 from app.models.event import Event
 from app.models.extraction import MergeCandidate
 from app.models.note import Note
-from app.services.entity_alias_service import build_entity_alias_map
+from app.domains.knowledge.aliases import build_entity_alias_map
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:

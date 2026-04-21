@@ -637,6 +637,14 @@ Delivered in the twelfth slice:
 - updated asset-text preparation and local media tests to depend on the extraction domain module directly
 - reduced `services/local_media_service.py` to a compatibility export
 
+Delivered in the thirteenth slice:
+
+- introduced `domains/knowledge`
+- moved canonical alias helpers into `domains/knowledge/aliases.py`
+- moved embedding upsert helpers into `domains/knowledge/embeddings.py`
+- updated retrieval, governance, and projection modules to depend on the knowledge domain directly
+- reduced `services/entity_alias_service.py` and `services/embedding_service.py` to compatibility exports
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

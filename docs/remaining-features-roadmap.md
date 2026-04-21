@@ -503,10 +503,17 @@ Delivered in the twelfth slice:
 - updated asset-text preparation and local media tests to depend on the extraction domain path directly
 - reduced the old local media service module to a compatibility export while the migration continues
 
+Delivered in the thirteenth slice:
+
+- introduced `domains/knowledge`
+- moved canonical alias helpers into `domains/knowledge/aliases.py`
+- moved embedding upsert helpers into `domains/knowledge/embeddings.py`
+- updated retrieval, governance, and projection modules to depend on the knowledge domain paths directly
+- reduced the old entity-alias and embedding service modules to compatibility exports while the migration continues
+
 Still missing:
 
 - projection module packaging
-- knowledge domain packaging
 - remaining helper service ownership cleanup
 - further breakup of oversized legacy services
 

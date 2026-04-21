@@ -12,8 +12,8 @@ from app.models.extraction import ExtractionEvidence, MergeCandidate
 from app.models.note import Note, NoteChunk
 from app.models.raw_asset import RawAsset
 from app.models.style_view import StyleView
-from app.services.embedding_service import upsert_embedding
-from app.services.entity_alias_service import upsert_entity_alias_value
+from app.domains.knowledge.aliases import upsert_entity_alias_value
+from app.domains.knowledge.embeddings import upsert_embedding
 from app.utils.text import text_to_vector
 
 

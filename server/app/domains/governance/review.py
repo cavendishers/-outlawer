@@ -17,7 +17,7 @@ from app.models.extraction import ExtractionEvidence, MergeCandidate
 from app.models.note import Note
 from app.models.review import EntityMergeHistory, EventMergeHistory, ReviewAction
 from app.models.style_view import StyleView
-from app.services.entity_alias_service import list_entity_alias_rows, list_entity_alias_values, upsert_entity_alias_value
+from app.domains.knowledge.aliases import list_entity_alias_rows, list_entity_alias_values, upsert_entity_alias_value
 from app.utils.text import normalize_name
 
 
