@@ -60,6 +60,11 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 4
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_projection_service.py tests/services/test_extractor_service.py tests/services/test_extraction_run_service.py` -> passed after Phase C domain packaging slice 5
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 5
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py` -> passed after Phase C domain packaging slice 6
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py` -> passed after Phase C domain packaging slice 6
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed after Phase C domain packaging slice 6
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py` -> passed after Phase C domain packaging slice 6
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 6
 
 ## Architecture Blueprint Track
 
@@ -170,6 +175,13 @@ Delivered in slice 5:
 - moved note, entity, event, and timeline query services into `app.domains.retrieval.*`
 - updated API routes and key read-side callers to depend on the retrieval domain path directly
 - reduced the old query service modules to compatibility shims while the migration continues
+
+Delivered in slice 6:
+
+- moved merge review, alias confirmation, event/entity curation, and governance object-summary helpers into `app.domains.governance.review` and `app.domains.governance.curation`
+- updated review, curation, and operations callers to import the governance domain path directly
+- reduced `app.services.review_service` and `app.services.curation_service` to compatibility shims while the migration continues
+- hardened entity/event merge rewrites so duplicate alias and participant conflicts are resolved before flush, keeping governance e2e green during the packaging move
 
 Completion criteria:
 

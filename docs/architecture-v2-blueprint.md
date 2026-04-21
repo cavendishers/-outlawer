@@ -591,6 +591,13 @@ Delivered in the fifth slice:
 - updated API routes plus graph/review/curation callers to use retrieval domain modules directly
 - reduced the old read-side query services to compatibility exports while the domain-first layout takes over
 
+Delivered in the sixth slice:
+
+- moved merge review, alias confirmation, event/entity curation, and governance summary helpers into `domains/governance/review.py` and `domains/governance/curation.py`
+- updated review, curation, and operations callers to import governance modules directly
+- reduced `services/review_service.py` and `services/curation_service.py` to compatibility exports
+- hardened governance merge rewrites so duplicate alias and participant rows are resolved before flush while keeping review and curation e2e green
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

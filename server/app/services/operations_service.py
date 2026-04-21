@@ -11,7 +11,7 @@ from app.models.extraction import ExtractionRun, MergeCandidate
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
-from app.services.review_service import build_object_summary
+from app.domains.governance.review import build_object_summary
 
 
 def get_operations_overview(db: Session, *, user_id: str) -> dict[str, Any]:

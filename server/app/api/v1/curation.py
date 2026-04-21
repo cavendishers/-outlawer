@@ -27,7 +27,7 @@ from app.schemas.event import (
     EventRelationUpsertRequest,
     EventUpdateRequest,
 )
-from app.services import curation_service
+from app.domains.governance import curation
 
 router = APIRouter()
 
@@ -35,7 +35,7 @@ router = APIRouter()
 @router.get("/entities/{entity_id}", response_model=Envelope[EntityCurationContextResponse])
 def get_entity_curation_context(entity_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.get_entity_curation_context(db, user_id=user.id, entity_id=entity_id))
+        return ok(curation.get_entity_curation_context(db, user_id=user.id, entity_id=entity_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -44,7 +44,7 @@ def get_entity_curation_context(entity_id: str, db: DbSession, user=Depends(get_
 def update_entity(entity_id: str, payload: EntityUpdateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(
-            curation_service.update_entity(
+            curation.update_entity(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
@@ -60,7 +60,7 @@ def update_entity(entity_id: str, payload: EntityUpdateRequest, db: DbSession, u
 def add_entity_alias(entity_id: str, payload: EntityAliasCreateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(
-            curation_service.add_entity_alias(
+            curation.add_entity_alias(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
@@ -76,7 +76,7 @@ def add_entity_alias(entity_id: str, payload: EntityAliasCreateRequest, db: DbSe
 @router.delete("/entities/{entity_id}/aliases/{alias_id}", response_model=Envelope[EntityAliasRemovedResponse])
 def remove_entity_alias(entity_id: str, alias_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.remove_entity_alias(db, user_id=user.id, entity_id=entity_id, alias_id=alias_id))
+        return ok(curation.remove_entity_alias(db, user_id=user.id, entity_id=entity_id, alias_id=alias_id))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -91,7 +91,7 @@ def upsert_entity_relation(
 ) -> dict:
     try:
         return ok(
-            curation_service.upsert_entity_relation(
+            curation.upsert_entity_relation(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
@@ -116,7 +116,7 @@ def update_entity_relation(
 ) -> dict:
     try:
         return ok(
-            curation_service.update_entity_relation(
+            curation.update_entity_relation(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
@@ -132,7 +132,7 @@ def update_entity_relation(
 @router.delete("/entities/{entity_id}/relations/{relation_id}", response_model=Envelope[RelationRemovedResponse])
 def remove_entity_relation(entity_id: str, relation_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.remove_entity_relation(db, user_id=user.id, entity_id=entity_id, relation_id=relation_id))
+        return ok(curation.remove_entity_relation(db, user_id=user.id, entity_id=entity_id, relation_id=relation_id))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -141,7 +141,7 @@ def remove_entity_relation(entity_id: str, relation_id: str, db: DbSession, user
 @router.get("/events/{event_id}", response_model=Envelope[EventCurationContextResponse])
 def get_event_curation_context(event_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.get_event_curation_context(db, user_id=user.id, event_id=event_id))
+        return ok(curation.get_event_curation_context(db, user_id=user.id, event_id=event_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -150,7 +150,7 @@ def get_event_curation_context(event_id: str, db: DbSession, user=Depends(get_cu
 def update_event(event_id: str, payload: EventUpdateRequest, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
         return ok(
-            curation_service.update_event(
+            curation.update_event(
                 db,
                 user_id=user.id,
                 event_id=event_id,
@@ -171,7 +171,7 @@ def upsert_event_participant(
 ) -> dict:
     try:
         return ok(
-            curation_service.upsert_event_participant(
+            curation.upsert_event_participant(
                 db,
                 user_id=user.id,
                 event_id=event_id,
@@ -188,7 +188,7 @@ def upsert_event_participant(
 @router.delete("/events/{event_id}/participants/{entity_id}", response_model=Envelope[EventParticipantRemovedResponse])
 def remove_event_participant(event_id: str, entity_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.remove_event_participant(db, user_id=user.id, event_id=event_id, entity_id=entity_id))
+        return ok(curation.remove_event_participant(db, user_id=user.id, event_id=event_id, entity_id=entity_id))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -203,7 +203,7 @@ def upsert_event_relation(
 ) -> dict:
     try:
         return ok(
-            curation_service.upsert_event_relation(
+            curation.upsert_event_relation(
                 db,
                 user_id=user.id,
                 event_id=event_id,
@@ -228,7 +228,7 @@ def update_event_relation(
 ) -> dict:
     try:
         return ok(
-            curation_service.update_event_relation(
+            curation.update_event_relation(
                 db,
                 user_id=user.id,
                 event_id=event_id,
@@ -244,7 +244,7 @@ def update_event_relation(
 @router.delete("/events/{event_id}/relations/{relation_id}", response_model=Envelope[RelationRemovedResponse])
 def remove_event_relation(event_id: str, relation_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(curation_service.remove_event_relation(db, user_id=user.id, event_id=event_id, relation_id=relation_id))
+        return ok(curation.remove_event_relation(db, user_id=user.id, event_id=event_id, relation_id=relation_id))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

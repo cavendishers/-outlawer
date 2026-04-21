@@ -33,9 +33,9 @@ Current status as of `2026-04-21`:
 | Audio ingestion | `DONE` | raw storage plus ASR, context hints, transcript segments, and derivative text available |
 | Video ingestion | `PARTIAL` | raw storage, sampled OCR/ASR derivatives, scene time ranges, and evidence labels exist; deeper semantic quality is still MVP-grade |
 | Raw asset preservation | `DONE` | MinIO-backed storage and raw reads available |
-| AI-assisted organization and categorization | `PARTIAL` | extraction and normalization exist, but governance workflows are incomplete |
-| Person extraction | `PARTIAL` | core extraction works, but alias/merge/governance is still weak |
-| Event extraction | `PARTIAL` | core extraction works and first event curation flow exists, but broader graph editing is still incomplete |
+| AI-assisted organization and categorization | `PARTIAL` | extraction, normalization, review, and curation exist, but extraction quality and operator depth still need iteration |
+| Person extraction | `PARTIAL` | core extraction plus alias/merge governance exist, but extraction precision and disambiguation still need improvement |
+| Event extraction | `PARTIAL` | core extraction and governance flows exist, but broader graph editing and higher-confidence event understanding are still incomplete |
 | Similarity and association | `DONE` | similarity search, merge candidates, and review flows are available |
 | Person index | `DONE` | people page and entity detail flow available |
 | Timeline | `DONE` | timeline page and timeline projections available |
@@ -457,10 +457,17 @@ Delivered in the fifth slice:
 - updated API routes and key read-side callers to depend on the retrieval domain package directly
 - reduced the old query service modules to compatibility exports while the migration continues
 
+Delivered in the sixth slice:
+
+- moved merge review, alias confirmation, event/entity curation, and governance object-summary helpers into `domains/governance/*`
+- updated review, curation, and operations callers to depend on the governance domain package directly
+- reduced the old review and curation service modules to compatibility exports while the migration continues
+- hardened merge rewrites so duplicate alias and participant rows are resolved before flush during governance-driven merges
+
 Still missing:
 
 - projection module packaging
-- knowledge, governance, retrieval, and operations domain packaging
+- knowledge, operations, and graph-supporting domain packaging
 - further breakup of oversized legacy services
 
 Acceptance target:

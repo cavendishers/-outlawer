@@ -16,7 +16,7 @@ from app.schemas.review import (
     MergeCandidateRejectResponse,
     MergeCandidateResponse,
 )
-from app.services import review_service
+from app.domains.governance import review
 
 router = APIRouter()
 
@@ -32,7 +32,7 @@ def list_merge_candidates(
 ) -> dict:
     params = normalize_page_params(page, page_size)
     return ok(
-        review_service.list_merge_candidates(
+        review.list_merge_candidates(
             db,
             user_id=user.id,
             object_type=object_type,
@@ -46,7 +46,7 @@ def list_merge_candidates(
 @router.get("/merge-candidates/{candidate_id}", response_model=Envelope[MergeCandidateDetailResponse])
 def get_merge_candidate_detail(candidate_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(review_service.get_merge_candidate_detail(db, user_id=user.id, candidate_id=candidate_id))
+        return ok(review.get_merge_candidate_detail(db, user_id=user.id, candidate_id=candidate_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -60,7 +60,7 @@ def reject_merge_candidate(
 ) -> dict:
     try:
         return ok(
-            review_service.reject_merge_candidate(
+            review.reject_merge_candidate(
                 db,
                 user_id=user.id,
                 candidate_id=candidate_id,
@@ -82,7 +82,7 @@ def accept_merge_candidate(
 ) -> dict:
     try:
         return ok(
-            review_service.accept_merge_candidate(
+            review.accept_merge_candidate(
                 db,
                 user_id=user.id,
                 candidate_id=candidate_id,
@@ -99,7 +99,7 @@ def accept_merge_candidate(
 @router.get("/entities/{entity_id}/context", response_model=Envelope[EntityReviewContextResponse])
 def get_entity_review_context(entity_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(review_service.get_entity_review_context(db, user_id=user.id, entity_id=entity_id))
+        return ok(review.get_entity_review_context(db, user_id=user.id, entity_id=entity_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -116,7 +116,7 @@ def confirm_entity_alias(
         raise HTTPException(status_code=400, detail="Alias is required")
     try:
         return ok(
-            review_service.confirm_entity_alias(
+            review.confirm_entity_alias(
                 db,
                 user_id=user.id,
                 entity_id=entity_id,
@@ -132,6 +132,6 @@ def confirm_entity_alias(
 @router.get("/events/{event_id}/context", response_model=Envelope[EventReviewContextResponse])
 def get_event_review_context(event_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(review_service.get_event_review_context(db, user_id=user.id, event_id=event_id))
+        return ok(review.get_event_review_context(db, user_id=user.id, event_id=event_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
