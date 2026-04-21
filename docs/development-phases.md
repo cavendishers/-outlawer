@@ -69,6 +69,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 7
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 8
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 8
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 9
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 9
 
 ## Architecture Blueprint Track
 
@@ -200,6 +202,13 @@ Delivered in slice 8:
 - moved `/search/unified` and `/search/similar` payload assembly out of the route layer and into the retrieval domain
 - reduced `app.services.search_service` to a compatibility shim while remaining callers migrate
 - kept search, graph, and broader API Docker e2e green after the search read model joined the retrieval domain
+
+Delivered in slice 9:
+
+- introduced `app.domains.operations`
+- moved operations overview/backlog/activity aggregation into `app.domains.operations.overview`
+- updated operations API routes to depend on the operations domain path directly
+- reduced `app.services.operations_service` to a compatibility shim while operations read models finish migrating
 
 Completion criteria:
 

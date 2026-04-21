@@ -478,10 +478,18 @@ Delivered in the eighth slice:
 - reduced the old search service module to a compatibility export while the migration continues
 - kept OpenAPI and full Docker e2e green after the search read model moved into the retrieval domain
 
+Delivered in the ninth slice:
+
+- introduced `domains/operations`
+- moved operations overview, backlog radar, and recent activity aggregation into `domains/operations/overview.py`
+- updated operations API routes to depend on the operations domain path directly
+- reduced the old operations service module to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging
-- knowledge and operations domain packaging
+- knowledge domain packaging
+- remaining helper service ownership cleanup
 - further breakup of oversized legacy services
 
 Acceptance target:

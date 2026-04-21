@@ -612,6 +612,13 @@ Delivered in the eighth slice:
 - reduced `services/search_service.py` to a compatibility export
 - verified the search routes still pass OpenAPI checks and full Docker e2e after the move
 
+Delivered in the ninth slice:
+
+- introduced `domains/operations`
+- moved operations overview, backlog radar, and recent activity aggregation into `domains/operations/overview.py`
+- updated operations API routes to import the operations domain directly
+- reduced `services/operations_service.py` to a compatibility export
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models
