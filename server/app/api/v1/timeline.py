@@ -4,7 +4,7 @@ from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
 from app.schemas.common import Envelope, PaginatedData
 from app.schemas.timeline import TimelineItemResponse, TimelineOverviewResponse, TimelineRangeResponse
-from app.services import timeline_query_service
+from app.domains.retrieval import timeline_query
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ def get_timeline(
     user=Depends(get_current_user),
 ) -> dict:
     params = normalize_page_params(page, page_size)
-    items, total = timeline_query_service.list_timeline_items(db, user_id=user.id, params=params)
+    items, total = timeline_query.list_timeline_items(db, user_id=user.id, params=params)
     return paginated(
         items=items,
         total=total,
@@ -28,7 +28,7 @@ def get_timeline(
 
 @router.get("/overview", response_model=Envelope[TimelineOverviewResponse])
 def get_timeline_overview(db: DbSession, user=Depends(get_current_user)) -> dict:
-    return ok(timeline_query_service.get_timeline_overview(db, user_id=user.id))
+    return ok(timeline_query.get_timeline_overview(db, user_id=user.id))
 
 
 @router.get("/range", response_model=Envelope[TimelineRangeResponse])
@@ -41,7 +41,7 @@ def get_timeline_range(
     end: str | None = None,
 ) -> dict:
     params = normalize_page_params(page, page_size)
-    items, total = timeline_query_service.list_timeline_items(
+    items, total = timeline_query.list_timeline_items(
         db,
         user_id=user.id,
         params=params,

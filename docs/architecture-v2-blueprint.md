@@ -585,6 +585,12 @@ Delivered in the fourth slice:
 - updated extraction and replay flows to import the projection domain module directly
 - reduced `services/projection_service.py` to a compatibility export while the old module path remains available
 
+Delivered in the fifth slice:
+
+- moved note, entity, event, and timeline read composition into `domains/retrieval/*`
+- updated API routes plus graph/review/curation callers to use retrieval domain modules directly
+- reduced the old read-side query services to compatibility exports while the domain-first layout takes over
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

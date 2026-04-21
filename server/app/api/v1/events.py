@@ -4,7 +4,7 @@ from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
 from app.schemas.common import Envelope, PaginatedData
 from app.schemas.event import EventDetailResponse, EventResponse
-from app.services import event_query_service
+from app.domains.retrieval import event_query
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ def list_events(
     user=Depends(get_current_user),
 ) -> dict:
     params = normalize_page_params(page, page_size)
-    events, total = event_query_service.list_events(db, user_id=user.id, params=params)
+    events, total = event_query.list_events(db, user_id=user.id, params=params)
     return paginated(
         items=events,
         total=total,
@@ -29,6 +29,6 @@ def list_events(
 @router.get("/{event_id}", response_model=Envelope[EventDetailResponse])
 def get_event(event_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(event_query_service.get_event_detail(db, user_id=user.id, event_id=event_id))
+        return ok(event_query.get_event_detail(db, user_id=user.id, event_id=event_id))
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")

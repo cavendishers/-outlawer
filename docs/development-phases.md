@@ -58,6 +58,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 3
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_projection_service.py tests/services/test_extractor_service.py tests/services/test_extraction_run_service.py` -> passed after Phase C domain packaging slice 4
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 4
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_projection_service.py tests/services/test_extractor_service.py tests/services/test_extraction_run_service.py` -> passed after Phase C domain packaging slice 5
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 5
 
 ## Architecture Blueprint Track
 
@@ -162,6 +164,12 @@ Delivered in slice 4:
 - moved projection persistence and read/write helpers into `app.domains.projection.service`
 - updated replay and extraction pipelines to depend on the projection domain path directly
 - reduced `app.services.projection_service` to a compatibility shim for legacy imports
+
+Delivered in slice 5:
+
+- moved note, entity, event, and timeline query services into `app.domains.retrieval.*`
+- updated API routes and key read-side callers to depend on the retrieval domain path directly
+- reduced the old query service modules to compatibility shims while the migration continues
 
 Completion criteria:
 

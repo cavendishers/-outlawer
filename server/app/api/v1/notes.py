@@ -21,7 +21,7 @@ from app.schemas.note import (
     ProjectionResultResponse,
     ReplayActionResponse,
 )
-from app.services import note_query_service
+from app.domains.retrieval import note_query
 from app.services.asset_text_service import get_asset_text
 from app.domains.replay.service import (
     RUN_STATUS_REJECTED,
@@ -81,7 +81,7 @@ def list_notes(
     user=Depends(get_current_user),
 ) -> dict:
     params = normalize_page_params(page, page_size)
-    notes, total = note_query_service.list_notes(db, user_id=user.id, params=params)
+    notes, total = note_query.list_notes(db, user_id=user.id, params=params)
     return paginated(
         items=notes,
         total=total,
@@ -93,7 +93,7 @@ def list_notes(
 @router.get("/{note_id}", response_model=Envelope[NoteResponse])
 def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(note_query_service.get_note_detail(db, user_id=user.id, note_id=note_id))
+        return ok(note_query.get_note_detail(db, user_id=user.id, note_id=note_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
@@ -101,7 +101,7 @@ def get_note(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dic
 @router.get("/{note_id}/extraction-runs", response_model=Envelope[CollectionData[ExtractionRunResponse]])
 def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(note_query_service.list_note_extraction_run_items(db, user_id=user.id, note_id=note_id))
+        return ok(note_query.list_note_extraction_run_items(db, user_id=user.id, note_id=note_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
@@ -116,7 +116,7 @@ def compare_note_extraction_runs(
 ) -> dict:
     try:
         return ok(
-            note_query_service.compare_note_extraction_runs(
+            note_query.compare_note_extraction_runs(
                 db,
                 user_id=user.id,
                 note_id=note_id,
@@ -133,7 +133,7 @@ def compare_note_extraction_runs(
 @router.get("/{note_id}/extraction-runs/{run_id}", response_model=Envelope[ExtractionRunResponse])
 def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(note_query_service.get_note_extraction_run_detail(db, user_id=user.id, note_id=note_id, run_id=run_id))
+        return ok(note_query.get_note_extraction_run_detail(db, user_id=user.id, note_id=note_id, run_id=run_id))
     except ValueError as exc:
         detail = str(exc)
         status_code = status.HTTP_404_NOT_FOUND if detail in {"Note not found", "Extraction run not found"} else status.HTTP_400_BAD_REQUEST
@@ -143,7 +143,7 @@ def get_note_extraction_run(note_id: str, run_id: str, db: DbSession, user=Depen
 @router.get("/{note_id}/replay-actions", response_model=Envelope[CollectionData[ReplayActionResponse]])
 def list_note_replay_action_log(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
     try:
-        return ok(note_query_service.list_note_replay_action_items(db, user_id=user.id, note_id=note_id))
+        return ok(note_query.list_note_replay_action_items(db, user_id=user.id, note_id=note_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 

@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.services import entity_query_service, event_query_service, timeline_query_service
+from app.domains.retrieval import entity_query, event_query, timeline_query
 
 
 def get_graph_workspace(
@@ -111,7 +111,7 @@ def get_graph_node_detail(
 
 
 def build_event_workspace(db: Session, *, user_id: str, event_id: str) -> dict[str, Any]:
-    detail = event_query_service.get_event_detail(db, user_id=user_id, event_id=event_id)
+    detail = event_query.get_event_detail(db, user_id=user_id, event_id=event_id)
     anchor = {
         "id": detail["id"],
         "node_type": "event",
@@ -236,7 +236,7 @@ def build_event_workspace(db: Session, *, user_id: str, event_id: str) -> dict[s
 
 
 def build_entity_workspace(db: Session, *, user_id: str, entity_id: str) -> dict[str, Any]:
-    detail = entity_query_service.get_entity_detail(db, user_id=user_id, entity_id=entity_id)
+    detail = entity_query.get_entity_detail(db, user_id=user_id, entity_id=entity_id)
     anchor = {
         "id": detail["id"],
         "node_type": "entity",
@@ -356,7 +356,7 @@ def build_entity_workspace(db: Session, *, user_id: str, entity_id: str) -> dict
 
 
 def build_overview_workspace(db: Session, *, user_id: str) -> dict[str, Any]:
-    overview = timeline_query_service.get_timeline_overview(db, user_id=user_id)
+    overview = timeline_query.get_timeline_overview(db, user_id=user_id)
     nodes = []
     for item in overview.get("nodes", []):
         actions = [action("打开节点", item["href"], "open", "secondary")]

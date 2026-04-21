@@ -451,6 +451,12 @@ Delivered in the fourth slice:
 - updated replay and extraction flows to depend on the projection domain package directly
 - reduced `services/projection_service.py` to a compatibility export while the migration continues
 
+Delivered in the fifth slice:
+
+- moved note, entity, event, and timeline query composition into `domains/retrieval/*`
+- updated API routes and key read-side callers to depend on the retrieval domain package directly
+- reduced the old query service modules to compatibility exports while the migration continues
+
 Still missing:
 
 - projection module packaging
