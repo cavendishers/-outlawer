@@ -1,6 +1,6 @@
 from app.core.config import get_settings
 from app.domains.extraction.extractor import build_extraction_payload
-from app.services.openrouter_service import (
+from app.domains.extraction.openrouter import (
     build_media_content_item,
     chunk_model_candidates,
     extract_json_object,

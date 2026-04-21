@@ -491,6 +491,12 @@ Delivered in the tenth slice:
 - updated notes API, extraction pipeline, and asset-text tests to depend on the extraction domain path directly
 - reduced the old asset text service module to a compatibility export while the migration continues
 
+Delivered in the eleventh slice:
+
+- moved OpenRouter extraction and multimodal request helpers into `domains/extraction/openrouter.py`
+- updated extractor, asset-text preparation, and extractor tests to depend on the extraction domain path directly
+- reduced the old OpenRouter service module to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging

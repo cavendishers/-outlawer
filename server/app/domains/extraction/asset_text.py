@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from app.core.minio import download_bytes
 from app.models.asset_derivative import AssetDerivative
 from app.models.raw_asset import RawAsset
-from app.services.local_media_service import build_local_media_derivative
-from app.services.openrouter_service import (
+from app.domains.extraction.openrouter import (
     openrouter_enabled,
     request_openrouter_multimodal_derivative,
 )
+from app.services.local_media_service import build_local_media_derivative
 
 
 def get_asset_text(asset: RawAsset, db: Session) -> str:

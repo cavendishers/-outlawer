@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.core.config import get_settings
-from app.services.openrouter_service import openrouter_enabled, request_openrouter_extraction
+from app.domains.extraction.openrouter import openrouter_enabled, request_openrouter_extraction
 from app.utils.datetime import extract_time
 from app.utils.text import extract_tags, normalize_name, summarize_text, text_to_vector
 

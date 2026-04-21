@@ -625,6 +625,12 @@ Delivered in the tenth slice:
 - updated notes API and extraction pipeline imports to depend on the extraction domain module directly
 - reduced `services/asset_text_service.py` to a compatibility export
 
+Delivered in the eleventh slice:
+
+- moved OpenRouter extraction and multimodal request helpers into `domains/extraction/openrouter.py`
+- updated extractor and asset-text imports to depend on the extraction domain module directly
+- reduced `services/openrouter_service.py` to a compatibility export
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models
