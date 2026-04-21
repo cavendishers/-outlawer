@@ -1,5 +1,5 @@
 from app.core.config import get_settings
-from app.services.extractor_service import build_extraction_payload
+from app.domains.extraction.extractor import build_extraction_payload
 from app.services.openrouter_service import (
     build_media_content_item,
     chunk_model_candidates,
@@ -147,7 +147,7 @@ def test_build_extraction_payload_uses_openrouter_when_configured(monkeypatch) -
             },
         }
 
-    monkeypatch.setattr("app.services.extractor_service.request_openrouter_extraction", fake_openrouter)
+    monkeypatch.setattr("app.domains.extraction.extractor.request_openrouter_extraction", fake_openrouter)
 
     payload = build_extraction_payload(
         note_id="note-ai",

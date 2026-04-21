@@ -573,6 +573,12 @@ Delivered in the second slice:
 - reduced `services/extraction_run_service.py` to a legacy compatibility export surface
 - verified replay APIs and full Docker e2e still work after the implementation moved to the domain package
 
+Delivered in the third slice:
+
+- moved extraction payload orchestration into `domains/extraction/extractor.py`
+- updated the extraction pipeline to depend on the extraction domain package directly
+- reduced `services/extractor_service.py` to a compatibility export while the remaining callers migrate
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

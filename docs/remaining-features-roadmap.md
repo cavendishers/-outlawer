@@ -439,6 +439,12 @@ Delivered in the second slice:
 - reduced `services/extraction_run_service.py` to a compatibility export so older imports can keep working during the transition
 - verified replay-related tests and full API e2e still pass after the implementation move
 
+Delivered in the third slice:
+
+- moved extraction payload orchestration and merge heuristics into `domains/extraction/extractor.py`
+- updated the extraction pipeline and extractor tests to depend on the extraction domain package directly
+- reduced `services/extractor_service.py` to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging

@@ -129,7 +129,7 @@ sequenceDiagram
 - `DONE`: Participant facts are no longer duplicated into `relations(participates_in)`, which keeps graph semantics cleaner for future governance and replay.
 - `DONE`: Phase B extraction/projection versioning is now applied. Extraction runs carry provider/model/prompt/schema/input lineage metadata, immutable `projection_versions` record each apply action, and notes now track the active projection explicitly.
 - `DONE`: Replay audit payloads now include projection-version ids and version metadata so draft approval, manual rollback, and auto-apply flows can be traced more safely.
-- `DONE`: Architecture V2 Phase C is now underway. The first two domain-packaging slices introduced `app.domains.extraction` and `app.domains.replay`, moved extraction metadata, worker pipeline, replay diff logic, and replay service behavior behind those packages, and kept compatibility shims so behavior stayed stable during the transition.
+- `DONE`: Architecture V2 Phase C is now underway. The first three domain-packaging slices introduced `app.domains.extraction` and `app.domains.replay`, moved extraction metadata, extraction payload orchestration, worker pipeline, replay diff logic, and replay service behavior behind those packages, and kept compatibility shims so behavior stayed stable during the transition.
 - `DONE`: Event detail and entity story pages now include a first graph-workspace slice for event associations and people timeline fragments.
 - `DONE`: Phase 26 Slice A now adds a shared `/graph` workspace route and `/api/v1/graph/workspace` read model so event, entity, and overview anchors can enter one unified graph shell.
 - `DONE`: Phase 26 Slice B now adds URL-driven node focus, a unified node inspector, and `/api/v1/graph/nodes/{node_type}/{node_id}` detail payloads so graph navigation can stay inside one workspace.
@@ -156,4 +156,5 @@ The next implementation slice should continue blueprint Phase C while preserving
 - keep reorganizing backend modules toward domain-first packaging without breaking the current `/api/v1` surface
 - preserve the projection-version pointer model while splitting extraction, replay, projection, and read concerns further
 - keep shrinking legacy compatibility shims as concrete domain implementations take over
+- choose the next backend seam from projection, retrieval/read models, or governance services instead of adding more horizontal helpers
 - keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI

@@ -19,7 +19,7 @@ from app.domains.replay.service import (
     RUN_STATUS_COMPLETED,
     RUN_STATUS_READY_FOR_REVIEW,
 )
-from app.services.extractor_service import build_extraction_payload
+from app.domains.extraction.extractor import build_extraction_payload
 from app.services.projection_service import persist_extraction_projection
 
 

@@ -54,6 +54,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 1
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 2
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 2
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extractor_service.py tests/services/test_extraction_run_service.py` -> passed after Phase C domain packaging slice 3
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 3
 
 ## Architecture Blueprint Track
 
@@ -146,6 +148,12 @@ Delivered in slice 2:
 - moved the replay service implementation itself into `app.domains.replay.service`
 - reduced `app.services.extraction_run_service` to a compatibility shim that re-exports the domain implementation
 - kept note API, worker pipeline, and replay tests green while the implementation moved behind the new domain boundary
+
+Delivered in slice 3:
+
+- moved extraction payload orchestration and merge heuristics into `app.domains.extraction.extractor`
+- updated the extraction pipeline and extractor service tests to depend on the new extraction domain path
+- reduced `app.services.extractor_service` to a compatibility shim for legacy imports
 
 Completion criteria:
 
