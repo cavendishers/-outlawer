@@ -433,6 +433,12 @@ Delivered in the first slice:
 - updated selected API, worker, query-service, and test imports to depend on the new domain seams
 - preserved compatibility shims so the migration can continue incrementally without breaking current behavior
 
+Delivered in the second slice:
+
+- moved replay service behavior into `domains/replay/service.py`
+- reduced `services/extraction_run_service.py` to a compatibility export so older imports can keep working during the transition
+- verified replay-related tests and full API e2e still pass after the implementation move
+
 Still missing:
 
 - projection module packaging

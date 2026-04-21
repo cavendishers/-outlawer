@@ -129,7 +129,7 @@ sequenceDiagram
 - `DONE`: Participant facts are no longer duplicated into `relations(participates_in)`, which keeps graph semantics cleaner for future governance and replay.
 - `DONE`: Phase B extraction/projection versioning is now applied. Extraction runs carry provider/model/prompt/schema/input lineage metadata, immutable `projection_versions` record each apply action, and notes now track the active projection explicitly.
 - `DONE`: Replay audit payloads now include projection-version ids and version metadata so draft approval, manual rollback, and auto-apply flows can be traced more safely.
-- `DONE`: Architecture V2 Phase C is now underway. A first domain-packaging slice introduced `app.domains.extraction` and `app.domains.replay`, moved extraction metadata, worker pipeline, and replay diff logic behind those packages, and kept compatibility shims so behavior stayed stable during the transition.
+- `DONE`: Architecture V2 Phase C is now underway. The first two domain-packaging slices introduced `app.domains.extraction` and `app.domains.replay`, moved extraction metadata, worker pipeline, replay diff logic, and replay service behavior behind those packages, and kept compatibility shims so behavior stayed stable during the transition.
 - `DONE`: Event detail and entity story pages now include a first graph-workspace slice for event associations and people timeline fragments.
 - `DONE`: Phase 26 Slice A now adds a shared `/graph` workspace route and `/api/v1/graph/workspace` read model so event, entity, and overview anchors can enter one unified graph shell.
 - `DONE`: Phase 26 Slice B now adds URL-driven node focus, a unified node inspector, and `/api/v1/graph/nodes/{node_type}/{node_id}` detail payloads so graph navigation can stay inside one workspace.
@@ -141,7 +141,7 @@ sequenceDiagram
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Domain packaging is partially implemented. The first `app.domains.*` seams now exist for extraction and replay, but projection, knowledge, governance, retrieval, and operations concerns are still only partly migrated out of the horizontal `services` layer.
+1. `MEDIUM`: Domain packaging is partially implemented. Extraction and replay now have real `app.domains.*` implementations, but projection, knowledge, governance, retrieval, and operations concerns are still only partly migrated out of the horizontal `services` layer.
 2. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
 3. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
 4. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
@@ -155,4 +155,5 @@ The next implementation slice should continue blueprint Phase C while preserving
 - move more replay/apply logic out of `extraction_run_service.py` into dedicated replay or projection domain modules
 - keep reorganizing backend modules toward domain-first packaging without breaking the current `/api/v1` surface
 - preserve the projection-version pointer model while splitting extraction, replay, projection, and read concerns further
+- keep shrinking legacy compatibility shims as concrete domain implementations take over
 - keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI

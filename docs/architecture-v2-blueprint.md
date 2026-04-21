@@ -567,6 +567,12 @@ Delivered in the first slice:
 - preserved compatibility shims in legacy `services/*` modules so the packaging move stays incremental and low-risk
 - reduced the size of `extraction_run_service.py` by extracting replay diff logic into a dedicated domain module
 
+Delivered in the second slice:
+
+- moved replay service behavior into `domains/replay/service.py` instead of leaving the domain package as a facade
+- reduced `services/extraction_run_service.py` to a legacy compatibility export surface
+- verified replay APIs and full Docker e2e still work after the implementation moved to the domain package
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

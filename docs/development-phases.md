@@ -52,6 +52,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 1
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase C domain packaging slice 1
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 1
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 2
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 2
 
 ## Architecture Blueprint Track
 
@@ -138,6 +140,12 @@ Delivered in slice 1:
 - updated note API, worker task, query service, and tests to import through the new domain seams
 - kept `app.services.extraction_metadata_service` and `app.services.pipeline_service` as compatibility re-export shims during the transition
 - reduced `app.services.extraction_run_service` substantially by extracting diff helpers into the replay domain package
+
+Delivered in slice 2:
+
+- moved the replay service implementation itself into `app.domains.replay.service`
+- reduced `app.services.extraction_run_service` to a compatibility shim that re-exports the domain implementation
+- kept note API, worker pipeline, and replay tests green while the implementation moved behind the new domain boundary
 
 Completion criteria:
 
