@@ -65,6 +65,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py` -> passed after Phase C domain packaging slice 6
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py` -> passed after Phase C domain packaging slice 6
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 6
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_graph_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 7
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 7
 
 ## Architecture Blueprint Track
 
@@ -182,6 +184,13 @@ Delivered in slice 6:
 - updated review, curation, and operations callers to import the governance domain path directly
 - reduced `app.services.review_service` and `app.services.curation_service` to compatibility shims while the migration continues
 - hardened entity/event merge rewrites so duplicate alias and participant conflicts are resolved before flush, keeping governance e2e green during the packaging move
+
+Delivered in slice 7:
+
+- moved graph overview, related-event suggestion, and entity timeline fragment read models into `app.domains.retrieval.graph_query`
+- moved graph workspace composition into `app.domains.retrieval.graph_workspace`
+- updated graph API routes, retrieval queries, governance readers, and graph service tests to import the retrieval domain paths directly
+- reduced `app.services.graph_service` and `app.services.graph_workspace_service` to compatibility shims while graph read models finish migrating
 
 Completion criteria:
 

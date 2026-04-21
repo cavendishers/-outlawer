@@ -1,4 +1,4 @@
-from app.services.graph_service import (
+from app.domains.retrieval.graph_query import (
     build_entity_timeline_fragments,
     build_graph_overview_network,
     build_related_event_suggestions,

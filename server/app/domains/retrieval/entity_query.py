@@ -9,8 +9,8 @@ from app.api.serializers import isoformat, serialize_entity
 from app.core.pagination import PageParams, paginate_query
 from app.models.entity import Entity, EventEntity
 from app.models.event import Event
+from app.domains.retrieval.graph_query import get_timeline_fragments_for_entity
 from app.services.entity_alias_service import build_entity_alias_map, list_entity_alias_values
-from app.services.graph_service import get_timeline_fragments_for_entity
 
 
 def get_owned_entity(db: Session, *, user_id: str, entity_id: str) -> Entity:

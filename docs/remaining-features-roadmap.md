@@ -464,10 +464,17 @@ Delivered in the sixth slice:
 - reduced the old review and curation service modules to compatibility exports while the migration continues
 - hardened merge rewrites so duplicate alias and participant rows are resolved before flush during governance-driven merges
 
+Delivered in the seventh slice:
+
+- moved graph overview, related-event suggestion, and entity timeline fragment read models into `domains/retrieval/graph_query.py`
+- moved graph workspace composition into `domains/retrieval/graph_workspace.py`
+- updated graph API routes, retrieval queries, governance readers, and graph tests to depend on retrieval domain paths directly
+- reduced the old graph service modules to compatibility exports while the migration continues
+
 Still missing:
 
 - projection module packaging
-- knowledge, operations, and graph-supporting domain packaging
+- knowledge, search, and operations domain packaging
 - further breakup of oversized legacy services
 
 Acceptance target:

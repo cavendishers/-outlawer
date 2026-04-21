@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import DbSession, get_current_user
 from app.core.responses import ok
+from app.domains.retrieval import graph_workspace
 from app.schemas.common import Envelope
 from app.schemas.graph import GraphWorkspaceNodeDetailResponse, GraphWorkspaceResponse
-from app.services import graph_workspace_service
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ def get_graph_workspace(
 ) -> dict:
     try:
         return ok(
-            graph_workspace_service.get_graph_workspace(
+            graph_workspace.get_graph_workspace(
                 db,
                 user_id=user.id,
                 event_id=event_id,
@@ -40,7 +40,7 @@ def get_graph_node_detail(
 ) -> dict:
     try:
         return ok(
-            graph_workspace_service.get_graph_node_detail(
+            graph_workspace.get_graph_node_detail(
                 db,
                 user_id=user.id,
                 node_type=node_type,

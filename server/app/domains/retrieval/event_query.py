@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.api.serializers import serialize_event
 from app.core.pagination import PageParams, paginate_query
+from app.domains.retrieval.graph_query import get_related_events_for_event
 from app.models.entity import Entity, EventEntity
 from app.models.event import Event
 from app.models.note import Note
-from app.services.graph_service import get_related_events_for_event
 
 
 def get_owned_event(db: Session, *, user_id: str, event_id: str) -> Event:

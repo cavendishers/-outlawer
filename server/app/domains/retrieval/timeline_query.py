@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.api.serializers import serialize_timeline_item
 from app.core.pagination import PageParams, paginate_query
+from app.domains.retrieval.graph_query import get_graph_overview
 from app.models.event import TimelineItem
-from app.services.graph_service import get_graph_overview
 
 
 def list_timeline_items(

@@ -598,6 +598,13 @@ Delivered in the sixth slice:
 - reduced `services/review_service.py` and `services/curation_service.py` to compatibility exports
 - hardened governance merge rewrites so duplicate alias and participant rows are resolved before flush while keeping review and curation e2e green
 
+Delivered in the seventh slice:
+
+- moved graph overview, related-event suggestion, and entity timeline fragment read models into `domains/retrieval/graph_query.py`
+- moved graph workspace composition into `domains/retrieval/graph_workspace.py`
+- updated graph API routes, retrieval queries, governance readers, and graph tests to import retrieval modules directly
+- reduced `services/graph_service.py` and `services/graph_workspace_service.py` to compatibility exports
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

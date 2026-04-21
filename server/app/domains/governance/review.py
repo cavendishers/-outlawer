@@ -8,6 +8,7 @@ from sqlalchemy import Select, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.api.serializers import isoformat, serialize_entity, serialize_event, serialize_note
+from app.domains.retrieval.graph_query import get_related_events_for_event, get_timeline_fragments_for_entity
 from app.domains.retrieval.event_query import list_event_participants
 from app.models.embedding import Embedding
 from app.models.entity import Entity, EntityAlias, EventEntity, NoteEntity, NoteEvent, Relation
@@ -17,7 +18,6 @@ from app.models.note import Note
 from app.models.review import EntityMergeHistory, EventMergeHistory, ReviewAction
 from app.models.style_view import StyleView
 from app.services.entity_alias_service import list_entity_alias_rows, list_entity_alias_values, upsert_entity_alias_value
-from app.services.graph_service import get_related_events_for_event, get_timeline_fragments_for_entity
 from app.utils.text import normalize_name
 
 
