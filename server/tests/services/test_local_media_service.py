@@ -1,4 +1,4 @@
-from app.services.local_media_service import (
+from app.domains.extraction.local_media import (
     build_local_media_derivative,
     build_audio_segments_from_words,
     build_source_attribution_from_text,
@@ -35,7 +35,7 @@ def test_extract_time_candidates_dedupes_dates() -> None:
 
 def test_build_local_media_derivative_uses_local_parser_payload(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.services.local_media_service.extract_image_text",
+        "app.domains.extraction.local_media.extract_image_text",
         lambda content, mime_type: "2026-04-18 Zhang San and Li Si project launch meeting",
     )
 
@@ -49,7 +49,7 @@ def test_build_local_media_derivative_uses_local_parser_payload(monkeypatch) -> 
 
 
 def test_build_local_media_derivative_generates_image_semantics_without_ocr(monkeypatch) -> None:
-    monkeypatch.setattr("app.services.local_media_service.extract_image_text", lambda content, mime_type: "")
+    monkeypatch.setattr("app.domains.extraction.local_media.extract_image_text", lambda content, mime_type: "")
 
     png_bytes = (
         b"\x89PNG\r\n\x1a\n"
@@ -86,7 +86,7 @@ def test_build_audio_segments_from_words_groups_words_by_pause() -> None:
 
 def test_build_local_media_derivative_generates_audio_context_without_transcript(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.services.local_media_service.extract_audio_observations",
+        "app.domains.extraction.local_media.extract_audio_observations",
         lambda content, mime_type, title="": {
             "text": "",
             "audio_segments": [],

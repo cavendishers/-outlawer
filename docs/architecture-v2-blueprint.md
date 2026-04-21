@@ -631,6 +631,12 @@ Delivered in the eleventh slice:
 - updated extractor and asset-text imports to depend on the extraction domain module directly
 - reduced `services/openrouter_service.py` to a compatibility export
 
+Delivered in the twelfth slice:
+
+- moved local OCR/ASR/video frame parsing helpers into `domains/extraction/local_media.py`
+- updated asset-text preparation and local media tests to depend on the extraction domain module directly
+- reduced `services/local_media_service.py` to a compatibility export
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

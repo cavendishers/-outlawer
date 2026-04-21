@@ -75,6 +75,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 10
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extractor_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 11
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 11
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_local_media_service.py tests/services/test_asset_text_service.py tests/services/test_extractor_service.py` -> passed after Phase C domain packaging slice 12
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 12
 
 ## Architecture Blueprint Track
 
@@ -225,6 +227,12 @@ Delivered in slice 11:
 - moved OpenRouter extraction and multimodal request helpers into `app.domains.extraction.openrouter`
 - updated extraction payload building, asset-text preparation, and extractor tests to depend on the extraction domain path directly
 - reduced `app.services.openrouter_service` to a compatibility shim while remaining callers migrate
+
+Delivered in slice 12:
+
+- moved local OCR/ASR/video frame parsing helpers into `app.domains.extraction.local_media`
+- updated asset-text preparation and local media tests to depend on the extraction domain path directly
+- reduced `app.services.local_media_service` to a compatibility shim while remaining callers migrate
 
 Completion criteria:
 

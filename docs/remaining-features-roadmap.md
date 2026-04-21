@@ -497,6 +497,12 @@ Delivered in the eleventh slice:
 - updated extractor, asset-text preparation, and extractor tests to depend on the extraction domain path directly
 - reduced the old OpenRouter service module to a compatibility export while the migration continues
 
+Delivered in the twelfth slice:
+
+- moved local OCR/ASR/video frame parsing helpers into `domains/extraction/local_media.py`
+- updated asset-text preparation and local media tests to depend on the extraction domain path directly
+- reduced the old local media service module to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging
