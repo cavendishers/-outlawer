@@ -556,6 +556,17 @@ Delivered:
 - keep route layer thin
 - split extraction and projection services further
 
+Status on `2026-04-21`: `IN_PROGRESS`
+
+Delivered in the first slice:
+
+- introduced `server/app/domains/` as the start of the long-term domain-first package layout
+- created `domains/extraction` for extraction metadata and worker pipeline orchestration
+- created `domains/replay` for replay-facing diff and summary logic
+- updated note API, task entrypoints, query services, and tests to start importing through domain seams
+- preserved compatibility shims in legacy `services/*` modules so the packaging move stays incremental and low-risk
+- reduced the size of `extraction_run_service.py` by extracting replay diff logic into a dedicated domain module
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

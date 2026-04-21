@@ -14,6 +14,7 @@ Current status as of `2026-04-21`:
 
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
+- Architecture V2 domain packaging has started, but is still mid-migration
 - the remaining work is mostly in product depth, graph operations, AI quality, and back-office tooling
 
 ## Status Legend
@@ -412,6 +413,35 @@ If the goal is product value rather than pure architecture cleanup, the best nex
 5. collaboration and permissions
 6. mobile experience
 7. domain packaging and internal modularization
+
+### 7. Domain Packaging And Internal Modularization
+
+Status:
+
+- `PARTIAL`
+
+Why it matters:
+
+- the product has grown beyond MVP size, so backend ownership needs to follow domain boundaries instead of one large horizontal services layer
+- extraction, replay, projection, and read-model concerns need cleaner seams before later capabilities become expensive to extend
+
+Delivered in the first slice:
+
+- introduced `server/app/domains/` as the new backend package root for domain-first modules
+- created initial `domains/extraction` and `domains/replay` modules
+- moved extraction metadata helpers, worker pipeline orchestration, and replay diff logic into those modules
+- updated selected API, worker, query-service, and test imports to depend on the new domain seams
+- preserved compatibility shims so the migration can continue incrementally without breaking current behavior
+
+Still missing:
+
+- projection module packaging
+- knowledge, governance, retrieval, and operations domain packaging
+- further breakup of oversized legacy services
+
+Acceptance target:
+
+- backend modules are organized primarily by domain responsibility rather than a generic `services` bucket
 
 ## Recommendation
 

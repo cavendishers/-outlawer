@@ -49,6 +49,9 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase B extraction/projection versioning
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase B extraction/projection versioning
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase B extraction/projection versioning
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_extraction_run_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 1
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase C domain packaging slice 1
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 1
 
 ## Architecture Blueprint Track
 
@@ -112,6 +115,44 @@ Documents updated after completion:
 - `docs/database-design.md`
 - `docs/remaining-features-roadmap.md`
 - `docs/development-phases.md`
+
+### Phase C: Domain packaging
+
+Status: `IN_PROGRESS`
+
+Verified on `2026-04-21`
+
+Work items:
+
+- reorganize backend into domain-first modules under `server/app/domains`
+- keep route and task layers thin by importing through domain boundaries
+- split extraction and replay logic out of oversized horizontal services
+- preserve compatibility shims while the packaging migration is still underway
+
+Delivered in slice 1:
+
+- introduced `app.domains.extraction` and `app.domains.replay` packages
+- moved extraction metadata registry helpers into `app.domains.extraction.metadata`
+- moved worker pipeline orchestration into `app.domains.extraction.pipeline`
+- moved replay diff and payload-summary logic into `app.domains.replay.diff`
+- updated note API, worker task, query service, and tests to import through the new domain seams
+- kept `app.services.extraction_metadata_service` and `app.services.pipeline_service` as compatibility re-export shims during the transition
+- reduced `app.services.extraction_run_service` substantially by extracting diff helpers into the replay domain package
+
+Completion criteria:
+
+- extraction, projection, replay, and read concerns no longer accumulate in a single horizontal `services` bucket
+- route handlers and worker entrypoints depend on domain packages rather than implementation-heavy service modules
+- compatibility shims can eventually be removed without changing public API behavior
+- Docker verification and full API e2e remain green after each packaging slice
+
+Documents updated after this slice:
+
+- `README.md`
+- `docs/architecture-v2-blueprint.md`
+- `docs/current-system-overview.md`
+- `docs/development-phases.md`
+- `docs/remaining-features-roadmap.md`
 
 ## Phase 0: Foundation and Conventions
 

@@ -46,6 +46,7 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Phase `0` through Phase `25` are implemented and verified in Docker.
 - Architecture V2 blueprint `Phase A: Source-of-truth cleanup` is now implemented and verified in Docker.
 - Architecture V2 blueprint `Phase B: Extraction/projection versioning` is now implemented and verified in Docker.
+- Architecture V2 blueprint `Phase C: Domain packaging` is now in progress; the first slice introduced `app.domains.extraction` and `app.domains.replay` and moved extraction metadata, worker pipeline, and replay diff logic behind those seams while preserving compatibility shims.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.

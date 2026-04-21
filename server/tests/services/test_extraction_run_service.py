@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.models.extraction import ExtractionRun
 from app.models.review import ReviewAction
-from app.services.extraction_run_service import (
+from app.domains.replay.service import (
     RUN_STATUS_READY_FOR_REVIEW,
     RUN_STATUS_REJECTED,
     compare_extraction_payloads,

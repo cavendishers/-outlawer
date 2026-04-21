@@ -23,7 +23,7 @@ from app.schemas.note import (
 )
 from app.services import note_query_service
 from app.services.asset_text_service import get_asset_text
-from app.services.extraction_run_service import (
+from app.domains.replay.service import (
     RUN_STATUS_REJECTED,
     RUN_STATUS_READY_FOR_REVIEW,
     apply_extraction_run_projection,

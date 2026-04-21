@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.serializers import serialize_note
 from app.core.pagination import PageParams, paginate_query
 from app.models.note import Note
-from app.services.extraction_run_service import (
+from app.domains.replay.service import (
     compare_extraction_runs,
     get_extraction_run,
     list_extraction_runs,

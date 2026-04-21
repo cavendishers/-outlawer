@@ -2,7 +2,7 @@ import logging
 
 from app.core.celery import celery_app
 from app.core.database import SessionLocal
-from app.services.pipeline_service import mark_job_failed, process_note
+from app.domains.extraction.pipeline import mark_job_failed, process_note
 
 logger = logging.getLogger("outlawer.worker.pipeline")
 
