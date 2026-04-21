@@ -471,10 +471,17 @@ Delivered in the seventh slice:
 - updated graph API routes, retrieval queries, governance readers, and graph tests to depend on retrieval domain paths directly
 - reduced the old graph service modules to compatibility exports while the migration continues
 
+Delivered in the eighth slice:
+
+- moved unified search composition into `domains/retrieval/search_query.py`
+- updated search API routes to depend on retrieval-domain search helpers directly
+- reduced the old search service module to a compatibility export while the migration continues
+- kept OpenAPI and full Docker e2e green after the search read model moved into the retrieval domain
+
 Still missing:
 
 - projection module packaging
-- knowledge, search, and operations domain packaging
+- knowledge and operations domain packaging
 - further breakup of oversized legacy services
 
 Acceptance target:

@@ -605,6 +605,13 @@ Delivered in the seventh slice:
 - updated graph API routes, retrieval queries, governance readers, and graph tests to import retrieval modules directly
 - reduced `services/graph_service.py` and `services/graph_workspace_service.py` to compatibility exports
 
+Delivered in the eighth slice:
+
+- moved unified search composition into `domains/retrieval/search_query.py`
+- updated search API routes to depend on retrieval-domain search helpers instead of assembling search payloads in the route layer
+- reduced `services/search_service.py` to a compatibility export
+- verified the search routes still pass OpenAPI checks and full Docker e2e after the move
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models
