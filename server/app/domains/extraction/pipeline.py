@@ -6,7 +6,7 @@ from app.models.ai_job import AIJob
 from app.models.extraction import ExtractionRun
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
-from app.services.asset_text_service import get_asset_text
+from app.domains.extraction.asset_text import get_asset_text
 from app.domains.extraction.metadata import resolve_extraction_run_metadata
 from app.domains.replay.service import (
     list_extraction_runs,

@@ -1,5 +1,5 @@
 from app.models.raw_asset import RawAsset
-from app.services.asset_text_service import (
+from app.domains.extraction.asset_text import (
     build_multimodal_canonical_text,
     build_multimodal_fallback_text,
     merge_multimodal_payloads,

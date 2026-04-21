@@ -619,6 +619,12 @@ Delivered in the ninth slice:
 - updated operations API routes to import the operations domain directly
 - reduced `services/operations_service.py` to a compatibility export
 
+Delivered in the tenth slice:
+
+- moved raw-asset text preparation and multimodal derivative normalization into `domains/extraction/asset_text.py`
+- updated notes API and extraction pipeline imports to depend on the extraction domain module directly
+- reduced `services/asset_text_service.py` to a compatibility export
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

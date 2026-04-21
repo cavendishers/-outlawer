@@ -71,6 +71,8 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 8
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 9
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 9
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_asset_text_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 10
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 10
 
 ## Architecture Blueprint Track
 
@@ -209,6 +211,12 @@ Delivered in slice 9:
 - moved operations overview/backlog/activity aggregation into `app.domains.operations.overview`
 - updated operations API routes to depend on the operations domain path directly
 - reduced `app.services.operations_service` to a compatibility shim while operations read models finish migrating
+
+Delivered in slice 10:
+
+- moved raw-asset text preparation, multimodal derivative normalization, and derivative upsert helpers into `app.domains.extraction.asset_text`
+- updated notes API, extraction pipeline, and asset-text tests to depend on the extraction domain path directly
+- reduced `app.services.asset_text_service` to a compatibility shim while remaining callers migrate
 
 Completion criteria:
 

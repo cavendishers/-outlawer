@@ -485,6 +485,12 @@ Delivered in the ninth slice:
 - updated operations API routes to depend on the operations domain path directly
 - reduced the old operations service module to a compatibility export while the migration continues
 
+Delivered in the tenth slice:
+
+- moved raw-asset text preparation and multimodal derivative normalization into `domains/extraction/asset_text.py`
+- updated notes API, extraction pipeline, and asset-text tests to depend on the extraction domain path directly
+- reduced the old asset text service module to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging

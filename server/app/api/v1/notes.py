@@ -21,8 +21,8 @@ from app.schemas.note import (
     ProjectionResultResponse,
     ReplayActionResponse,
 )
+from app.domains.extraction.asset_text import get_asset_text
 from app.domains.retrieval import note_query
-from app.services.asset_text_service import get_asset_text
 from app.domains.replay.service import (
     RUN_STATUS_REJECTED,
     RUN_STATUS_READY_FOR_REVIEW,
