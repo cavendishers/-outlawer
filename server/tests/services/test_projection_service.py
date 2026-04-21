@@ -1,4 +1,4 @@
-from app.services.projection_service import build_story_body, resolve_relation_object_id
+from app.domains.projection.service import build_story_body, resolve_relation_object_id
 
 
 def test_resolve_relation_object_id_prefers_note_id_and_temp_map() -> None:

@@ -579,6 +579,12 @@ Delivered in the third slice:
 - updated the extraction pipeline to depend on the extraction domain package directly
 - reduced `services/extractor_service.py` to a compatibility export while the remaining callers migrate
 
+Delivered in the fourth slice:
+
+- moved projection persistence, graph materialization, and style-view persistence into `domains/projection/service.py`
+- updated extraction and replay flows to import the projection domain module directly
+- reduced `services/projection_service.py` to a compatibility export while the old module path remains available
+
 ### Phase D: Read-model consolidation
 
 - keep graph, search, operations, and governance context endpoints as dedicated read models

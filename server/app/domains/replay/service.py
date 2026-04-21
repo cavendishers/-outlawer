@@ -9,7 +9,7 @@ from app.models.extraction import ExtractionRun, ProjectionVersion
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
-from app.services.projection_service import ProjectionResult, persist_extraction_projection
+from app.domains.projection.service import ProjectionResult, persist_extraction_projection
 
 RUN_STATUS_APPLIED = "applied"
 RUN_STATUS_SUPERSEDED = "superseded"

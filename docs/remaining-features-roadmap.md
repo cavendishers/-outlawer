@@ -445,6 +445,12 @@ Delivered in the third slice:
 - updated the extraction pipeline and extractor tests to depend on the extraction domain package directly
 - reduced `services/extractor_service.py` to a compatibility export while the migration continues
 
+Delivered in the fourth slice:
+
+- moved projection persistence and graph materialization into `domains/projection/service.py`
+- updated replay and extraction flows to depend on the projection domain package directly
+- reduced `services/projection_service.py` to a compatibility export while the migration continues
+
 Still missing:
 
 - projection module packaging
