@@ -92,6 +92,8 @@ Default local entrypoints:
 - API: `http://localhost:8000/api/v1`
 - Nginx: `http://localhost:8088`
 
+For browser-side requests, the web app should use the same-origin `/api/v1` path and let Next.js forward those requests to the backend service. Users should not need to call `http://localhost:8000` directly from the browser just to log in or use the product UI.
+
 Local Docker development reads the repository root `.env` automatically. A matching `server/.env` is also available for direct backend runs outside Docker. Both are gitignored and should stay local-only.
 
 To enable AI extraction through OpenRouter, set these environment variables in `.env` before starting Docker:
@@ -130,7 +132,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 - `api` and `worker` images include `ffmpeg` and `tesseract`; backend Python dependencies include `vosk` for local ASR fallback.
 - New read-heavy APIs should prefer query services over route-level query composition.
 - The `web` dev container stays on `NODE_ENV=development`, but production build verification must override to `NODE_ENV=production`.
-- The `web` dev container clears its mounted `.next` cache on startup so a prior production build cannot leave stale Next.js artifacts in the dev runtime.
+- The `web` dev container uses a dedicated `.next-dev` output directory and clears that mounted cache on startup, so production builds do not corrupt the active Next.js dev runtime.
 
 ## Verification Baseline
 

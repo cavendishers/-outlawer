@@ -8,7 +8,7 @@ from app.core.responses import ok, paginated
 from app.models.ai_job import AIJob
 from app.schemas.common import Envelope, PaginatedData
 from app.schemas.job import JobDetailResponse, JobResponse, JobRetryResponse
-from app.services.job_dispatcher import dispatch_job
+from app.shared.messaging.jobs import dispatch_job
 
 router = APIRouter()
 

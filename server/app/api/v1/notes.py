@@ -36,7 +36,7 @@ from app.domains.replay.service import (
     serialize_replay_action,
     serialize_extraction_run,
 )
-from app.services.job_dispatcher import dispatch_job
+from app.shared.messaging.jobs import dispatch_job
 
 router = APIRouter()
 

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import DbSession, get_current_user
+from app.domains.auth import authenticate_user
 from app.schemas.auth import CurrentUserResponse, LoginRequest, LogoutResponse, TokenPayload
 from app.schemas.common import Envelope
-from app.services.auth_service import authenticate_user
 
 router = APIRouter()
 

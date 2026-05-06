@@ -142,12 +142,14 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_API_BASE_URL: /api/v1
+      API_PROXY_TARGET: http://api:8000
+      NEXT_DIST_DIR: .next-dev
     volumes:
       - ../../web:/app
       - /app/node_modules
-      - /app/.next
-    command: sh -c "find .next -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true; npm install && npm run dev"
+      - /app/.next-dev
+    command: sh -c "mkdir -p .next-dev && find .next-dev -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true; npm install && npm run dev"
     depends_on:
       api:
         condition: service_healthy

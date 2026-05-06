@@ -3,6 +3,8 @@ server/.env
 web/.env
 web/.env.local
 web/.next
+web/.next-dev
+web/.next-build
 web/node_modules
 *.tsbuildinfo
 __pycache__/

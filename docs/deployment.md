@@ -10,6 +10,7 @@ Current verified local stack:
 - web: `http://localhost:3000`
 - api: `http://localhost:8000/api/v1`
 - nginx: `http://localhost:8088`
+- browser-facing web requests should use same-origin `/api/v1`, which the Next.js web container rewrites to the backend API service
 
 ## Containers
 

@@ -15,7 +15,7 @@ docker compose -f deploy/compose/docker-compose.dev.yml logs worker --tail=200
 
 ## Frontend Dev Runtime Recovery
 
-The local `web` service mounts `.next` as a container volume for Next.js dev speed. If a production build is run inside the same dev container, the dev server can briefly read incompatible `.next` artifacts and return 500/502 on some routes. The dev compose command clears the mounted `.next` contents on startup, so a clean web recreation is the preferred recovery step:
+The local `web` service mounts `.next-dev` as a dedicated container volume for Next.js dev speed. Production builds use a separate `.next-build` output directory, so the active dev server no longer shares chunk artifacts with `next build`. The dev compose command still clears the mounted dev cache on startup, so a clean web recreation is the preferred recovery step:
 
 ```bash
 docker compose -f deploy/compose/docker-compose.dev.yml up -d --no-deps --force-recreate --renew-anon-volumes web
