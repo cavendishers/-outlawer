@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.core.config import get_settings
-from app.domains.extraction.openrouter import openrouter_enabled, request_openrouter_extraction
+from app.domains.extraction.chat_provider import build_chat_model_provider, chat_provider_enabled
 from app.utils.datetime import extract_time
 from app.utils.text import extract_tags, normalize_name, summarize_text, text_to_vector
 
@@ -263,19 +263,20 @@ def build_extraction_payload(note_id: str, asset_id: str | None, text: str) -> d
     settings = get_settings()
     base_payload = build_heuristic_extraction_payload(note_id, asset_id, text)
     provider = settings.extractor_provider.lower()
-    should_use_openrouter = provider == "openrouter" or (provider == "auto" and openrouter_enabled())
-    if not should_use_openrouter:
+    if provider == "heuristic":
+        return base_payload
+    if provider == "auto" and not chat_provider_enabled():
         return base_payload
 
     try:
-        ai_payload = request_openrouter_extraction(note_id, asset_id, text)
-        return merge_openrouter_payload(note_id, asset_id, text, base_payload, ai_payload, settings.openrouter_model)
+        ai_payload = build_chat_model_provider().extract_structured_knowledge(note_id, asset_id, text)
+        return merge_chat_provider_payload(note_id, asset_id, text, base_payload, ai_payload, settings.chat_model)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("openrouter_extraction_failed note_id=%s error=%s", note_id, exc)
+        logger.exception("chat_provider_extraction_failed note_id=%s error=%s", note_id, exc)
         return base_payload
 
 
-def merge_openrouter_payload(
+def merge_chat_provider_payload(
     note_id: str,
     asset_id: str | None,
     text: str,
@@ -296,7 +297,7 @@ def merge_openrouter_payload(
             "asset_id": asset_id,
             "content_type": "text",
             "language": "zh-CN",
-            "extractor_name": "openrouter",
+            "extractor_name": "deepseek",
             "extractor_version": model_name or "account-default",
         },
         "summary": summary,

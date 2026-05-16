@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     minio_bucket: str = "outlawer-assets"
 
     extractor_provider: str = "auto"
+    chat_provider: str = "deepseek"
+    chat_base_url: str = "https://api.deepseek.com"
+    chat_api_key: str | None = None
+    chat_model: str = "deepseek-chat"
+    chat_timeout_seconds: float = 60.0
     openrouter_api_key: str | None = None
     openrouter_model: str | None = None
     openrouter_models: str = (
@@ -44,6 +49,10 @@ class Settings(BaseSettings):
     openrouter_max_tokens: int = 2200
     openrouter_multimodal_model: str = "openrouter/free"
     openrouter_multimodal_max_bytes: int = 12 * 1024 * 1024
+    sy_gpt_base_url: str = "https://console.viiideo.com"
+    sy_gpt_api_key: str | None = None
+    sy_gpt_timeout_seconds: float = 300.0
+    sy_gpt_poll_interval_seconds: float = 2.0
     local_media_models_dir: str = "/tmp/outlawer-models"
     local_media_tesseract_languages: str = "chi_sim+eng"
     local_media_ffmpeg_bin: str = "ffmpeg"

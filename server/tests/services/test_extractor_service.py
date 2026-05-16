@@ -1,4 +1,5 @@
 from app.core.config import get_settings
+from app.domains.extraction.chat_provider import ChatModelProvider
 from app.domains.extraction.extractor import build_extraction_payload
 from app.domains.extraction.openrouter import (
     build_media_content_item,
@@ -63,91 +64,92 @@ def test_build_extraction_payload_filters_noisy_person_candidates(monkeypatch) -
     get_settings.cache_clear()
 
 
-def test_build_extraction_payload_uses_openrouter_when_configured(monkeypatch) -> None:
-    monkeypatch.setenv("EXTRACTOR_PROVIDER", "openrouter")
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+def test_build_extraction_payload_uses_deepseek_when_configured(monkeypatch) -> None:
+    monkeypatch.setenv("EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setenv("CHAT_API_KEY", "test-key")
+    monkeypatch.setenv("CHAT_MODEL", "deepseek-chat")
     get_settings.cache_clear()
 
-    def fake_openrouter(note_id: str, asset_id: str | None, text: str) -> dict:
-        return {
-            "summary": {
-                "title": "命运启动记录",
-                "short_summary": "张三与李四确认知识库建设方向。",
-                "canonical_text": text,
-                "category": "project",
-                "tags": ["启动会", "知识库"],
-            },
-            "entities": [
-                {
-                    "temp_id": "ent_a",
-                    "entity_type": "person",
-                    "name": "张三",
-                    "canonical_name": "张三",
-                    "aliases": [],
-                    "description": "发起人",
-                    "confidence": 0.92,
-                    "evidence": [{"text": "张三", "start": 11, "end": 13}],
+    class FakeProvider(ChatModelProvider):
+        def extract_structured_knowledge(self, note_id: str, asset_id: str | None, text: str) -> dict:
+            return {
+                "summary": {
+                    "title": "命运启动记录",
+                    "short_summary": "张三与李四确认知识库建设方向。",
+                    "canonical_text": text,
+                    "category": "project",
+                    "tags": ["启动会", "知识库"],
                 },
-                {
-                    "temp_id": "ent_b",
-                    "entity_type": "person",
-                    "name": "李四",
-                    "canonical_name": "李四",
-                    "aliases": [],
-                    "description": "参与者",
-                    "confidence": 0.9,
-                    "evidence": [{"text": "李四", "start": 14, "end": 16}],
-                },
-            ],
-            "events": [
-                {
-                    "temp_id": "evt_ai",
-                    "title": "知识库启动会",
-                    "event_type": "meeting",
-                    "summary": "确定在线知识库的建设方向。",
-                    "description": "围绕人物、事件、时间线和 AI 整理能力展开讨论。",
-                    "time": {
-                        "time_text": "2026-04-18",
-                        "start_time": "2026-04-18T00:00:00+00:00",
-                        "end_time": None,
-                        "time_precision": "day",
-                        "timeline_sort_time": "2026-04-18T00:00:00+00:00",
+                "entities": [
+                    {
+                        "temp_id": "ent_a",
+                        "entity_type": "person",
+                        "name": "张三",
+                        "canonical_name": "张三",
+                        "aliases": [],
+                        "description": "发起人",
+                        "confidence": 0.92,
+                        "evidence": [{"text": "张三", "start": 11, "end": 13}],
                     },
-                    "participants": [
-                        {"entity_temp_id": "ent_a", "role": "participant", "relation_type": "participates_in"},
-                        {"entity_temp_id": "ent_a", "role": "participant", "relation_type": "participates_in"},
-                        {"entity_name": "李四", "role": "participant", "relation_type": "participates_in"},
+                    {
+                        "temp_id": "ent_b",
+                        "entity_type": "person",
+                        "name": "李四",
+                        "canonical_name": "李四",
+                        "aliases": [],
+                        "description": "参与者",
+                        "confidence": 0.9,
+                        "evidence": [{"text": "李四", "start": 14, "end": 16}],
+                    },
+                ],
+                "events": [
+                    {
+                        "temp_id": "evt_ai",
+                        "title": "知识库启动会",
+                        "event_type": "meeting",
+                        "summary": "确定在线知识库的建设方向。",
+                        "description": "围绕人物、事件、时间线和 AI 整理能力展开讨论。",
+                        "time": {
+                            "time_text": "2026-04-18",
+                            "start_time": "2026-04-18T00:00:00+00:00",
+                            "end_time": None,
+                            "time_precision": "day",
+                            "timeline_sort_time": "2026-04-18T00:00:00+00:00",
+                        },
+                        "participants": [
+                            {"entity_temp_id": "ent_a", "role": "participant", "relation_type": "participates_in"},
+                            {"entity_temp_id": "ent_b", "role": "participant", "relation_type": "participates_in"},
+                        ],
+                        "locations": [{"name": "会议室A", "entity_temp_id": None}],
+                        "confidence": 0.88,
+                        "evidence": [{"text": "启动会", "start": 0, "end": 3}],
+                    }
+                ],
+                "similarity_hints": [
+                    {"target_type": "note", "target_id": "note_old_1", "reason": "主题接近", "confidence": 0.8}
+                ],
+                "style_payload": {
+                    "theme": "chunibyo",
+                    "title": "命运卷宗：知识库启动会",
+                    "character_cards": [
+                        {
+                            "entity_temp_id": "ent_a",
+                            "display_name": "张三",
+                            "epithet": "起始之钥",
+                            "aura": "在静默中推开序章之门。",
+                        }
                     ],
-                    "locations": [{"name": "会议室A", "entity_temp_id": None}],
-                    "confidence": 0.88,
-                    "evidence": [{"text": "启动会", "start": 0, "end": 3}],
-                }
-            ],
-            "similarity_hints": [
-                {"target_type": "note", "target_id": "note_old_1", "reason": "主题接近", "confidence": 0.8}
-            ],
-            "style_payload": {
-                "theme": "chunibyo",
-                "title": "命运卷宗：知识库启动会",
-                "character_cards": [
-                    {
-                        "entity_temp_id": "ent_a",
-                        "display_name": "张三",
-                        "epithet": "起始之钥",
-                        "aura": "在静默中推开序章之门。",
-                    }
-                ],
-                "event_narrative": [
-                    {
-                        "event_temp_id": "evt_ai",
-                        "headline": "序章会议",
-                        "body": "命运的知识之轮开始转动。",
-                    }
-                ],
-            },
-        }
+                    "event_narrative": [
+                        {
+                            "event_temp_id": "evt_ai",
+                            "headline": "序章会议",
+                            "body": "命运的知识之轮开始转动。",
+                        }
+                    ],
+                },
+            }
 
-    monkeypatch.setattr("app.domains.extraction.extractor.request_openrouter_extraction", fake_openrouter)
+    monkeypatch.setattr("app.domains.extraction.extractor.build_chat_model_provider", lambda: FakeProvider())
 
     payload = build_extraction_payload(
         note_id="note-ai",
@@ -155,7 +157,7 @@ def test_build_extraction_payload_uses_openrouter_when_configured(monkeypatch) -
         text="2026-04-18 张三和李四在会议室A召开项目启动会，讨论图谱与导入流程。",
     )
 
-    assert payload["source"]["extractor_name"] == "openrouter"
+    assert payload["source"]["extractor_name"] == "deepseek"
     assert payload["summary"]["title"] == "命运启动记录"
     assert payload["events"][0]["title"] == "知识库启动会"
     assert len(payload["entities"]) == 2
@@ -166,7 +168,25 @@ def test_build_extraction_payload_uses_openrouter_when_configured(monkeypatch) -
     assert payload["relations"][1]["target_ref"]["temp_id"] == "evt_ai"
 
     monkeypatch.delenv("EXTRACTOR_PROVIDER", raising=False)
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("CHAT_API_KEY", raising=False)
+    monkeypatch.delenv("CHAT_MODEL", raising=False)
+    get_settings.cache_clear()
+
+
+def test_build_extraction_payload_auto_falls_back_without_chat_key(monkeypatch) -> None:
+    monkeypatch.setenv("EXTRACTOR_PROVIDER", "auto")
+    monkeypatch.delenv("CHAT_API_KEY", raising=False)
+    monkeypatch.delenv("CHAT_MODEL", raising=False)
+    get_settings.cache_clear()
+
+    payload = build_extraction_payload(
+        note_id="note-auto",
+        asset_id=None,
+        text="2026-04-18 张三和李四在会议室A召开项目启动会，讨论图谱与导入流程。",
+    )
+
+    assert payload["source"]["extractor_name"] == "heuristic_pipeline"
+    assert payload["summary"]["title"]
     get_settings.cache_clear()
 
 
