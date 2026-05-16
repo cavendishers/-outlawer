@@ -47,6 +47,12 @@ The following write surfaces are now schema-driven rather than generic dictionar
 - `POST /api/v1/review/merge-candidates/{candidate_id}/reject` uses `MergeCandidateRejectRequest`
 - `POST /api/v1/review/merge-candidates/{candidate_id}/accept` uses `MergeCandidateAcceptRequest`
 - `POST /api/v1/review/entities/{entity_id}/aliases` uses `ConfirmEntityAliasRequest`
+- `POST /api/v1/image-generations` uses `ImageGenerationCreateRequest`
+- `POST /api/v1/character-cards/from-entity/{entity_id}` uses `CharacterCardCreateRequest`
+- `PATCH /api/v1/character-cards/{card_id}` uses `CharacterCardUpdateRequest`
+- `POST /api/v1/character-cards/{card_id}/regenerate` uses `CharacterCardCreateRequest`
+- `POST /api/v1/character-cards/{card_id}/generate-avatar` uses `CharacterCardAvatarGenerateRequest`
+- `POST /api/v1/character-cards/{card_id}/generate-role-image` uses `CharacterCardRoleImageGenerateRequest`
 
 Verification rule:
 
@@ -115,6 +121,16 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`
 - `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`
 - `GET /api/v1/operations/overview` returns `Envelope[OperationsOverviewResponse]`
+- `POST /api/v1/image-generations` returns `Envelope[ImageGenerationCreateResponse]`
+- `GET /api/v1/image-generations` returns `Envelope[PaginatedData[ImageGenerationResponse]]`
+- `GET /api/v1/image-generations/{generation_id}` returns `Envelope[ImageGenerationResponse]`
+- `POST /api/v1/character-cards/from-entity/{entity_id}` returns `Envelope[CharacterCardCreateResponse]`
+- `GET /api/v1/character-cards` returns `Envelope[PaginatedData[CharacterCardResponse]]`
+- `GET /api/v1/character-cards/{card_id}` returns `Envelope[CharacterCardResponse]`
+- `PATCH /api/v1/character-cards/{card_id}` returns `Envelope[CharacterCardResponse]`
+- `POST /api/v1/character-cards/{card_id}/regenerate` returns `Envelope[CharacterCardResponse]`
+- `POST /api/v1/character-cards/{card_id}/generate-avatar` returns `Envelope[CharacterCardAvatarGenerateResponse]`
+- `POST /api/v1/character-cards/{card_id}/generate-role-image` returns `Envelope[CharacterCardRoleImageGenerateResponse]`
 
 Verification rules:
 
@@ -172,6 +188,41 @@ Responsibilities:
 - fetch raw material references
 - proxy file uploads into MinIO from the API layer
 - return original text or a presigned `raw_url` for raw reads
+
+### Image Generations
+
+- `POST /api/v1/image-generations`
+- `GET /api/v1/image-generations`
+- `GET /api/v1/image-generations/{generation_id}`
+
+Responsibilities:
+
+- create SyGPT-backed async image generation jobs
+- accept prompt, model, aspect ratio, image size, and optional image reference asset ids
+- preserve generation audit records separately from reusable raw image assets
+- save completed generated images into MinIO and `raw_assets`
+- expose generated asset ids and presigned raw URLs through the generation detail response
+
+### Character Cards
+
+- `POST /api/v1/character-cards/from-entity/{entity_id}`
+- `GET /api/v1/character-cards`
+- `GET /api/v1/character-cards/{card_id}`
+- `PATCH /api/v1/character-cards/{card_id}`
+- `POST /api/v1/character-cards/{card_id}/regenerate`
+- `POST /api/v1/character-cards/{card_id}/generate-avatar`
+- `POST /api/v1/character-cards/{card_id}/generate-role-image`
+- `GET /api/v1/character-cards/{card_id}/avatar`
+- `GET /api/v1/character-cards/{card_id}/role-image`
+- `GET /api/v1/character-cards/{card_id}/export.json`
+
+Responsibilities:
+
+- turn entity story/detail data into editable SillyTavern `chara_card_v2` JSON
+- preserve a source snapshot of the entity, timeline fragments, related events, and optional story view
+- support faithful and creative regeneration modes
+- generate avatar images through the async image generation pipeline and attach the first completed image asset to the card
+- expose saved cards for editing and JSON export
 
 ### Notes
 

@@ -352,6 +352,63 @@ updated_at
 finished_at
 ```
 
+### image_generations
+
+```text
+id
+user_id
+job_id
+status
+prompt
+model_name
+aspect_ratio
+image_size
+reference_asset_ids
+upstream_task_id
+result_urls
+result_asset_ids
+raw_response_json
+error_message
+started_at
+finished_at
+created_at
+updated_at
+```
+
+Notes:
+
+- stores the audit record for an async image generation request
+- `job_id` links to the tracked `ai_jobs` row used for status and retry
+- `reference_asset_ids` points at user-owned image `raw_assets`
+- generated outputs are copied into MinIO and represented as image `raw_assets`; `result_asset_ids` stores those reusable asset ids
+
+### character_cards
+
+```text
+id
+user_id
+source_entity_id
+status
+title
+card_format
+card_version
+mode
+spec_json
+source_snapshot_json
+avatar_asset_id
+role_image_asset_id
+export_asset_id
+created_at
+updated_at
+```
+
+Notes:
+
+- stores editable SillyTavern-style character cards derived from canonical entity records
+- `spec_json` is the exportable `chara_card_v2` payload
+- `source_snapshot_json` preserves the entity/story/timeline inputs used to draft the card
+- `avatar_asset_id` stores the generated portrait avatar, `role_image_asset_id` stores the GPT-generated complete tavern-style character card image, and `export_asset_id` is reserved for future PNG/asset exports
+
 ### extraction_runs
 
 ```text

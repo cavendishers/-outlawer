@@ -58,6 +58,77 @@ def test_note_and_replay_endpoints_publish_explicit_request_models() -> None:
         assert set(schema["properties"]) == {"note"}
 
 
+def test_image_generation_endpoints_publish_explicit_models() -> None:
+    create_schema = _request_schema("/api/v1/image-generations", "post")
+    create_response = _response_data_schema("/api/v1/image-generations", "post")
+    list_response = _response_data_schema("/api/v1/image-generations", "get")
+    detail_response = _response_data_schema("/api/v1/image-generations/{generation_id}", "get")
+
+    assert create_schema["additionalProperties"] is False
+    assert create_schema["required"] == ["prompt"]
+    assert set(create_schema["properties"]) == {"prompt", "model", "aspect_ratio", "image_size", "reference_asset_ids"}
+    assert set(create_response["properties"]) == {"generation_id", "job_id", "status"}
+    assert set(list_response["properties"]) >= {"items", "total", "page", "page_size", "total_pages"}
+    assert set(detail_response["properties"]) >= {
+        "id",
+        "job_id",
+        "status",
+        "prompt",
+        "model_name",
+        "aspect_ratio",
+        "image_size",
+        "reference_asset_ids",
+        "result_asset_ids",
+        "result_assets",
+    }
+
+
+def test_character_card_endpoints_publish_explicit_models() -> None:
+    create_schema = _request_schema("/api/v1/character-cards/from-entity/{entity_id}", "post")
+    update_schema = _request_schema("/api/v1/character-cards/{card_id}", "patch")
+    regenerate_schema = _request_schema("/api/v1/character-cards/{card_id}/regenerate", "post")
+    avatar_schema = _request_schema("/api/v1/character-cards/{card_id}/generate-avatar", "post")
+    role_image_schema = _request_schema("/api/v1/character-cards/{card_id}/generate-role-image", "post")
+    create_response = _response_data_schema("/api/v1/character-cards/from-entity/{entity_id}", "post")
+    avatar_response = _response_data_schema("/api/v1/character-cards/{card_id}/generate-avatar", "post")
+    role_image_response = _response_data_schema("/api/v1/character-cards/{card_id}/generate-role-image", "post")
+    list_response = _response_data_schema("/api/v1/character-cards", "get")
+    detail_response = _response_data_schema("/api/v1/character-cards/{card_id}", "get")
+
+    assert create_schema["additionalProperties"] is False
+    assert set(create_schema["properties"]) == {
+        "mode",
+        "include_story_view",
+        "include_character_book",
+        "style",
+        "language",
+    }
+    assert update_schema["additionalProperties"] is False
+    assert set(update_schema["properties"]) == {"title", "status", "spec_json"}
+    assert regenerate_schema["additionalProperties"] is False
+    assert avatar_schema["additionalProperties"] is False
+    assert set(avatar_schema["properties"]) == {"model", "aspect_ratio", "image_size"}
+    assert role_image_schema["additionalProperties"] is False
+    assert set(role_image_schema["properties"]) == {"model", "aspect_ratio", "image_size"}
+    assert set(create_response["properties"]) == {"card"}
+    assert set(avatar_response["properties"]) == {"card", "generation_id", "job_id", "status"}
+    assert set(role_image_response["properties"]) == {"card", "generation_id", "job_id", "status"}
+    assert set(list_response["properties"]) >= {"items", "total", "page", "page_size", "total_pages"}
+    assert set(detail_response["properties"]) >= {
+        "id",
+        "source_entity_id",
+        "status",
+        "title",
+        "card_format",
+        "card_version",
+        "mode",
+        "spec_json",
+        "source_snapshot_json",
+        "avatar_url",
+        "role_image_url",
+    }
+
+
 def test_curation_write_endpoints_publish_explicit_request_models() -> None:
     entity_update = _request_schema("/api/v1/curation/entities/{entity_id}", "patch")
     entity_alias = _request_schema("/api/v1/curation/entities/{entity_id}/aliases", "post")

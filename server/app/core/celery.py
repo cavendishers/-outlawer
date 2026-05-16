@@ -13,9 +13,10 @@ celery_app = Celery(
     "outlawer",
     broker=settings.broker_url,
     backend=settings.redis_url,
-    include=["app.tasks.pipeline"],
+    include=["app.tasks.pipeline", "app.tasks.image_generation"],
 )
 celery_app.conf.task_routes = {
     "app.tasks.pipeline.process_note_task": {"queue": "knowledge"},
+    "app.tasks.image_generation.process_image_generation_task": {"queue": "knowledge"},
 }
 celery_app.conf.task_track_started = True

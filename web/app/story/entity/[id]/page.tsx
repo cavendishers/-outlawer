@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
@@ -56,9 +56,11 @@ type StoryView = {
 
 export default function EntityStoryPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [entity, setEntity] = useState<EntityDetail | null>(null);
   const [story, setStory] = useState<StoryView | null>(null);
   const [error, setError] = useState("");
+  const [cardCreating, setCardCreating] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -77,6 +79,28 @@ export default function EntityStoryPage() {
         setError(err instanceof Error ? err.message : "人物故事页加载失败");
       });
   }, [params]);
+
+  async function createCharacterCard() {
+    if (!entity) return;
+    setCardCreating(true);
+    try {
+      const result = await apiFetch<{ card: { id: string } }>(`/character-cards/from-entity/${entity.id}`, {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "faithful",
+          include_story_view: true,
+          include_character_book: true,
+          style: "sillytavern",
+          language: "zh-CN",
+        }),
+      });
+      router.push(`/character-cards/${result.card.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "人物卡生成失败");
+    } finally {
+      setCardCreating(false);
+    }
+  }
 
   return (
     <AuthGate>
@@ -101,6 +125,14 @@ export default function EntityStoryPage() {
                 <Link href={`/graph?entity_id=${entity.id}`} className="brutal-action brutal-action-secondary text-lg">
                   打开图谱工作台
                 </Link>
+                <button
+                  className="brutal-action brutal-action-primary text-lg disabled:opacity-60"
+                  type="button"
+                  onClick={createCharacterCard}
+                  disabled={cardCreating}
+                >
+                  {cardCreating ? "生成中..." : "生成人物卡"}
+                </button>
               </div>
             ) : null}
           </Panel>
