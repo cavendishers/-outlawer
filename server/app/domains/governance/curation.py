@@ -238,7 +238,7 @@ def upsert_event_participant(
     relation_type: str | None = None,
 ) -> dict[str, Any]:
     event = get_owned_event(db, user_id=user_id, event_id=event_id)
-    entity = resolve_event_participant_entity(
+    entity, created_entity = resolve_event_participant_entity(
         db,
         user_id=user_id,
         entity_id=entity_id,
@@ -262,6 +262,16 @@ def upsert_event_participant(
         row.relation_type = normalized_relation_type
     db.add(row)
 
+    apply_manual_participant_profile_defaults(
+        db,
+        user_id=user_id,
+        event=event,
+        entity=entity,
+        role=row.role,
+        relation_type=row.relation_type,
+        created_entity=created_entity,
+    )
+
     db.commit()
     return {
         "event_id": event.id,
@@ -278,9 +288,9 @@ def resolve_event_participant_entity(
     entity_id: str | None,
     entity_name: str | None,
     entity_type: str | None,
-) -> Entity:
+) -> tuple[Entity, bool]:
     if entity_id:
-        return get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+        return get_owned_entity(db, user_id=user_id, entity_id=entity_id), False
 
     cleaned_name = clean_required_string(entity_name, "Participant entity name is required")
     cleaned_type = clean_optional_string(entity_type) or "person"
@@ -295,7 +305,7 @@ def resolve_event_participant_entity(
         )
     )
     if existing:
-        return existing
+        return existing, False
 
     entity = Entity(
         user_id=user_id,
@@ -310,7 +320,80 @@ def resolve_event_participant_entity(
     )
     db.add(entity)
     db.flush()
-    return entity
+    return entity, True
+
+
+def apply_manual_participant_profile_defaults(
+    db: Session,
+    *,
+    user_id: str,
+    event: Event,
+    entity: Entity,
+    role: str | None,
+    relation_type: str,
+    created_entity: bool,
+) -> None:
+    event_time = event.timeline_sort_time or event.start_time
+    if event_time:
+        if entity.first_seen_at is None or event_time < entity.first_seen_at:
+            entity.first_seen_at = event_time
+        if entity.last_seen_at is None or event_time > entity.last_seen_at:
+            entity.last_seen_at = event_time
+
+    role_text = display_role_text(role=role, relation_type=relation_type)
+    if not entity.description:
+        entity.description = f"手动加入《{event.title}》的{role_text}。"
+
+    db.add(entity)
+    upsert_manual_participant_style_view(db, user_id=user_id, event=event, entity=entity, role_text=role_text)
+
+
+def upsert_manual_participant_style_view(
+    db: Session,
+    *,
+    user_id: str,
+    event: Event,
+    entity: Entity,
+    role_text: str,
+) -> None:
+    title = f"{entity.display_name} / {role_text}"
+    content = (
+        f"{entity.display_name}被手动纳入《{event.title}》的事件链。"
+        f"TA在这段记录中的身份是{role_text}，后续档案会随着更多卷宗继续补全。"
+    )
+    story = db.scalar(
+        select(StyleView).where(
+            StyleView.user_id == user_id,
+            StyleView.target_type == "entity",
+            StyleView.target_id == entity.id,
+            StyleView.style_type == "chunibyo",
+        )
+    )
+    if story:
+        if not story.content or "手动纳入" in story.content:
+            story.title = title
+            story.content = content
+            db.add(story)
+        return
+
+    db.add(
+        StyleView(
+            user_id=user_id,
+            target_type="entity",
+            target_id=entity.id,
+            style_type="chunibyo",
+            title=title,
+            content=content,
+        )
+    )
+
+
+def display_role_text(*, role: str | None, relation_type: str | None) -> str:
+    if role:
+        return role
+    if relation_type in {None, "", "participates_in"}:
+        return "参与者"
+    return relation_type
 
 
 def remove_event_participant(db: Session, *, user_id: str, event_id: str, entity_id: str) -> dict[str, Any]:

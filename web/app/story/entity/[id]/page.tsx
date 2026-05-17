@@ -64,19 +64,21 @@ export default function EntityStoryPage() {
 
   useEffect(() => {
     if (!params?.id) return;
-    Promise.all([
-      apiFetch<EntityDetail>(`/entities/${params.id}`),
-      apiFetch<StoryView>(`/views/story/entity/${params.id}`),
-    ])
-      .then(([entityData, storyData]) => {
+    apiFetch<EntityDetail>(`/entities/${params.id}`)
+      .then(async (entityData) => {
         setEntity(entityData);
-        setStory(storyData);
         setError("");
+        try {
+          const storyData = await apiFetch<StoryView>(`/views/story/entity/${params.id}`);
+          setStory(storyData);
+        } catch {
+          setStory(null);
+        }
       })
       .catch((err) => {
         setEntity(null);
         setStory(null);
-        setError(err instanceof Error ? err.message : "人物故事页加载失败");
+        setError(err instanceof Error ? err.message : "人物档案加载失败");
       });
   }, [params]);
 
@@ -166,7 +168,10 @@ export default function EntityStoryPage() {
           <Panel className="p-6" tone="story">
             <p className="text-sm font-black uppercase tracking-[0.16em]">中二风档案</p>
             <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-relaxed">
-              {story?.content ?? "风格化卷轴尚未生成。"}
+              {story?.content ??
+                (entity?.related_events.length
+                  ? `${entity.display_name}已经被挂接到事件链中，正式设定仍待补全。你可以从下方时间线进入相关事件继续校对。`
+                  : "风格化卷轴尚未生成。")}
             </p>
           </Panel>
 
