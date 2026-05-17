@@ -1259,3 +1259,4 @@ Verification note:
 - `/events` follow-up removed decorative English labels and reduced work-page title/card typography to avoid homepage-scale poster sizing on dense lists
 - `/events` title hierarchy was corrected so Chinese page titles use stable heavy body typography instead of the weaker display font, with card titles kept one level lower
 - `/events` was compressed into a higher-density work list: compact header, small tool actions, one-line summaries, and explained confidence chips instead of standalone percentage badges
+- global navigation was compressed into three primary links plus `知识库` and `更多` menus to reduce flat navigation overload
