@@ -1254,3 +1254,4 @@ Verification completed for current slice:
 Verification note:
 
 - browser smoke ran with an expired local auth token, so protected list data did not render; the smoke still confirmed page rendering and no horizontal overflow on the checked routes
+- follow-up visual correction removed the dossier-card left black rail and restored full hard nav/card shadows after review on the event list screenshot

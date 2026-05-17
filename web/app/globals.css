@@ -7,7 +7,7 @@
   --color-bone: #fff8ea;
   --color-white: #fffdf8;
   --color-canvas: #fffdf8;
-  --color-muted: #6f675c;
+  --color-muted: #4f493f;
   --color-neon: #d8ff19;
   --color-aqua: #80d6ef;
   --color-peach: #ffc3a5;
@@ -136,7 +136,7 @@ Visual token contract
   }
 
   .brutal-chip {
-    @apply border-2 border-ink bg-canvas px-2 py-1 text-xs font-black uppercase tracking-[0.12em] shadow-brutalTiny;
+    @apply border-2 border-ink bg-canvas px-2 py-1 text-xs font-black uppercase tracking-[0.12em];
   }
 
   .brutal-input {
@@ -144,7 +144,7 @@ Visual token contract
   }
 
   .brutal-action {
-    @apply inline-flex border-4 border-ink px-4 py-3 font-black shadow-brutal transition-transform hover:-translate-y-1;
+    @apply inline-flex border-4 border-ink px-4 py-3 font-black shadow-brutal transition-transform hover:-translate-y-1 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-ink;
   }
 
   .brutal-action-primary {
@@ -160,24 +160,19 @@ Visual token contract
   }
 
   .nav-pill {
-    @apply border-2 border-ink bg-canvas px-3 py-2 font-black shadow-brutalTiny transition-transform hover:-translate-y-0.5;
+    @apply border-4 border-ink bg-canvas px-3 py-2 font-black shadow-brutal transition-transform hover:-translate-y-1 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-ink;
   }
 
   .nav-pill-active {
-    @apply border-4 bg-neon shadow-brutal;
+    @apply bg-neon;
   }
 
   .dossier-card {
-    @apply relative h-full overflow-hidden border-4 border-ink bg-bone p-5 shadow-brutal transition-transform hover:-translate-y-1;
-  }
-
-  .dossier-card::before {
-    content: "";
-    @apply absolute inset-y-0 left-0 w-3 bg-ink;
+    @apply h-full border-4 border-ink bg-bone p-5 shadow-brutal transition-transform hover:-translate-y-1;
   }
 
   .dossier-card-content {
-    @apply relative pl-4;
+    @apply h-full;
   }
 
   .metric-card {

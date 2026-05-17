@@ -48,7 +48,7 @@ export default function EventsPage() {
           <Panel className="metric-card" tone="time" intensity="quiet">
             <p className="section-kicker">事件总数</p>
             <p className="mt-3 text-5xl font-black">{events.length}</p>
-            <p className="body-copy mt-4">
+            <p className="mt-4 text-sm font-black leading-relaxed text-ink/70">
               每条事件都可以继续向下钻取到参与人物、来源笔记和时间定位。
             </p>
           </Panel>
@@ -64,26 +64,28 @@ export default function EventsPage() {
           {events.map((event) => (
             <Link key={event.id} href={`/events/${event.id}`} className="block">
               <article className="dossier-card">
-                <div className="dossier-card-content">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="border-2 border-ink bg-gold px-2 py-1 text-xs font-black uppercase tracking-[0.12em]">
-                    {event.time_text ?? "待校准时间"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.12em]">
-                    {event.location_text ? (
-                      <span className="brutal-chip">{event.location_text}</span>
-                    ) : null}
-                    {event.confidence_score ? (
-                      <span className="brutal-chip">
-                        {Math.round(event.confidence_score * 100)}%
-                      </span>
-                    ) : null}
+                <div className="dossier-card-content flex flex-col gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <p className="border-2 border-ink bg-gold px-2 py-1 text-xs font-black uppercase tracking-[0.12em]">
+                      {event.time_text ?? "待校准时间"}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.12em]">
+                      {event.location_text ? (
+                        <span className="brutal-chip">{event.location_text}</span>
+                      ) : null}
+                      {event.confidence_score ? (
+                        <span className="brutal-chip">
+                          {Math.round(event.confidence_score * 100)}%
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                <p className="mt-3 text-3xl font-black leading-tight">{event.title}</p>
-                <p className="body-copy mt-3">
-                  {event.summary ?? event.description ?? "暂无摘要，进入详情页查看更多事件信息。"}
-                </p>
+                  <div>
+                    <p className="text-3xl font-black leading-tight">{event.title}</p>
+                    <p className="mt-3 text-base font-black leading-relaxed text-ink/65">
+                      {event.summary ?? event.description ?? "暂无摘要，进入详情页查看更多事件信息。"}
+                    </p>
+                  </div>
                 </div>
               </article>
             </Link>
