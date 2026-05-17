@@ -67,7 +67,7 @@ def test_build_extraction_payload_filters_noisy_person_candidates(monkeypatch) -
 def test_build_extraction_payload_uses_deepseek_when_configured(monkeypatch) -> None:
     monkeypatch.setenv("EXTRACTOR_PROVIDER", "deepseek")
     monkeypatch.setenv("CHAT_API_KEY", "test-key")
-    monkeypatch.setenv("CHAT_MODEL", "deepseek-chat")
+    monkeypatch.setenv("CHAT_MODEL", "deepseek-v4-pro")
     get_settings.cache_clear()
 
     class FakeProvider(ChatModelProvider):
@@ -175,7 +175,7 @@ def test_build_extraction_payload_uses_deepseek_when_configured(monkeypatch) -> 
 
 def test_build_extraction_payload_auto_falls_back_without_chat_key(monkeypatch) -> None:
     monkeypatch.setenv("EXTRACTOR_PROVIDER", "auto")
-    monkeypatch.delenv("CHAT_API_KEY", raising=False)
+    monkeypatch.setenv("CHAT_API_KEY", "")
     monkeypatch.delenv("CHAT_MODEL", raising=False)
     get_settings.cache_clear()
 

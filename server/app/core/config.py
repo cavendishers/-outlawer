@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     chat_provider: str = "deepseek"
     chat_base_url: str = "https://api.deepseek.com"
     chat_api_key: str | None = None
-    chat_model: str = "deepseek-chat"
+    chat_model: str = "deepseek-v4-pro"
     chat_timeout_seconds: float = 60.0
     openrouter_api_key: str | None = None
     openrouter_model: str | None = None

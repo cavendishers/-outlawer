@@ -49,6 +49,7 @@ class DeepSeekChatModelProvider(ChatModelProvider):
             temperature=0.2,
             max_tokens=2200,
             response_format={"type": "json_object"},
+            extra_body={"thinking": {"type": "disabled"}},
         )
         content = _extract_response_text(response)
         logger.info("deepseek_extraction_completed note_id=%s model=%s", note_id, self.model)
