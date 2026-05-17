@@ -73,6 +73,8 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: outlawer-assets
+    volumes:
+      - ../../server:/app
 
   api:
     build:
