@@ -63,6 +63,8 @@ curl -sS http://localhost:8000/api/v1/health
 curl -I http://localhost:3000
 ```
 
+The full API e2e flow creates assets, notes, jobs, projections, events, entities, derivatives, and object-storage files with a unique `E2E-...` marker and removes those records in a `finally` cleanup step. If the process is killed before cleanup runs, search for the marker printed in the failing run or inspect recent titles beginning with `E2E-` before treating them as real data.
+
 ## Migration Verification
 
 Use a clean environment whenever schema changes are introduced:

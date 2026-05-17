@@ -187,44 +187,62 @@ export default function ToolsPage() {
 
   return (
     <main className="space-y-6">
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <Panel className="p-6 md:p-8" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.2em]">Tool Console</p>
-          <h1 className="mt-3 font-display text-[clamp(2.5rem,6vw,5rem)] leading-[0.9]">工具台</h1>
-          <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
-            这里是所有操作入口的控制台。登录只是访问能力的一部分，真正的工具入口应该把导入、档案、人物和图谱集中起来。
-          </p>
-        </Panel>
-
-        <Panel className="p-6" tone={authed ? "success" : "time"}>
-          <p className="text-xs font-black uppercase tracking-[0.16em]">访问状态</p>
-          <p className="mt-3 text-4xl font-black">{authed ? "已登录" : "未登录"}</p>
-          <p className="mt-4 text-sm font-bold leading-relaxed">
-            {authed ? "当前浏览器已经持有访问令牌，可以进入受保护页面。" : "先登录后再进入导入、档案和图谱页面。"}
-          </p>
-          {me ? (
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="brutal-chip">{me.display_name || me.username}</span>
-              <span className="brutal-chip">{me.status}</span>
+      <section className="workbench-header">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="workbench-title">工具台</h1>
+              <span className={`workbench-stamp ${authed ? "bg-mint" : "bg-gold"}`}>
+                {authed ? "已登录" : "未登录"}
+              </span>
+              <span className={`workbench-stamp ${healthTone === "success" ? "bg-mint" : healthTone === "danger" ? "bg-ember" : "bg-gold"}`}>
+                API {healthLabel}
+              </span>
             </div>
-          ) : null}
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/login" className="brutal-action brutal-action-primary">
+            <p className="workbench-lede">
+              汇总访问状态、系统健康、导入、档案、人物和图谱入口；适合作为后台操作的第一站。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/login" className="tool-action bg-canvas">
               {authed ? "切换账号" : "去登录"}
             </Link>
             {authed ? (
-              <button type="button" onClick={handleLogout} className="brutal-action brutal-action-secondary">
+              <button type="button" onClick={handleLogout} className="tool-action bg-canvas">
                 退出登录
               </button>
             ) : null}
           </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Panel className="p-5" tone="default">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">入口概览</h2>
+            <span className="workbench-stamp bg-aqua">6 个入口</span>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-relaxed md:text-base">
+            登录只是访问能力的一部分；这里把导入、检索、运维、档案、人物和时间线集中到同一页。
+          </p>
+        </Panel>
+
+        <Panel className="p-5" tone={authed ? "success" : "time"}>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">访问状态</h2>
+            {me ? <span className="workbench-stamp bg-canvas">{me.display_name || me.username}</span> : null}
+            {me ? <span className="workbench-stamp bg-canvas">{me.status}</span> : null}
+          </div>
+          <p className="mt-3 text-sm font-bold leading-relaxed md:text-base">
+            {authed ? "当前浏览器已经持有访问令牌，可以进入受保护页面。" : "先登录后再进入导入、档案和图谱页面。"}
+          </p>
         </Panel>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Panel className="p-5" tone={healthTone}>
-          <p className="text-xs font-black uppercase tracking-[0.16em]">API 状态</p>
-          <p className="mt-3 text-4xl font-black">{healthLabel}</p>
+          <p className="text-sm font-black">API 状态</p>
+          <p className="mt-2 text-3xl font-black">{healthLabel}</p>
           <p className="mt-3 text-sm font-bold leading-relaxed">
             {health?.status === "degraded"
               ? "API 可达，但部分基础服务处于降级状态。"
@@ -233,24 +251,24 @@ export default function ToolsPage() {
         </Panel>
 
         <Panel className="p-5" tone="default">
-          <p className="text-xs font-black uppercase tracking-[0.16em]">档案卷宗</p>
-          <p className="mt-3 text-4xl font-black">{counts.notes}</p>
+          <p className="text-sm font-black">档案卷宗</p>
+          <p className="mt-2 text-3xl font-black">{counts.notes}</p>
           <p className="mt-3 text-sm font-bold leading-relaxed">
             已经进入知识库并可继续追踪的笔记数量。
           </p>
         </Panel>
 
         <Panel className="p-5" tone="info">
-          <p className="text-xs font-black uppercase tracking-[0.16em]">人物节点</p>
-          <p className="mt-3 text-4xl font-black">{counts.entities}</p>
+          <p className="text-sm font-black">人物节点</p>
+          <p className="mt-2 text-3xl font-black">{counts.entities}</p>
           <p className="mt-3 text-sm font-bold leading-relaxed">
             当前已抽取并可进入人物详情页的实体数量。
           </p>
         </Panel>
 
         <Panel className="p-5" tone="story">
-          <p className="text-xs font-black uppercase tracking-[0.16em]">事件 / 时间线</p>
-          <p className="mt-3 text-4xl font-black">
+          <p className="text-sm font-black">事件 / 时间线</p>
+          <p className="mt-2 text-3xl font-black">
             {counts.events} / {counts.timeline}
           </p>
           <p className="mt-3 text-sm font-bold leading-relaxed">
@@ -266,8 +284,8 @@ export default function ToolsPage() {
             service?.status === "healthy" ? "success" : service?.status === "error" || healthError ? "danger" : "time";
           return (
             <Panel key={key} className="p-5" tone={tone}>
-              <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
-              <p className="mt-3 text-3xl font-black">
+              <p className="text-sm font-black">{label}</p>
+              <p className="mt-2 text-2xl font-black">
                 {service?.status === "healthy" ? "正常" : service?.status === "error" ? "异常" : "待检查"}
               </p>
               <p className="mt-3 break-all text-sm font-bold leading-relaxed">
@@ -282,8 +300,8 @@ export default function ToolsPage() {
         {toolLinks.map((item) => (
           <Link key={item.href} href={item.href}>
             <Panel className="h-full p-5 transition-transform hover:-translate-y-1" tone={item.tone}>
-              <p className="text-xs font-black uppercase tracking-[0.16em]">Action</p>
-              <p className="mt-3 text-3xl font-black">{item.label}</p>
+              <p className="workbench-stamp inline-flex bg-canvas">入口</p>
+              <p className="mt-3 text-2xl font-black">{item.label}</p>
               <p className="mt-3 text-base font-bold leading-relaxed">{item.description}</p>
             </Panel>
           </Link>
@@ -292,7 +310,10 @@ export default function ToolsPage() {
 
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Panel className="p-6" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">最近卷宗</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">最近卷宗</h2>
+            <span className="workbench-stamp bg-canvas">{recentNotes.length} 条</span>
+          </div>
           <div className="mt-5 space-y-3">
             {recentNotes.length ? (
               recentNotes.map((note) => (
@@ -317,7 +338,10 @@ export default function ToolsPage() {
         </Panel>
 
         <Panel className="p-6" tone="info">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">最近任务</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">最近任务</h2>
+            <span className="workbench-stamp bg-canvas">{recentJobs.length} 条</span>
+          </div>
           <div className="mt-5 space-y-3">
             {recentJobs.length ? (
               recentJobs.map((job) => (
@@ -351,7 +375,10 @@ export default function ToolsPage() {
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Panel className="p-6" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">这个工具页是做什么的</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">页面职责</h2>
+            <span className="workbench-stamp bg-canvas">总控入口</span>
+          </div>
           <p className="mt-4 text-2xl font-black">它是总控台，不是登录页。</p>
           <p className="mt-4 text-base font-bold leading-relaxed">
             之前首页的“工具”直接跳到登录，会让人误以为这个模块只有认证功能。现在它的职责是汇总访问状态、系统健康和各业务入口，让首页模块语义更完整。
@@ -359,7 +386,10 @@ export default function ToolsPage() {
         </Panel>
 
         <Panel className="p-6" tone="info">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">推荐使用顺序</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">推荐使用顺序</h2>
+            <span className="workbench-stamp bg-canvas">4 步</span>
+          </div>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div className="surface-inset border-4 border-ink p-4">
               <p className="text-xs font-black uppercase tracking-[0.14em]">01 登录</p>

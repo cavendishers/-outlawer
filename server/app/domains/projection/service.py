@@ -475,13 +475,23 @@ def persist_extraction_projection(
 
 
 def apply_entity_seen_time_from_event(entity: Entity, event: Event) -> None:
-    event_time = event.timeline_sort_time or event.start_time
+    event_time = ensure_utc_aware(event.timeline_sort_time or event.start_time)
     if event_time is None:
         return
-    if entity.first_seen_at is None or event_time < entity.first_seen_at:
+    first_seen_at = ensure_utc_aware(entity.first_seen_at)
+    last_seen_at = ensure_utc_aware(entity.last_seen_at)
+    if first_seen_at is None or event_time < first_seen_at:
         entity.first_seen_at = event_time
-    if entity.last_seen_at is None or event_time > entity.last_seen_at:
+    if last_seen_at is None or event_time > last_seen_at:
         entity.last_seen_at = event_time
+
+
+def ensure_utc_aware(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def persist_style_views(

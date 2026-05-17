@@ -47,7 +47,9 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
         "parser": "bailian_not_configured",
     }
 
-    if bailian_multimodal_enabled(asset.asset_type):
+    if not bailian_multimodal_enabled(asset.asset_type):
+        parsed_text = build_multimodal_fallback_text(asset)
+    else:
         try:
             derivative_payload = request_bailian_multimodal_derivative(
                 asset_type=asset.asset_type,
@@ -88,6 +90,7 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
                 "parser": "bailian_multimodal_failed",
                 "parser_error": str(exc),
             }
+            parsed_text = build_multimodal_fallback_text(asset)
 
     if derivative_payload:
         upsert_asset_derivative(

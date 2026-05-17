@@ -1262,3 +1262,8 @@ Verification note:
 - global navigation was compressed into three primary links plus `知识库` and `更多` menus to reduce flat navigation overload
 - workbench list tokens were extracted from `/events` and applied to `/library`, `/people`, `/timeline`, and `/search` primary list surfaces
 - the same workbench rules were extended to `/review`, `/operations`, and `/graph`: compact task headers, stamp-based metrics, smaller tool actions, and reduced decorative English on operator pages
+- `/inbox`, `/tools`, `/login`, `error`, and `not-found` were brought into the same workbench visual system so low-frequency entry pages no longer use large decorative hero blocks
+- `/notes/[id]` now exposes the AI analysis loop directly: active projection, provider/model metadata, run status, structured result counts, foldable run JSON, diff snapshot, replay audit, and reprocess/review/operations shortcuts
+- Phase 26 Slice F added canvas-native polish to `/graph`: node search, focus-neighborhood filtering, visible graph density/status, and mobile-safe empty-filter states
+- `/notes/[id]` header now uses the compact workbench pattern instead of the older large `Panel` hero, keeping detail pages aligned with the post-`/events` density rules
+- the full API e2e script now creates uniquely marked temporary records and cleans up created assets, notes, jobs, projections, entities, events, derivatives, embeddings, review logs, and MinIO objects in `finally`, preventing test records from leaking into formal data

@@ -64,3 +64,32 @@ def test_apply_entity_seen_time_from_event_uses_event_time_bounds() -> None:
 
     assert entity.first_seen_at == datetime(2026, 5, 16, 18, tzinfo=UTC)
     assert entity.last_seen_at == datetime(2026, 5, 17, tzinfo=UTC)
+
+
+def test_apply_entity_seen_time_from_event_handles_naive_database_values() -> None:
+    entity = Entity(
+        id="entity-1",
+        user_id="user-1",
+        entity_type="person",
+        canonical_name="李晓",
+        display_name="李晓",
+        description=None,
+        alias_json=[],
+        normalized_name="李晓",
+        status="active",
+        first_seen_at=datetime(2026, 5, 17),
+        last_seen_at=datetime(2026, 5, 17),
+    )
+    event = Event(
+        id="event-1",
+        user_id="user-1",
+        title="雀神角逐",
+        status="active",
+        time_precision="day",
+        timeline_sort_time=datetime(2026, 5, 18, tzinfo=UTC),
+    )
+
+    apply_entity_seen_time_from_event(entity, event)
+
+    assert entity.first_seen_at == datetime(2026, 5, 17)
+    assert entity.last_seen_at == datetime(2026, 5, 18, tzinfo=UTC)

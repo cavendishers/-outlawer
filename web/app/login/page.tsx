@@ -27,35 +27,59 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <Panel className="p-8" tone="story">
-        <p className="font-display text-6xl uppercase">Access Gate</p>
-        <p className="mt-6 max-w-xl text-xl font-bold leading-relaxed">
-          登录后你将进入知识引擎的内环。默认种子账号已经准备好，先拿到令牌，再开始导入卷宗。
-        </p>
-      </Panel>
+    <main className="space-y-5">
+      <section className="workbench-header">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="workbench-title">登录</h1>
+              <span className="workbench-stamp bg-peach">受保护页面</span>
+            </div>
+            <p className="workbench-lede">
+              使用访问令牌进入导入、档案、审核和图谱工作台；默认种子账号可用于本地开发验证。
+            </p>
+          </div>
+        </div>
+      </section>
 
-      <Panel className="p-8" tone="default">
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <label className="text-sm font-black uppercase">Username</label>
-          <input
-            className="brutal-input text-lg"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-          />
-          <label className="text-sm font-black uppercase">Password</label>
-          <input
-            type="password"
-            className="brutal-input text-lg"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <button className="brutal-action brutal-action-primary mt-2 w-fit text-lg">
-            进入内环
-          </button>
-          {error ? <p className="text-sm font-bold text-red-950">{error}</p> : null}
-        </form>
-      </Panel>
+      <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <Panel className="p-5" tone="story">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black">访问说明</h2>
+            <span className="workbench-stamp bg-canvas">Bearer Token</span>
+          </div>
+          <div className="mt-4 space-y-3 text-sm font-bold leading-relaxed md:text-base">
+            <p>登录成功后，令牌会保存在当前浏览器，用于访问受保护的后台页面。</p>
+            <p>如果需要切换账号，可从工具台退出后重新登录。</p>
+          </div>
+        </Panel>
+
+        <Panel className="p-5" tone="default">
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <label className="grid gap-2 text-sm font-black">
+              <span>账号</span>
+              <input
+                className="brutal-input text-base"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black">
+              <span>密码</span>
+              <input
+                type="password"
+                className="brutal-input text-base"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <button className="tool-action w-fit bg-neon">
+              登录并进入导入页
+            </button>
+            {error ? <p className="text-sm font-bold text-red-950">{error}</p> : null}
+          </form>
+        </Panel>
+      </section>
     </main>
   );
 }

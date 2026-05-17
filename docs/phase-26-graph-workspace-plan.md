@@ -447,6 +447,24 @@ Status update on `2026-04-20`:
 - long-running inline mutations now expose explicit `写入中...` feedback instead of ambiguous button labels
 - visible graph edges can now be spotlighted directly from the shared workspace, with endpoint pivot actions that move the flow beyond node-only inspection
 
+### Slice F: Canvas-Native Navigation Polish
+
+Goal:
+
+- make `/graph` feel closer to a native editing canvas without introducing heavy drag or layout dependencies
+
+Deliverables:
+
+- node search and quick focus filtering inside the graph canvas
+- a focus-neighborhood-only switch that keeps editing context close to the selected node
+- in-canvas graph status showing visible nodes, edges, density, and active filters
+
+Status update on `2026-05-17`:
+
+- delivered as a frontend-only interaction slice in `GraphWorkspaceShell`
+- inline curation remains on the existing event/entity mutation paths
+- mobile fallback stays card-based with no horizontal canvas overflow
+
 ## API And Service Implementation Notes
 
 ### Backend service seam

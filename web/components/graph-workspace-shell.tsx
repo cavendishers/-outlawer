@@ -248,6 +248,8 @@ export function GraphWorkspaceShell({
 }: GraphWorkspaceShellProps) {
   const [viewMode, setViewMode] = useState<GraphWorkspaceViewMode>("all");
   const [selectedEdgeKey, setSelectedEdgeKey] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [focusNeighborhoodOnly, setFocusNeighborhoodOnly] = useState(false);
 
   const allPositionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
@@ -300,7 +302,7 @@ export function GraphWorkspaceShell({
     [timelineFocus]
   );
 
-  const positionedNodes = useMemo(() => {
+  const modePositionedNodes = useMemo(() => {
     return allPositionedNodes.filter((node) => {
       if (node.is_anchor) return true;
       if (viewMode === "all") return true;
@@ -313,11 +315,45 @@ export function GraphWorkspaceShell({
     });
   }, [allPositionedNodes, timelineEventIds, viewMode]);
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const searchMatchedNodes = useMemo(() => {
+    if (!normalizedSearchQuery) return modePositionedNodes;
+    return modePositionedNodes.filter((node) => {
+      if (node.is_anchor) return true;
+      const searchable = [node.label, node.subtitle, node.node_type, ...node.meta, ...node.inspector.chips]
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(normalizedSearchQuery);
+    });
+  }, [modePositionedNodes, normalizedSearchQuery]);
+
+  const activeNodeBeforeNeighborhood =
+    searchMatchedNodes.find((node) => node.id === activeNodeId) ?? searchMatchedNodes[0] ?? null;
+  const activeNeighborhoodNodeIds = useMemo(() => {
+    if (!activeNodeBeforeNeighborhood) return new Set<string>();
+    const ids = new Set<string>([activeNodeBeforeNeighborhood.id]);
+    edges.forEach((edge) => {
+      if (edge.source_id === activeNodeBeforeNeighborhood.id) ids.add(edge.target_id);
+      if (edge.target_id === activeNodeBeforeNeighborhood.id) ids.add(edge.source_id);
+    });
+    return ids;
+  }, [activeNodeBeforeNeighborhood, edges]);
+
+  const positionedNodes = useMemo(() => {
+    if (!focusNeighborhoodOnly || !activeNodeBeforeNeighborhood) return searchMatchedNodes;
+    return searchMatchedNodes.filter((node) => activeNeighborhoodNodeIds.has(node.id));
+  }, [activeNeighborhoodNodeIds, activeNodeBeforeNeighborhood, focusNeighborhoodOnly, searchMatchedNodes]);
+
   const visibleNodeIds = useMemo(() => new Set(positionedNodes.map((node) => node.id)), [positionedNodes]);
   const visibleEdges = useMemo(
     () => edges.filter((edge) => visibleNodeIds.has(edge.source_id) && visibleNodeIds.has(edge.target_id)),
     [edges, visibleNodeIds]
   );
+  const visibleDensity = useMemo(() => {
+    const possibleEdgeCount = (visibleNodeIds.size * (visibleNodeIds.size - 1)) / 2;
+    if (possibleEdgeCount <= 0) return 0;
+    return Math.min(1, visibleEdges.length / possibleEdgeCount);
+  }, [visibleEdges.length, visibleNodeIds]);
 
   useEffect(() => {
     if (activeNodeId && visibleNodeIds.has(activeNodeId)) return;
@@ -333,6 +369,17 @@ export function GraphWorkspaceShell({
   const relatedEdges = activeNode
     ? visibleEdges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
     : [];
+  const filterSummary = [
+    viewMode === "all"
+      ? "全部节点"
+      : viewMode === "events"
+        ? "仅事件"
+        : viewMode === "people"
+          ? "仅人物"
+          : "时间主干",
+    focusNeighborhoodOnly ? "焦点邻域" : "全局可见",
+            normalizedSearchQuery ? `搜索：${searchQuery.trim()}` : "未搜索",
+  ];
   const effectiveTimelineContext = nodeDetail?.timeline_context?.length ? nodeDetail.timeline_context : timelineFocus;
   const backboneTimeline = effectiveTimelineContext.length ? effectiveTimelineContext : timelineFocus;
   const effectiveConnectedNodes = nodeDetail?.connected_nodes ?? [];
@@ -413,6 +460,37 @@ export function GraphWorkspaceShell({
               ))}
             </div>
           </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="block">
+              <span className="sr-only">搜索图谱节点</span>
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="搜索节点、标签或元信息，回车前即可过滤"
+                className="min-w-0 w-full border-4 border-ink bg-canvas px-4 py-3 text-sm font-black shadow-brutalTiny outline-none focus:bg-neon"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setFocusNeighborhoodOnly((current) => !current)}
+              className={`border-4 border-ink px-4 py-3 text-left text-xs font-black uppercase tracking-[0.14em] shadow-brutalTiny ${
+                focusNeighborhoodOnly ? "bg-neon" : "bg-canvas"
+              }`}
+            >
+              {focusNeighborhoodOnly ? "仅焦点邻域" : "显示全局"}
+            </button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {filterSummary.map((item) => (
+              <span key={item} className="brutal-chip">
+                {item}
+              </span>
+            ))}
+            <span className="brutal-chip">
+              可见 {positionedNodes.length}/{allPositionedNodes.length} 节点
+            </span>
+            <span className="brutal-chip">密度 {(visibleDensity * 100).toFixed(0)}%</span>
+          </div>
           <div className="mt-5 grid gap-3 md:hidden">
             {positionedNodes.map((node) => (
               <button
@@ -430,9 +508,21 @@ export function GraphWorkspaceShell({
                 {activeNodeId === node.id ? <p className="mt-2 text-xs font-black uppercase tracking-[0.14em]">当前焦点</p> : null}
               </button>
             ))}
+            {positionedNodes.length === 0 ? (
+              <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+                当前过滤条件下没有可显示节点。清空搜索或切回全局视图即可恢复。
+              </div>
+            ) : null}
           </div>
 
           <div className="graph-canvas relative hidden h-[36rem] md:block">
+            <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[calc(100%-2rem)] border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft">
+              <p className="text-[11px] font-black tracking-[0.16em]">画布状态</p>
+              <p className="mt-1 text-sm font-black leading-tight">
+                {positionedNodes.length} 节点 / {visibleEdges.length} 连线 / 密度 {(visibleDensity * 100).toFixed(0)}%
+              </p>
+              <p className="mt-1 break-words text-xs font-bold text-muted">{filterSummary.join(" · ")}</p>
+            </div>
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <rect x="0" y="0" width="100" height="100" fill="#fffdf5" />
               <circle cx="50" cy="48" r="18" fill="#fff3c2" opacity="0.42" />
@@ -502,6 +592,12 @@ export function GraphWorkspaceShell({
                   </button>
                 </div>
               ))}
+              {positionedNodes.length === 0 ? (
+                <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 border-4 border-dashed border-ink bg-bone px-5 py-6 text-center shadow-brutalSoft">
+                  <p className="text-lg font-black">没有命中过滤条件的节点</p>
+                  <p className="mt-2 text-sm font-bold text-muted">清空搜索、关闭焦点邻域，或切回全部视图继续编辑。</p>
+                </div>
+              ) : null}
             </div>
           </div>
 
