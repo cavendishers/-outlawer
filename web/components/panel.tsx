@@ -3,8 +3,10 @@ import { ReactNode } from "react";
 type PanelProps = {
   children: ReactNode;
   className?: string;
+  intensity?: "raised" | "quiet" | "flat";
   tone?:
     | "default"
+    | "quiet"
     | "info"
     | "story"
     | "signal"
@@ -22,6 +24,7 @@ type PanelProps = {
 
 const tones = {
   default: "surface-default",
+  quiet: "surface-quiet",
   info: "surface-info",
   story: "surface-story",
   signal: "surface-signal",
@@ -37,10 +40,16 @@ const tones = {
   ember: "surface-danger",
 };
 
-export function Panel({ children, className = "", tone = "default" }: PanelProps) {
+const intensities = {
+  raised: "shadow-brutal",
+  quiet: "shadow-brutalSoft",
+  flat: "shadow-none",
+};
+
+export function Panel({ children, className = "", intensity = "raised", tone = "default" }: PanelProps) {
   return (
     <div
-      className={`border-4 border-ink ${tones[tone]} shadow-brutal ${className}`}
+      className={`border-4 border-ink ${tones[tone]} ${intensities[intensity]} ${className}`}
     >
       {children}
     </div>

@@ -104,12 +104,12 @@ export function EventConstellation({
 
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden border-4 border-ink bg-white">
+      <div className="graph-canvas">
         <div className="border-b-4 border-ink bg-paper px-4 py-5 text-center md:px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.18em]">Graph Mode</p>
-            <p className="mt-2 text-3xl font-black md:text-4xl">{eventTitle}</p>
-            <p className="mt-3 text-sm font-bold leading-relaxed md:text-base">{eventSummary}</p>
+            <p className="section-kicker">Graph Mode</p>
+            <p className="mt-2 text-3xl font-black leading-tight md:text-4xl">{eventTitle}</p>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-muted md:text-base">{eventSummary}</p>
           </div>
         </div>
 
@@ -118,7 +118,7 @@ export function EventConstellation({
             <Link
               key={node.key}
               href={node.href}
-              className={`block border-4 border-ink px-3 py-3 shadow-brutal ${
+              className={`graph-node block ${
                 node.kind === "participant" ? "bg-aqua" : "bg-peach"
               }`}
             >
@@ -183,7 +183,7 @@ export function EventConstellation({
                   href={node.href}
                   onMouseEnter={() => setActiveKey(node.key)}
                   onFocus={() => setActiveKey(node.key)}
-                  className={`block w-32 border-4 border-ink px-3 py-3 text-left shadow-brutal transition-transform hover:-translate-y-1 lg:w-36 ${
+                  className={`graph-node block w-32 lg:w-36 ${
                     node.tone === "aqua" ? "bg-aqua" : node.tone === "peach" ? "bg-peach" : "bg-paper"
                   }`}
                 >
@@ -197,7 +197,7 @@ export function EventConstellation({
       </div>
 
       {activeNode ? (
-        <div className="border-4 border-ink bg-paper p-5">
+        <div className="border-4 border-ink bg-bone p-5 shadow-brutalSoft">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-xs font-black uppercase tracking-[0.16em]">
               {activeNode.kind === "participant" ? "角色节点" : "关联事件"}
@@ -209,7 +209,7 @@ export function EventConstellation({
             ))}
           </div>
           <p className="mt-4 text-2xl font-black">{activeNode.label}</p>
-          <p className="mt-3 text-base font-semibold leading-relaxed">{activeNode.detail}</p>
+          <p className="body-copy mt-3">{activeNode.detail}</p>
         </div>
       ) : null}
     </div>

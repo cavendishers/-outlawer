@@ -4,7 +4,10 @@
 
 :root {
   --color-paper: #f7f0e6;
+  --color-bone: #fff8ea;
   --color-white: #fffdf8;
+  --color-canvas: #fffdf8;
+  --color-muted: #6f675c;
   --color-neon: #d8ff19;
   --color-aqua: #80d6ef;
   --color-peach: #ffc3a5;
@@ -39,7 +42,9 @@ a {
 /*
 Visual token contract
 - paper: default reading and content surface
-- white: inset cards, input fields, tags, graph canvases
+- bone: quiet elevated panels and long-form reading surfaces
+- white/canvas: inset cards, input fields, tags, graph canvases
+- muted: secondary text and low-priority metadata
 - neon: app chrome, primary CTA, a single spotlight block per view
 - aqua: metadata, info panels, secondary system guidance
 - peach: narrative, relationship, story-oriented sections
@@ -52,6 +57,10 @@ Visual token contract
 @layer components {
   .surface-default {
     @apply bg-paper;
+  }
+
+  .surface-quiet {
+    @apply bg-bone;
   }
 
   .surface-info {
@@ -74,20 +83,64 @@ Visual token contract
     @apply bg-mint;
   }
 
+  .surface-success-soft {
+    @apply bg-mint;
+  }
+
   .surface-danger {
     @apply bg-ember;
   }
 
+  .surface-signal-soft {
+    @apply bg-neon;
+  }
+
+  .surface-info-soft {
+    @apply bg-aqua;
+  }
+
+  .surface-danger-soft {
+    @apply bg-ember;
+  }
+
   .surface-inset {
-    @apply bg-white;
+    @apply bg-canvas;
+  }
+
+  .page-kicker {
+    @apply text-xs font-black uppercase tracking-[0.2em];
+  }
+
+  .page-title {
+    @apply font-display text-[clamp(2.4rem,5.6vw,5rem)] leading-[0.9];
+  }
+
+  .page-lede {
+    @apply mt-4 max-w-3xl text-base font-semibold leading-relaxed text-muted md:text-lg;
+  }
+
+  .section-kicker {
+    @apply text-xs font-black uppercase tracking-[0.16em];
+  }
+
+  .card-title {
+    @apply text-2xl font-black leading-tight;
+  }
+
+  .body-copy {
+    @apply text-sm font-semibold leading-relaxed text-muted md:text-base;
+  }
+
+  .meta-copy {
+    @apply text-xs font-black uppercase tracking-[0.14em] text-muted;
   }
 
   .brutal-chip {
-    @apply border-2 border-ink bg-white px-2 py-1 text-xs font-black uppercase tracking-[0.12em];
+    @apply border-2 border-ink bg-canvas px-2 py-1 text-xs font-black uppercase tracking-[0.12em] shadow-brutalTiny;
   }
 
   .brutal-input {
-    @apply border-4 border-ink bg-white px-4 py-3 shadow-brutal;
+    @apply border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft outline-none focus:bg-white focus:shadow-brutal;
   }
 
   .brutal-action {
@@ -104,5 +157,42 @@ Visual token contract
 
   .brutal-action-info {
     @apply bg-aqua;
+  }
+
+  .nav-pill {
+    @apply border-2 border-ink bg-canvas px-3 py-2 font-black shadow-brutalTiny transition-transform hover:-translate-y-0.5;
+  }
+
+  .nav-pill-active {
+    @apply border-4 bg-neon shadow-brutal;
+  }
+
+  .dossier-card {
+    @apply relative h-full overflow-hidden border-4 border-ink bg-bone p-5 shadow-brutal transition-transform hover:-translate-y-1;
+  }
+
+  .dossier-card::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-3 bg-ink;
+  }
+
+  .dossier-card-content {
+    @apply relative pl-4;
+  }
+
+  .metric-card {
+    @apply border-4 border-ink p-5 shadow-brutalSoft;
+  }
+
+  .graph-canvas {
+    @apply overflow-hidden border-4 border-ink bg-canvas shadow-brutalSoft;
+  }
+
+  .graph-node {
+    @apply border-4 border-ink px-3 py-3 text-left shadow-brutalSoft transition-transform hover:-translate-y-1;
+  }
+
+  .empty-state {
+    @apply border-4 border-dashed border-ink bg-canvas p-5 text-base font-semibold leading-relaxed text-muted;
   }
 }

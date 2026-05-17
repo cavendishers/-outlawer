@@ -37,18 +37,18 @@ export default function EventsPage() {
     <AuthGate>
       <main className="space-y-6">
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Event Dossier</p>
-            <h1 className="mt-3 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.9]">事件清单</h1>
-            <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
+          <Panel className="p-6 md:p-8" tone="quiet">
+            <p className="page-kicker">Event Dossier</p>
+            <h1 className="page-title mt-3">事件清单</h1>
+            <p className="page-lede">
               这里展示从原始文本中沉淀出来的事件节点，按时间排序，并保留进入事件详情页继续追踪人物与来源卷宗的入口。
             </p>
           </Panel>
 
-          <Panel className="p-5" tone="info">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">事件总数</p>
+          <Panel className="metric-card" tone="time" intensity="quiet">
+            <p className="section-kicker">事件总数</p>
             <p className="mt-3 text-5xl font-black">{events.length}</p>
-            <p className="mt-4 text-sm font-bold leading-relaxed">
+            <p className="body-copy mt-4">
               每条事件都可以继续向下钻取到参与人物、来源笔记和时间定位。
             </p>
           </Panel>
@@ -62,8 +62,9 @@ export default function EventsPage() {
 
         <div className="space-y-4">
           {events.map((event) => (
-            <Link key={event.id} href={`/events/${event.id}`}>
-              <Panel className="p-5 transition-transform hover:-translate-y-1" tone="default">
+            <Link key={event.id} href={`/events/${event.id}`} className="block">
+              <article className="dossier-card">
+                <div className="dossier-card-content">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="border-2 border-ink bg-gold px-2 py-1 text-xs font-black uppercase tracking-[0.12em]">
                     {event.time_text ?? "待校准时间"}
@@ -79,11 +80,12 @@ export default function EventsPage() {
                     ) : null}
                   </div>
                 </div>
-                <p className="mt-3 text-3xl font-black">{event.title}</p>
-                <p className="mt-3 text-base font-semibold">
+                <p className="mt-3 text-3xl font-black leading-tight">{event.title}</p>
+                <p className="body-copy mt-3">
                   {event.summary ?? event.description ?? "暂无摘要，进入详情页查看更多事件信息。"}
                 </p>
-              </Panel>
+                </div>
+              </article>
             </Link>
           ))}
         </div>

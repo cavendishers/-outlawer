@@ -77,11 +77,11 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
 
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden border-4 border-ink bg-white">
+      <div className="graph-canvas">
         <div className="border-b-4 border-ink bg-paper px-4 py-5 text-center md:px-6">
-          <p className="text-xs font-black uppercase tracking-[0.18em]">Overview Graph</p>
-          <p className="mt-2 text-3xl font-black md:text-4xl">{title}</p>
-          <p className="mx-auto mt-3 max-w-3xl text-sm font-bold leading-relaxed md:text-base">
+          <p className="section-kicker">Overview Graph</p>
+          <p className="mt-2 text-3xl font-black leading-tight md:text-4xl">{title}</p>
+          <p className="mx-auto mt-3 max-w-3xl text-sm font-semibold leading-relaxed text-muted md:text-base">
             事件节点负责串起时间，人物节点负责提供交叉连接。把鼠标移到任意节点上，就能快速读出这张网的重心。
           </p>
         </div>
@@ -91,7 +91,7 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
             <Link
               key={node.id}
               href={node.href}
-              className={`block border-4 border-ink px-3 py-3 shadow-brutal ${
+              className={`graph-node block ${
                 node.node_type === "event" ? "bg-peach" : "bg-aqua"
               }`}
             >
@@ -155,7 +155,7 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
                   href={node.href}
                   onMouseEnter={() => setActiveNodeId(node.id)}
                   onFocus={() => setActiveNodeId(node.id)}
-                  className={`block w-32 border-4 border-ink px-3 py-3 text-left shadow-brutal transition-transform hover:-translate-y-1 xl:w-36 ${
+                  className={`graph-node block w-32 xl:w-36 ${
                     node.tone === "aqua" ? "bg-aqua" : node.tone === "peach" ? "bg-peach" : "bg-paper"
                   }`}
                 >
@@ -169,7 +169,7 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
       </div>
 
       {activeNode ? (
-        <div className="border-4 border-ink bg-paper p-5">
+        <div className="border-4 border-ink bg-bone p-5 shadow-brutalSoft">
           <div className="flex flex-wrap gap-2">
             <span className="brutal-chip">
               {activeNode.node_type === "event" ? "事件节点" : "角色节点"}
@@ -181,7 +181,7 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
             ))}
           </div>
           <p className="mt-4 text-2xl font-black">{activeNode.label}</p>
-          <p className="mt-3 text-base font-semibold leading-relaxed">
+          <p className="body-copy mt-3">
             当前节点共连接{" "}
             {
               edges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id).length

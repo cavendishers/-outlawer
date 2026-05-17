@@ -69,23 +69,23 @@ export default function EventDetailPage() {
     <AuthGate>
       <main className="space-y-6">
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Event Record</p>
-            <h1 className="mt-3 font-display text-[clamp(2.3rem,5vw,4.6rem)] leading-[0.9]">
+          <Panel className="p-6 md:p-8" tone="quiet">
+            <p className="page-kicker">Event Record</p>
+            <h1 className="page-title mt-3">
               {event?.title ?? "事件详情载入中"}
             </h1>
-            <p className="mt-4 text-lg font-bold leading-relaxed">
+            <p className="page-lede">
               {event?.summary ?? "系统正在展开事件摘要。"}
             </p>
           </Panel>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <Panel className="p-5" tone="time">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">时间锚点</p>
+            <Panel className="metric-card" tone="time" intensity="quiet">
+              <p className="section-kicker">时间锚点</p>
               <p className="mt-3 text-2xl font-black">{event?.time_text ?? "待校准"}</p>
             </Panel>
-            <Panel className="p-5" tone="info">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">地点 / 置信度</p>
+            <Panel className="metric-card" tone="info" intensity="quiet">
+              <p className="section-kicker">地点 / 置信度</p>
               <p className="mt-3 text-2xl font-black">{event?.location_text ?? "未标注地点"}</p>
               {event?.confidence_score ? (
                 <p className="mt-3 text-sm font-black uppercase tracking-[0.16em]">
@@ -103,7 +103,7 @@ export default function EventDetailPage() {
         ) : null}
 
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-6" tone="default">
+          <Panel className="p-6" tone="quiet" intensity="quiet">
             <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.12em]">
               {event?.event_type ? <span className="brutal-chip">{event.event_type}</span> : null}
               {event?.status ? <span className="brutal-chip">{event.status}</span> : null}
@@ -111,14 +111,14 @@ export default function EventDetailPage() {
                 <span className="brutal-chip">{event.time_precision}</span>
               ) : null}
             </div>
-            <p className="mt-5 text-sm font-black uppercase tracking-[0.16em]">事件描述</p>
-            <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-relaxed">
+            <p className="section-kicker mt-5">事件描述</p>
+            <p className="body-copy mt-4 whitespace-pre-wrap">
               {event?.description ?? event?.summary ?? "暂无更长描述。"}
             </p>
           </Panel>
 
-          <Panel className="p-6" tone="info">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">来源卷宗</p>
+          <Panel className="p-6" tone="info" intensity="quiet">
+            <p className="section-kicker">来源卷宗</p>
             {event?.source_note_id ? (
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
@@ -160,15 +160,15 @@ export default function EventDetailPage() {
           </Panel>
         </section>
 
-        <Panel className="p-6" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">参与角色</p>
+        <Panel className="p-6" tone="quiet" intensity="quiet">
+          <p className="section-kicker">参与角色</p>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {(event?.participants ?? []).map((participant) => (
               <Link key={participant.id} href={`/story/entity/${participant.id}`}>
-                <Panel className="h-full p-5 transition-transform hover:-translate-y-1" tone="default">
-                  <p className="text-xs font-black uppercase tracking-[0.16em]">{participant.entity_type}</p>
-                  <p className="mt-3 text-2xl font-black">{participant.display_name}</p>
-                  <p className="mt-3 text-sm font-bold">
+                <Panel className="h-full p-5 transition-transform hover:-translate-y-1" tone="quiet" intensity="quiet">
+                  <p className="meta-copy">{participant.entity_type}</p>
+                  <p className="card-title mt-3">{participant.display_name}</p>
+                  <p className="body-copy mt-3">
                     {participant.role || participant.relation_type || "关联角色"}
                   </p>
                 </Panel>
@@ -180,8 +180,8 @@ export default function EventDetailPage() {
           </div>
         </Panel>
 
-        <Panel className="p-6 md:p-8" tone="story">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">事件关联视图</p>
+        <Panel className="p-6 md:p-8" tone="story" intensity="quiet">
+          <p className="section-kicker">事件关联视图</p>
           {event ? (
             <div className="mt-5">
               <EventConstellation

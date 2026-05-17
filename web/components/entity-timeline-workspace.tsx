@@ -70,15 +70,15 @@ export function EntityTimelineWorkspace({
 
   return (
     <section className="grid gap-6 xl:grid-cols-[0.78fr_1.06fr_0.9fr]">
-      <Panel className="p-6" tone="time">
+      <Panel className="p-6" tone="time" intensity="quiet">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.16em]">时间轴工作台</p>
-            <p className="mt-2 text-base font-bold leading-relaxed">
+            <p className="section-kicker">时间轴工作台</p>
+            <p className="mt-2 text-base font-semibold leading-relaxed text-muted">
               先选中一个片段，再往前后两端追踪它在图谱里的回声。
             </p>
           </div>
-          <div className="border-4 border-ink bg-white px-4 py-3 shadow-brutal">
+          <div className="border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft">
             <p className="text-xs font-black uppercase tracking-[0.16em]">片段数</p>
             <p className="mt-2 text-3xl font-black">{fragments.length}</p>
           </div>
@@ -93,8 +93,8 @@ export function EntityTimelineWorkspace({
                   key={fragment.event_id}
                   type="button"
                   onClick={() => setActiveEventId(fragment.event_id)}
-                  className={`grid w-full gap-4 border-4 border-ink px-4 py-4 text-left shadow-brutal md:grid-cols-[88px_1fr] ${
-                    active ? "bg-white" : "bg-paper"
+                  className={`grid w-full gap-4 border-4 border-ink px-4 py-4 text-left shadow-brutalSoft md:grid-cols-[88px_1fr] ${
+                    active ? "bg-canvas" : "bg-bone"
                   }`}
                 >
                   <div className="flex flex-col justify-between">
@@ -106,7 +106,7 @@ export function EntityTimelineWorkspace({
                       {fragment.time_text ?? fragment.event_type ?? "事件片段"}
                     </p>
                     <p className="mt-2 text-xl font-black leading-tight">{fragment.title}</p>
-                    <p className="mt-2 line-clamp-2 text-sm font-bold leading-relaxed">
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-relaxed text-muted">
                       {fragment.summary ?? "暂无事件摘要。"}
                     </p>
                   </div>
@@ -114,15 +114,15 @@ export function EntityTimelineWorkspace({
               );
             })
           ) : (
-            <div className="surface-inset border-4 border-dashed border-ink p-5 text-base font-bold">
+            <div className="empty-state">
               当前人物还没有可用片段，暂时无法展开时间线工作台。
             </div>
           )}
         </div>
       </Panel>
 
-      <Panel className="p-6" tone="default">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">当前焦点</p>
+      <Panel className="p-6" tone="quiet" intensity="quiet">
+        <p className="section-kicker">当前焦点</p>
         {activeFragment ? (
           <>
             <p className="mt-4 text-3xl font-black leading-tight">{activeFragment.title}</p>
@@ -132,17 +132,17 @@ export function EntityTimelineWorkspace({
               {activeFragment.role ? <span className="brutal-chip">{activeFragment.role}</span> : null}
               {activeFragment.location_text ? <span className="brutal-chip">{activeFragment.location_text}</span> : null}
             </div>
-            <p className="mt-5 text-base font-semibold leading-relaxed">
+            <p className="body-copy mt-5">
               {activeFragment.summary ?? "暂无片段摘要。"}
             </p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="border-4 border-ink bg-aqua p-4 shadow-brutal">
+              <div className="border-4 border-ink bg-aqua p-4 shadow-brutalSoft">
                 <p className="text-xs font-black uppercase tracking-[0.16em]">上一跳</p>
                 <p className="mt-3 text-xl font-black">{previousFragment?.title ?? "已到起点"}</p>
                 <p className="mt-2 text-sm font-bold">{previousFragment?.time_text ?? "无"}</p>
               </div>
-              <div className="border-4 border-ink bg-peach p-4 shadow-brutal">
+              <div className="border-4 border-ink bg-peach p-4 shadow-brutalSoft">
                 <p className="text-xs font-black uppercase tracking-[0.16em]">下一跳</p>
                 <p className="mt-3 text-xl font-black">{nextFragment?.title ?? "已到当前尾声"}</p>
                 <p className="mt-2 text-sm font-bold">{nextFragment?.time_text ?? "无"}</p>
@@ -172,9 +172,9 @@ export function EntityTimelineWorkspace({
         )}
       </Panel>
 
-      <Panel className="p-6" tone="story">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">图谱回声</p>
-        <p className="mt-3 text-base font-bold leading-relaxed">
+      <Panel className="p-6" tone="story" intensity="quiet">
+        <p className="section-kicker">图谱回声</p>
+        <p className="mt-3 text-base font-semibold leading-relaxed text-muted">
           把角色的别名、侧向关联事件、以及非主干线的节点放在一起看，方便继续扩展人物索引。
         </p>
 
@@ -197,7 +197,7 @@ export function EntityTimelineWorkspace({
           <p className="text-xs font-black uppercase tracking-[0.16em]">侧向事件</p>
           {relatedEvents.slice(0, 6).map((item) => (
             <Link key={item.id} href={`/events/${item.id}`}>
-              <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+              <div className="border-4 border-ink bg-canvas px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em]">
@@ -209,20 +209,20 @@ export function EntityTimelineWorkspace({
                     <span className="brutal-chip">{item.role || item.relation_type}</span>
                   ) : null}
                 </div>
-                <p className="mt-3 line-clamp-2 text-sm font-bold leading-relaxed">
+                <p className="mt-3 line-clamp-2 text-sm font-semibold leading-relaxed text-muted">
                   {item.summary ?? "暂无摘要。"}
                 </p>
               </div>
             </Link>
           ))}
           {relatedEvents.length === 0 ? (
-            <div className="surface-inset border-4 border-dashed border-ink p-5 text-sm font-bold">
+            <div className="empty-state">
               目前还没有主时间轴之外的侧向事件。
             </div>
           ) : null}
         </div>
 
-        <div className="mt-6 border-4 border-ink bg-neon p-4 shadow-brutal">
+        <div className="mt-6 border-4 border-ink bg-aqua p-4 shadow-brutalSoft">
           <p className="text-xs font-black uppercase tracking-[0.16em]">角色核心</p>
           <p className="mt-3 text-2xl font-black">{displayName}</p>
           <p className="mt-2 text-sm font-bold">

@@ -24,8 +24,8 @@ export function Navigation() {
         <Link
           key={item.href}
           href={item.href}
-          className={`border-4 border-ink px-3 py-2 font-black shadow-brutal transition-transform hover:-translate-y-1 ${
-            pathname === item.href ? "bg-neon" : "bg-white"
+          className={`nav-pill ${
+            pathname === item.href ? "nav-pill-active" : ""
           }`}
         >
           {item.label}

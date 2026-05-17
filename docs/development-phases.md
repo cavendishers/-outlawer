@@ -145,7 +145,7 @@ Documents updated after completion:
 
 ### Phase C: Domain packaging
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Verified on `2026-04-21`
 
@@ -1214,3 +1214,43 @@ Verification completed for current slice:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
+
+## Phase 28: UI System Consolidation
+
+Status: `IN_PROGRESS`
+
+Goal:
+
+- preserve the strong Outlawer brutalist identity while making deep product pages easier to scan and read
+
+Work items:
+
+- extend visual tokens with quiet surfaces, canvas surfaces, muted text, and softer shadow levels
+- formalize reusable hierarchy classes for page headers, body copy, dossier cards, metric cards, graph canvases, and graph nodes
+- reduce overuse of `neon` and `font-black` on deep pages
+- refactor core pages and graph components toward stable color responsibilities and responsive graph fallbacks
+- document the UI token contract in `docs/visual-tokens.md`
+
+Completion criteria:
+
+- homepage keeps the strong visual direction
+- people, event, library, search, timeline, story, and graph-heavy views have clearer hierarchy
+- mobile graph-related views have readable list alternatives where horizontal canvas would be fragile
+- frontend typecheck and production build pass
+
+Documents to update manually after completion:
+
+- `docs/visual-tokens.md`
+- `docs/development-phases.md`
+
+Verification planned for current slice:
+
+Verification completed for current slice:
+
+- `cd web && npx tsc --noEmit`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
+- browser smoke on `/`, `/people`, `/events`, `/timeline`, `/search`
+
+Verification note:
+
+- browser smoke ran with an expired local auth token, so protected list data did not render; the smoke still confirmed page rendering and no horizontal overflow on the checked routes

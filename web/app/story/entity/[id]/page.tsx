@@ -108,12 +108,12 @@ export default function EntityStoryPage() {
     <AuthGate>
       <main className="space-y-6">
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Entity Story</p>
-            <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,4.8rem)] leading-[0.9]">
+          <Panel className="p-6 md:p-8" tone="quiet">
+            <p className="page-kicker">Entity Story</p>
+            <h1 className="page-title mt-3">
               {story?.title ?? entity?.display_name ?? "人物档案载入中"}
             </h1>
-            <p className="mt-4 text-lg font-bold leading-relaxed">
+            <p className="page-lede">
               {entity?.description ?? "该角色的设定注释尚未补齐，先从故事视图读取它的气场。"}
             </p>
             {entity ? (
@@ -139,10 +139,10 @@ export default function EntityStoryPage() {
             ) : null}
           </Panel>
 
-          <Panel className="p-6" tone="info">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">身份卡</p>
+          <Panel className="p-6" tone="info" intensity="quiet">
+            <p className="section-kicker">身份卡</p>
             <p className="mt-3 text-4xl font-black">{entity?.display_name ?? "..."}</p>
-            <p className="mt-2 text-base font-semibold opacity-80">{entity?.canonical_name}</p>
+            <p className="mt-2 text-base font-semibold text-muted">{entity?.canonical_name}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {entity?.entity_type ? (
                 <span className="brutal-chip">
@@ -165,9 +165,9 @@ export default function EntityStoryPage() {
         ) : null}
 
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-6" tone="story">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">中二风档案</p>
-            <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-relaxed">
+          <Panel className="p-6" tone="story" intensity="quiet">
+            <p className="section-kicker">中二风档案</p>
+            <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-relaxed text-muted">
               {story?.content ??
                 (entity?.related_events.length
                   ? `${entity.display_name}已经被挂接到事件链中，正式设定仍待补全。你可以从下方时间线进入相关事件继续校对。`
@@ -175,8 +175,8 @@ export default function EntityStoryPage() {
             </p>
           </Panel>
 
-          <Panel className="p-6" tone="info">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">别名与出场时间</p>
+          <Panel className="p-6" tone="info" intensity="quiet">
+            <p className="section-kicker">别名与出场时间</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {(entity?.aliases ?? []).length ? (
                 entity?.aliases.map((alias) => (
@@ -185,7 +185,7 @@ export default function EntityStoryPage() {
                   </span>
                 ))
               ) : (
-                <p className="text-base font-bold">暂无别名。</p>
+                <p className="body-copy">暂无别名。</p>
               )}
             </div>
             {entity?.first_seen_at ? (
@@ -199,14 +199,14 @@ export default function EntityStoryPage() {
               </p>
             ) : null}
             <p className="mt-5 text-4xl font-black">{entity?.timeline_fragments.length ?? 0}</p>
-            <p className="mt-2 text-sm font-bold leading-relaxed">
+            <p className="body-copy mt-2">
               当前角色已经被挂接到 {entity?.timeline_fragments.length ?? 0} 个事件节点，可沿时间轴继续回溯。
             </p>
           </Panel>
         </section>
 
-        <Panel className="p-6 md:p-8" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">人物时间线片段</p>
+        <Panel className="p-6 md:p-8" tone="quiet" intensity="quiet">
+          <p className="section-kicker">人物时间线片段</p>
           {entity ? (
             <div className="mt-5">
               <EntityJourneyMap
@@ -227,7 +227,7 @@ export default function EntityStoryPage() {
                       {fragment.position}/{fragment.total}
                     </p>
                   </div>
-                  <Panel className="relative overflow-hidden p-5" tone="default">
+                  <Panel className="relative overflow-hidden p-5" tone="quiet" intensity="quiet">
                     <div className="absolute inset-y-0 left-0 w-3 bg-ink" />
                     <div className="pl-4">
                       <div className="flex flex-wrap gap-2">
@@ -247,8 +247,8 @@ export default function EntityStoryPage() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-4 text-3xl font-black">{fragment.title}</p>
-                      <p className="mt-3 text-base font-semibold leading-relaxed">
+                      <p className="mt-4 text-3xl font-black leading-tight">{fragment.title}</p>
+                      <p className="body-copy mt-3">
                         {fragment.summary ?? "暂无事件摘要。"}
                       </p>
                       {fragment.source_note_title ? (
@@ -262,7 +262,7 @@ export default function EntityStoryPage() {
               </Link>
             ))}
             {entity && entity.timeline_fragments.length === 0 ? (
-              <div className="surface-inset border-4 border-dashed border-ink p-5 text-base font-bold">
+              <div className="empty-state">
                 当前人物还没有可展开的时间线片段。等更多事件进入图谱后，这里会逐步长出完整轨迹。
               </div>
             ) : null}
@@ -280,17 +280,17 @@ export default function EntityStoryPage() {
           />
         ) : null}
 
-        <Panel className="p-6" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">关联事件速览</p>
+        <Panel className="p-6" tone="quiet" intensity="quiet">
+          <p className="section-kicker">关联事件速览</p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {(entity?.related_events ?? []).map((item) => (
               <Link key={item.id} href={`/events/${item.id}`}>
-                <Panel className="h-full p-5 transition-transform hover:-translate-y-1" tone="default">
-                  <p className="text-xs font-black uppercase tracking-[0.16em]">
+                <Panel className="h-full p-5 transition-transform hover:-translate-y-1" tone="quiet" intensity="quiet">
+                  <p className="meta-copy">
                     {item.time_text ?? item.event_type ?? "事件"}
                   </p>
-                  <p className="mt-3 text-2xl font-black">{item.title}</p>
-                  <p className="mt-3 text-sm font-bold leading-relaxed">{item.summary ?? "暂无摘要"}</p>
+                  <p className="card-title mt-3">{item.title}</p>
+                  <p className="body-copy mt-3">{item.summary ?? "暂无摘要"}</p>
                 </Panel>
               </Link>
             ))}

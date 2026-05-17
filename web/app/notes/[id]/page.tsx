@@ -232,27 +232,27 @@ export default function NotePage() {
   return (
     <AuthGate>
       <main className="space-y-6">
-        <Panel className="p-6" tone="default">
+        <Panel className="p-6 md:p-8" tone="quiet">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-black uppercase">{note?.status ?? "loading"}</p>
+            <p className="section-kicker">{note?.status ?? "loading"}</p>
             {note?.primary_time ? (
-              <p className="text-sm font-black uppercase">{note.primary_time.slice(0, 10)}</p>
+              <p className="section-kicker">{note.primary_time.slice(0, 10)}</p>
             ) : null}
           </div>
-          <h1 className="mt-2 text-5xl font-black">{note?.title ?? "卷宗载入中"}</h1>
-          <p className="mt-4 text-lg font-semibold">{note?.summary ?? "暂无摘要"}</p>
-          {note?.category ? <p className="mt-3 text-sm font-black uppercase tracking-[0.16em]">{note.category}</p> : null}
+          <h1 className="page-title mt-3">{note?.title ?? "卷宗载入中"}</h1>
+          <p className="page-lede">{note?.summary ?? "暂无摘要"}</p>
+          {note?.category ? <p className="section-kicker mt-5">{note.category}</p> : null}
         </Panel>
         {error ? (
           <Panel className="p-5 text-lg font-bold text-red-950" tone="danger">
             {error}
           </Panel>
         ) : null}
-        <Panel className="p-6" tone="default">
-          <p className="text-sm font-black uppercase">Canonical Text</p>
-          <p className="mt-4 whitespace-pre-wrap text-base font-medium">{note?.canonical_text}</p>
+        <Panel className="p-6" tone="quiet" intensity="quiet">
+          <p className="section-kicker">Canonical Text</p>
+          <p className="body-copy mt-4 whitespace-pre-wrap">{note?.canonical_text}</p>
         </Panel>
-        <Panel className="p-6" tone="paper">
+        <Panel className="p-6" tone="quiet" intensity="quiet">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.16em]">Extraction Runs</p>
@@ -263,7 +263,7 @@ export default function NotePage() {
           {runs.length ? (
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {runs.map((run, index) => (
-                <div key={run.id} className="border-4 border-ink bg-white/70 p-4">
+                <div key={run.id} className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-black uppercase tracking-[0.16em]">
                       {run.status === "ready_for_review"
@@ -277,13 +277,13 @@ export default function NotePage() {
                     <p className="text-xs font-black uppercase">{run.is_applied ? "applied" : formatRunStatus(run.status)}</p>
                   </div>
                   <p className="mt-3 text-2xl font-black">{run.summary.title || "未命名提取运行"}</p>
-                  <p className="mt-2 text-sm font-semibold">
+                  <p className="mt-2 text-sm font-semibold text-muted">
                     {run.extractor_name} / {run.extractor_version}
                   </p>
                   <p className="mt-2 text-xs font-black uppercase tracking-[0.12em]">
                     {run.created_at ? run.created_at.slice(0, 19).replace("T", " ") : "时间未知"}
                   </p>
-                  <p className="mt-4 text-sm font-medium">
+                  <p className="mt-4 text-sm font-medium text-muted">
                     实体 {run.summary.entity_count} · 事件 {run.summary.event_count} · 关系 {run.summary.relation_count} · 相似提示{" "}
                     {run.summary.similarity_hint_count}
                   </p>
@@ -308,11 +308,11 @@ export default function NotePage() {
                         </button>
                       </>
                     ) : run.is_applied ? (
-                      <span className="border-4 border-ink bg-[var(--surface-success-soft)] px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
+                      <span className="border-4 border-ink bg-mint px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
                         当前生效
                       </span>
                     ) : run.status === "rejected" ? (
-                      <span className="border-4 border-ink bg-[var(--surface-danger-soft)] px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
+                      <span className="border-4 border-ink bg-ember px-3 py-2 text-xs font-black uppercase tracking-[0.14em]">
                         已拒绝
                       </span>
                     ) : (
@@ -332,7 +332,7 @@ export default function NotePage() {
           ) : (
             <p className="mt-4 text-base font-medium">当前还没有可展示的提取运行记录。</p>
           )}
-          <div className="mt-6 border-4 border-ink bg-white/70 p-4">
+          <div className="mt-6 border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
             <p className="text-xs font-black uppercase tracking-[0.16em]">Replay Note</p>
             <label className="mt-3 block text-sm font-black uppercase tracking-[0.12em]">
               本次审批或回滚备注
@@ -340,12 +340,12 @@ export default function NotePage() {
             <textarea
               value={applyNote}
               onChange={(event) => setApplyNote(event.target.value)}
-              className="mt-2 min-h-24 w-full border-4 border-ink bg-white px-3 py-2 text-sm font-medium outline-none"
+              className="brutal-input mt-2 min-h-24 w-full text-sm font-medium"
               placeholder="例如：审批通过新的抽取草稿，或恢复到上一版以保留更稳定的人物识别。"
             />
           </div>
           {compare ? (
-            <div className="mt-6 border-4 border-ink bg-[var(--surface-signal-soft)] p-5">
+            <div className="mt-6 border-4 border-ink bg-neon p-5 shadow-brutalSoft">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em]">Diff Snapshot</p>
@@ -362,7 +362,7 @@ export default function NotePage() {
                 {compare.candidate_run.is_applied ? "当前" : "候选"}：{compare.candidate_run.extractor_name} / {compare.candidate_run.extractor_version}
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="border-4 border-ink bg-white/70 p-4">
+                <div className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
                   <p className="text-xs font-black uppercase tracking-[0.16em]">Summary</p>
                   {compare.diff.summary.fields.filter((field) => field.changed).length ? (
                     <div className="mt-3 space-y-3">
@@ -380,7 +380,7 @@ export default function NotePage() {
                     <p className="mt-3 text-sm font-medium">摘要字段没有变化。</p>
                   )}
                 </div>
-                <div className="border-4 border-ink bg-white/70 p-4">
+                <div className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
                   <p className="text-xs font-black uppercase tracking-[0.16em]">Graph Delta</p>
                   <div className="mt-3 space-y-3 text-sm font-medium">
                     <p>新增人物：{formatNamedItems(compare.diff.entities.added, "name")}</p>
@@ -394,7 +394,7 @@ export default function NotePage() {
               </div>
             </div>
           ) : null}
-          <div className="mt-6 border-4 border-ink bg-[var(--surface-info-soft)] p-5">
+          <div className="mt-6 border-4 border-ink bg-aqua p-5 shadow-brutalSoft">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em]">Replay Audit</p>
@@ -405,7 +405,7 @@ export default function NotePage() {
             {replayActions.length ? (
               <div className="mt-4 space-y-3">
                 {replayActions.map((action) => (
-                  <div key={action.id} className="border-4 border-ink bg-white/70 p-4">
+                  <div key={action.id} className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs font-black uppercase tracking-[0.16em]">{formatReplayActionType(action.action_type)}</p>
                       <p className="text-xs font-black uppercase">

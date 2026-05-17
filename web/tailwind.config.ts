@@ -10,6 +10,9 @@ const config: Config = {
     extend: {
       colors: {
         paper: "#f7f0e6",
+        bone: "#fff8ea",
+        canvas: "#fffdf8",
+        muted: "#6f675c",
         neon: "#d8ff19",
         aqua: "#80d6ef",
         peach: "#ffc3a5",
@@ -20,6 +23,8 @@ const config: Config = {
       },
       boxShadow: {
         brutal: "6px 6px 0 #0b0b0b",
+        brutalSoft: "4px 4px 0 #0b0b0b",
+        brutalTiny: "2px 2px 0 #0b0b0b",
       },
     },
   },

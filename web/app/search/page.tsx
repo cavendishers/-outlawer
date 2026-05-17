@@ -172,18 +172,18 @@ export default function SearchPage() {
     <AuthGate>
       <main className="space-y-6">
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Unified Retrieval</p>
-            <h1 className="mt-3 font-display text-[clamp(2.5rem,6vw,5rem)] leading-[0.9]">统一搜索</h1>
-            <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
+          <Panel className="p-6 md:p-8" tone="quiet">
+            <p className="page-kicker">Unified Retrieval</p>
+            <h1 className="page-title mt-3">统一搜索</h1>
+            <p className="page-lede">
               把关键词检索、相似卷宗、人物命中和事件命中收拢在同一个入口里。先从字面线索切入，再用相似内容把你带回图谱真正的交叉点。
             </p>
           </Panel>
 
-          <Panel className="p-6" tone="signal">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">搜索态势</p>
+          <Panel className="p-6" tone={loading || results ? "signal" : "info"}>
+            <p className="section-kicker">搜索态势</p>
             <p className="mt-3 text-4xl font-black">{loading ? "检索中" : results ? "已聚合" : "待命中"}</p>
-            <p className="mt-4 text-sm font-bold leading-relaxed">
+            <p className="mt-4 text-sm font-semibold leading-relaxed">
               {selectedNote
                 ? `当前相似检索种子：${selectedNote.title}`
                 : "还没有指定相似种子时，页面会先按关键词返回笔记、人物和事件。"}
@@ -198,8 +198,8 @@ export default function SearchPage() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-5 md:p-6" tone="default">
-            <label className="text-xs font-black uppercase tracking-[0.16em]" htmlFor="global-search-query">
+          <Panel className="p-5 md:p-6" tone="quiet" intensity="quiet">
+            <label className="section-kicker" htmlFor="global-search-query">
               关键词检索
             </label>
             <input
@@ -223,8 +223,8 @@ export default function SearchPage() {
             </div>
           </Panel>
 
-          <Panel className="p-5 md:p-6" tone="info">
-            <label className="text-xs font-black uppercase tracking-[0.16em]" htmlFor="seed-note-select">
+          <Panel className="p-5 md:p-6" tone="info" intensity="quiet">
+            <label className="section-kicker" htmlFor="seed-note-select">
               相似检索种子
             </label>
             <select
@@ -240,7 +240,7 @@ export default function SearchPage() {
                 </option>
               ))}
             </select>
-            <p className="mt-4 text-sm font-bold leading-relaxed">
+            <p className="mt-4 text-sm font-semibold leading-relaxed">
               选择一条卷宗后，页面会额外返回 embedding 相似笔记。适合在主题相近、命名不同的材料之间快速回溯。
             </p>
             <div className="mt-5">
@@ -273,32 +273,32 @@ export default function SearchPage() {
         {results ? (
           <>
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <Panel className="p-5" tone="signal">
-                <p className="text-xs font-black uppercase tracking-[0.16em]">总命中</p>
+              <Panel className="metric-card" tone="signal" intensity="quiet">
+                <p className="section-kicker">总命中</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.top_hit_count}</p>
               </Panel>
-              <Panel className="p-5" tone="default">
-                <p className="text-xs font-black uppercase tracking-[0.16em]">笔记</p>
+              <Panel className="metric-card" tone="quiet" intensity="quiet">
+                <p className="section-kicker">笔记</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.note_count}</p>
               </Panel>
-              <Panel className="p-5" tone="info">
-                <p className="text-xs font-black uppercase tracking-[0.16em]">人物</p>
+              <Panel className="metric-card" tone="info" intensity="quiet">
+                <p className="section-kicker">人物</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.entity_count}</p>
               </Panel>
-              <Panel className="p-5" tone="time">
-                <p className="text-xs font-black uppercase tracking-[0.16em]">事件</p>
+              <Panel className="metric-card" tone="time" intensity="quiet">
+                <p className="section-kicker">事件</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.event_count}</p>
               </Panel>
-              <Panel className="p-5" tone="story">
-                <p className="text-xs font-black uppercase tracking-[0.16em]">相似卷宗</p>
+              <Panel className="metric-card" tone="story" intensity="quiet">
+                <p className="section-kicker">相似卷宗</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.similar_count}</p>
               </Panel>
             </section>
 
             <section className="space-y-4">
-              <Panel className="p-5 md:p-6" tone="default">
-                <p className="text-sm font-black uppercase tracking-[0.16em]">Top Hits</p>
-                <p className="mt-3 text-lg font-bold leading-relaxed">
+              <Panel className="p-5 md:p-6" tone="quiet" intensity="quiet">
+                <p className="section-kicker">Top Hits</p>
+                <p className="body-copy mt-3">
                   先看最值得点开的命中，再决定是回到原始卷宗、人物档案，还是直接进入事件节点。
                 </p>
               </Panel>
@@ -306,11 +306,11 @@ export default function SearchPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {results.top_hits.map((hit) => (
                     <Link key={`${hit.result_type}-${hit.id}`} href={hit.href}>
-                        <Panel className="flex h-full flex-col justify-between p-5 transition-transform hover:-translate-y-1" tone={toneForHit(hit.result_type)}>
+                        <Panel className="flex h-full flex-col justify-between p-5 transition-transform hover:-translate-y-1" tone={toneForHit(hit.result_type)} intensity="quiet">
                         <div>
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">{labelForResultType(hit.result_type)}</p>
-                          <p className="mt-3 text-2xl font-black">{hit.label}</p>
-                          <p className="mt-3 text-sm font-bold leading-relaxed">
+                          <p className="section-kicker">{labelForResultType(hit.result_type)}</p>
+                          <p className="card-title mt-3">{hit.label}</p>
+                          <p className="mt-3 text-sm font-semibold leading-relaxed">
                             {hit.summary || "该条命中暂无额外摘要，进入详情页查看完整信息。"}
                           </p>
                         </div>
@@ -334,19 +334,19 @@ export default function SearchPage() {
 
             <section className="grid gap-6 xl:grid-cols-2">
               <div className="space-y-4">
-                <Panel className="p-5" tone="default">
-                  <p className="text-sm font-black uppercase tracking-[0.16em]">笔记命中</p>
+                <Panel className="p-5" tone="quiet" intensity="quiet">
+                  <p className="section-kicker">笔记命中</p>
                 </Panel>
                 {results.notes.length ? (
                   results.notes.map((note) => (
                     <Link key={note.id} href={note.href} className="block">
-                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="default">
+                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="quiet" intensity="quiet">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">{note.status}</p>
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">{formatDateLabel(note.primary_time)}</p>
+                          <p className="meta-copy">{note.status}</p>
+                          <p className="meta-copy">{formatDateLabel(note.primary_time)}</p>
                         </div>
-                        <p className="mt-3 text-2xl font-black">{note.title}</p>
-                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                        <p className="card-title mt-3">{note.title}</p>
+                        <p className="body-copy mt-3">
                           {note.summary || "暂无摘要，进入卷宗详情查看标准视图与中二风版本。"}
                         </p>
                       </Panel>
@@ -358,21 +358,21 @@ export default function SearchPage() {
                   </Panel>
                 )}
 
-                <Panel className="p-5" tone="story">
-                  <p className="text-sm font-black uppercase tracking-[0.16em]">相似卷宗</p>
+                <Panel className="p-5" tone="story" intensity="quiet">
+                  <p className="section-kicker">相似卷宗</p>
                 </Panel>
                 {results.similar_notes.length ? (
                   results.similar_notes.map((note) => (
                     <Link key={note.id} href={note.href} className="block">
-                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="story">
+                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="story" intensity="quiet">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">相似卷宗</p>
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">
+                          <p className="section-kicker">相似卷宗</p>
+                          <p className="section-kicker">
                             {Math.round(note.score * 100)}%
                           </p>
                         </div>
-                        <p className="mt-3 text-2xl font-black">{note.title}</p>
-                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                        <p className="card-title mt-3">{note.title}</p>
+                        <p className="mt-3 text-sm font-semibold leading-relaxed">
                           {note.summary || "暂无摘要，进入卷宗详情查看相邻主题。"}
                         </p>
                       </Panel>
@@ -386,24 +386,24 @@ export default function SearchPage() {
               </div>
 
               <div className="space-y-4">
-                <Panel className="p-5" tone="info">
-                  <p className="text-sm font-black uppercase tracking-[0.16em]">人物命中</p>
+                <Panel className="p-5" tone="info" intensity="quiet">
+                  <p className="section-kicker">人物命中</p>
                 </Panel>
                 {results.entities.length ? (
                   results.entities.map((entity) => (
                     <Link key={entity.id} href={entity.href} className="block">
-                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="info">
+                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="info" intensity="quiet">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">{entity.entity_type}</p>
+                          <p className="section-kicker">{entity.entity_type}</p>
                           {entity.confidence_score ? (
-                            <p className="text-xs font-black uppercase tracking-[0.16em]">
+                            <p className="section-kicker">
                               {Math.round(entity.confidence_score * 100)}%
                             </p>
                           ) : null}
                         </div>
-                        <p className="mt-3 text-2xl font-black">{entity.display_name}</p>
-                        <p className="mt-2 text-sm font-bold opacity-80">{entity.canonical_name}</p>
-                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                        <p className="card-title mt-3">{entity.display_name}</p>
+                        <p className="mt-2 text-sm font-semibold text-muted">{entity.canonical_name}</p>
+                        <p className="mt-3 text-sm font-semibold leading-relaxed">
                           {entity.description || "暂无人物注释，进入档案页查看更多上下文。"}
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
@@ -422,15 +422,15 @@ export default function SearchPage() {
                   </Panel>
                 )}
 
-                <Panel className="p-5" tone="time">
-                  <p className="text-sm font-black uppercase tracking-[0.16em]">事件命中</p>
+                <Panel className="p-5" tone="time" intensity="quiet">
+                  <p className="section-kicker">事件命中</p>
                 </Panel>
                 {results.events.length ? (
                   results.events.map((event) => (
                     <Link key={event.id} href={event.href} className="block">
-                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="time">
+                      <Panel className="p-5 transition-transform hover:-translate-y-1" tone="time" intensity="quiet">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">
+                          <p className="section-kicker">
                             {event.event_type || "event"}
                           </p>
                           <div className="flex flex-wrap gap-2">
@@ -438,8 +438,8 @@ export default function SearchPage() {
                             {event.location_text ? <span className="brutal-chip">{event.location_text}</span> : null}
                           </div>
                         </div>
-                        <p className="mt-3 text-2xl font-black">{event.title}</p>
-                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                        <p className="card-title mt-3">{event.title}</p>
+                        <p className="mt-3 text-sm font-semibold leading-relaxed">
                           {event.summary || "暂无事件摘要，进入事件页查看参与人物和关联事件。"}
                         </p>
                       </Panel>

@@ -52,8 +52,24 @@ export function EntityJourneyMap({ displayName, entityType, fragments }: EntityJ
 
   return (
     <div className="space-y-5">
-      <div className="overflow-x-auto">
-        <div className="relative min-w-[52rem] overflow-hidden border-4 border-ink bg-white">
+      <div className="grid gap-3 md:hidden">
+        {graphNodes.map((node) => (
+          <Link
+            key={node.event_id}
+            href={`/events/${node.event_id}`}
+            className={`graph-node block ${activeEventId === node.event_id ? "bg-gold" : "bg-bone"}`}
+            onMouseEnter={() => setActiveEventId(node.event_id)}
+            onFocus={() => setActiveEventId(node.event_id)}
+          >
+            <p className="text-[11px] font-black uppercase tracking-[0.14em]">{node.chapter_label}</p>
+            <p className="mt-2 text-base font-black leading-tight">{node.title}</p>
+            <p className="mt-2 text-[11px] font-black uppercase tracking-[0.14em]">{node.time_text ?? "待校时"}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="hidden md:block">
+        <div className="graph-canvas relative overflow-hidden">
           <svg
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 100 100"
@@ -91,7 +107,7 @@ export function EntityJourneyMap({ displayName, entityType, fragments }: EntityJ
           </svg>
 
           <div className="relative z-10 px-5 py-6">
-            <div className="absolute left-[4%] top-1/2 w-36 -translate-y-1/2 border-4 border-ink bg-neon px-4 py-4 shadow-brutal">
+            <div className="absolute left-[4%] top-1/2 w-36 -translate-y-1/2 border-4 border-ink bg-aqua px-4 py-4 shadow-brutalSoft">
               <p className="text-xs font-black uppercase tracking-[0.16em]">{entityType}</p>
               <p className="mt-3 text-2xl font-black">{displayName}</p>
             </div>
@@ -106,7 +122,7 @@ export function EntityJourneyMap({ displayName, entityType, fragments }: EntityJ
                   href={`/events/${node.event_id}`}
                   onMouseEnter={() => setActiveEventId(node.event_id)}
                   onFocus={() => setActiveEventId(node.event_id)}
-                  className={`block w-40 border-4 border-ink px-3 py-3 shadow-brutal transition-transform hover:-translate-y-1 ${
+                  className={`graph-node block w-40 ${
                     activeEventId === node.event_id ? "bg-gold" : "bg-paper"
                   }`}
                 >
@@ -125,7 +141,7 @@ export function EntityJourneyMap({ displayName, entityType, fragments }: EntityJ
       </div>
 
       {activeNode ? (
-        <div className="border-4 border-ink bg-paper p-5">
+        <div className="border-4 border-ink bg-bone p-5 shadow-brutalSoft">
           <div className="flex flex-wrap gap-2">
             {[
               activeNode.chapter_label,
@@ -141,7 +157,7 @@ export function EntityJourneyMap({ displayName, entityType, fragments }: EntityJ
               ))}
           </div>
           <p className="mt-4 text-2xl font-black">{activeNode.title}</p>
-          <p className="mt-3 text-base font-semibold leading-relaxed">
+          <p className="body-copy mt-3">
             {activeNode.summary ?? "暂无事件摘要。"}
           </p>
           {activeNode.source_note_title ? (

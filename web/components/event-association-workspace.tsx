@@ -66,22 +66,22 @@ export function EventAssociationWorkspace({
 
   return (
     <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr_0.92fr]">
-      <Panel className="p-6" tone="default">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">事件锚点</p>
+      <Panel className="p-6" tone="quiet" intensity="quiet">
+        <p className="section-kicker">事件锚点</p>
         <p className="mt-4 text-3xl font-black leading-tight">{eventTitle}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {timeText ? <span className="brutal-chip">{timeText}</span> : null}
           {locationText ? <span className="brutal-chip">{locationText}</span> : null}
           <span className="brutal-chip">{participants.length} 位参与角色</span>
         </div>
-        <p className="mt-5 text-base font-semibold leading-relaxed">{eventSummary}</p>
+        <p className="body-copy mt-5">{eventSummary}</p>
 
         <div className="mt-6 space-y-3">
           <p className="text-xs font-black uppercase tracking-[0.16em]">角色交叉点</p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {participants.slice(0, 6).map((participant) => (
               <Link key={participant.id} href={`/story/entity/${participant.id}`}>
-                <div className="border-4 border-ink bg-aqua px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+                <div className="graph-node bg-aqua">
                   <p className="text-[11px] font-black uppercase tracking-[0.14em]">
                     {participant.role || participant.relation_type || participant.entity_type}
                   </p>
@@ -102,15 +102,15 @@ export function EventAssociationWorkspace({
         </div>
       </Panel>
 
-      <Panel className="p-6" tone="time">
+      <Panel className="p-6" tone="time" intensity="quiet">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.16em]">关联轨道</p>
-            <p className="mt-2 text-base font-bold leading-relaxed">
+            <p className="section-kicker">关联轨道</p>
+            <p className="mt-2 text-base font-semibold leading-relaxed text-muted">
               用一条纵向轨把当前事件和最强关联节点串起来，方便直接看出图谱里的“下一跳”。
             </p>
           </div>
-          <div className="border-4 border-ink bg-white px-4 py-3 shadow-brutal">
+          <div className="border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft">
             <p className="text-xs font-black uppercase tracking-[0.16em]">相关事件</p>
             <p className="mt-2 text-3xl font-black">{sortedRelatedEvents.length}</p>
           </div>
@@ -125,8 +125,8 @@ export function EventAssociationWorkspace({
                   key={item.id}
                   type="button"
                   onClick={() => setActiveRelatedId(item.id)}
-                  className={`grid w-full gap-4 border-4 border-ink px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1 md:grid-cols-[96px_1fr_auto] ${
-                    active ? "bg-white" : "bg-paper"
+                  className={`grid w-full gap-4 border-4 border-ink px-4 py-4 text-left shadow-brutalSoft transition-transform hover:-translate-y-1 md:grid-cols-[96px_1fr_auto] ${
+                    active ? "bg-canvas" : "bg-bone"
                   }`}
                 >
                   <div className="flex flex-col justify-between">
@@ -138,7 +138,7 @@ export function EventAssociationWorkspace({
                       {item.time_text ?? item.event_type ?? "关联事件"}
                     </p>
                     <p className="mt-2 text-xl font-black leading-tight">{item.title}</p>
-                    <p className="mt-2 line-clamp-2 text-sm font-bold leading-relaxed">
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-relaxed text-muted">
                       {item.summary ?? "暂无关联摘要。"}
                     </p>
                   </div>
@@ -153,15 +153,15 @@ export function EventAssociationWorkspace({
               );
             })
           ) : (
-            <div className="surface-inset border-4 border-dashed border-ink p-5 text-base font-bold">
+            <div className="empty-state">
               当前还没有足够强的事件连接。后续可以从审核页或校对页继续补全图谱边。
             </div>
           )}
         </div>
       </Panel>
 
-      <Panel className="p-6" tone="story">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">焦点节点</p>
+      <Panel className="p-6" tone="story" intensity="quiet">
+        <p className="section-kicker">焦点节点</p>
         {activeRelatedEvent ? (
           <>
             <p className="mt-4 text-3xl font-black leading-tight">{activeRelatedEvent.title}</p>
@@ -174,7 +174,7 @@ export function EventAssociationWorkspace({
                 </span>
               ) : null}
             </div>
-            <p className="mt-5 text-base font-semibold leading-relaxed">
+            <p className="mt-5 text-base font-semibold leading-relaxed text-muted">
               {activeRelatedEvent.summary ?? "暂无关联事件的详细摘要。"}
             </p>
 

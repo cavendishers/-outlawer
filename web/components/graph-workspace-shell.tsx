@@ -349,10 +349,10 @@ export function GraphWorkspaceShell({
 
   if (!nodes.length) {
     return (
-      <Panel className="p-6 md:p-8" tone="default">
-        <p className="text-sm font-black uppercase tracking-[0.2em]">Graph Workspace</p>
+      <Panel className="p-6 md:p-8" tone="quiet">
+        <p className="page-kicker">Graph Workspace</p>
         <p className="mt-4 text-3xl font-black">当前没有可展开的图谱节点</p>
-        <p className="mt-4 text-base font-semibold leading-relaxed">
+        <p className="body-copy mt-4">
           这个工作台还没有足够的事件或人物节点形成图谱。你可以先回到档案、人物或事件列表补充内容，再重新进入这里。
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -370,10 +370,10 @@ export function GraphWorkspaceShell({
   return (
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel className="p-6 md:p-8" tone="default">
-          <p className="text-sm font-black uppercase tracking-[0.2em]">Graph Workspace</p>
-          <h1 className="mt-3 font-display text-[clamp(2.3rem,5vw,4.5rem)] leading-[0.92]">{title}</h1>
-          <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">{description}</p>
+        <Panel className="p-6 md:p-8" tone="quiet">
+          <p className="page-kicker">Graph Workspace</p>
+          <h1 className="page-title mt-3">{title}</h1>
+          <p className="page-lede">{description}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <span className="brutal-chip">{scope}</span>
             <span className="brutal-chip">{stats.node_count} nodes</span>
@@ -383,25 +383,25 @@ export function GraphWorkspaceShell({
         </Panel>
 
         <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-          <Panel className="p-5" tone="time">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">事件节点</p>
+          <Panel className="metric-card" tone="time" intensity="quiet">
+            <p className="section-kicker">事件节点</p>
             <p className="mt-3 text-4xl font-black">{stats.event_count}</p>
           </Panel>
-          <Panel className="p-5" tone="info">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">人物节点</p>
+          <Panel className="metric-card" tone="info" intensity="quiet">
+            <p className="section-kicker">人物节点</p>
             <p className="mt-3 text-4xl font-black">{stats.entity_count}</p>
           </Panel>
-          <Panel className="p-5" tone="story">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">当前焦点</p>
+          <Panel className="metric-card" tone="quiet" intensity="quiet">
+            <p className="section-kicker">当前焦点</p>
             <p className="mt-3 text-2xl font-black leading-tight">{activeNode?.label ?? "未选择节点"}</p>
           </Panel>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
-        <Panel className="p-6 md:p-8" tone="default">
+        <Panel className="p-6 md:p-8" tone="quiet" intensity="quiet">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">共享画布</p>
+            <p className="section-kicker">共享画布</p>
             <div className="flex flex-wrap gap-2">
               {[
                 { id: "all", label: "全部" },
@@ -413,8 +413,8 @@ export function GraphWorkspaceShell({
                   key={mode.id}
                   type="button"
                   onClick={() => setViewMode(mode.id as GraphWorkspaceViewMode)}
-                  className={`border-4 border-ink px-3 py-2 text-xs font-black uppercase tracking-[0.14em] shadow-brutal ${
-                    viewMode === mode.id ? "bg-neon" : "bg-white"
+                  className={`border-2 border-ink px-3 py-2 text-xs font-black uppercase tracking-[0.14em] shadow-brutalTiny ${
+                    viewMode === mode.id ? "bg-neon" : "bg-canvas"
                   }`}
                 >
                   {mode.label}
@@ -428,7 +428,7 @@ export function GraphWorkspaceShell({
                 key={node.id}
                 type="button"
                 onClick={() => onSelectNode(node.id)}
-                className={`border-4 border-ink px-4 py-4 text-left shadow-brutal ${
+                className={`graph-node ${
                   activeNodeId === node.id ? "-translate-y-1" : ""
                 } ${
                   node.is_anchor ? "bg-neon" : node.node_type === "event" ? "bg-peach" : "bg-aqua"
@@ -441,7 +441,7 @@ export function GraphWorkspaceShell({
             ))}
           </div>
 
-          <div className="relative hidden h-[36rem] overflow-hidden border-4 border-ink bg-white md:block">
+          <div className="graph-canvas relative hidden h-[36rem] md:block">
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <rect x="0" y="0" width="100" height="100" fill="#fffdf5" />
               <circle cx="50" cy="48" r="18" fill="#fff3c2" opacity="0.42" />
@@ -500,7 +500,7 @@ export function GraphWorkspaceShell({
                   <button
                     type="button"
                     onClick={() => onSelectNode(node.id)}
-                    className={`w-32 border-4 border-ink px-3 py-3 text-left shadow-brutal transition-transform hover:-translate-y-1 xl:w-36 ${
+                    className={`graph-node w-32 xl:w-36 ${
                       activeNodeId === node.id ? "-translate-y-1" : ""
                     } ${
                       node.tone === "neon" ? "bg-neon" : node.tone === "peach" ? "bg-peach" : node.tone === "aqua" ? "bg-aqua" : "bg-paper"
@@ -514,7 +514,7 @@ export function GraphWorkspaceShell({
             </div>
           </div>
 
-          <div className="mt-5 border-4 border-ink bg-paper p-4 shadow-brutal">
+          <div className="mt-5 border-4 border-ink bg-bone p-4 shadow-brutalSoft">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-[0.16em]">连线聚焦</p>
               <span className="brutal-chip">{visibleEdges.length} visible edges</span>
@@ -541,8 +541,8 @@ export function GraphWorkspaceShell({
                 </div>
               </div>
             ) : (
-              <div className="mt-4 border-4 border-dashed border-ink bg-white px-4 py-4">
-                <p className="text-sm font-bold leading-relaxed">
+              <div className="empty-state mt-4">
+                <p className="body-copy">
                   点击画布中的任意连线，或在下方列表里挑一条连线，就能快速查看这条关系串起了哪两个节点。
                 </p>
               </div>
@@ -558,8 +558,8 @@ export function GraphWorkspaceShell({
                     key={`${edgeKey(edge)}-card`}
                     type="button"
                     onClick={() => setSelectedEdgeKey(edgeKey(edge))}
-                    className={`border-4 border-ink px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1 ${
-                      selected ? "bg-neon" : "bg-white"
+                    className={`border-4 border-ink px-4 py-4 text-left shadow-brutalSoft transition-transform hover:-translate-y-1 ${
+                      selected ? "bg-neon" : "bg-canvas"
                     }`}
                   >
                     <p className="text-[11px] font-black uppercase tracking-[0.14em]">
@@ -573,7 +573,7 @@ export function GraphWorkspaceShell({
                 );
               })}
               {visibleEdges.length === 0 ? (
-                <div className="border-4 border-dashed border-ink bg-white px-4 py-4 text-sm font-bold">
+                <div className="empty-state">
                   当前视图模式下没有可聚焦的连线。
                 </div>
               ) : null}
@@ -588,8 +588,8 @@ export function GraphWorkspaceShell({
           />
         </Panel>
 
-        <Panel className="p-6" tone="story">
-          <p className="text-sm font-black uppercase tracking-[0.16em]">节点检查器</p>
+        <Panel className="p-6" tone="story" intensity="quiet">
+          <p className="section-kicker">节点检查器</p>
           {activeNode ? (
             <>
               <p className="mt-4 text-3xl font-black leading-tight">{activeNode.inspector.title}</p>
@@ -601,26 +601,26 @@ export function GraphWorkspaceShell({
                   </span>
                 ))}
               </div>
-              <p className="mt-5 text-base font-semibold leading-relaxed">
+              <p className="mt-5 text-base font-semibold leading-relaxed text-muted">
                 {activeNode.inspector.summary ?? "当前节点还没有补充摘要。"}
               </p>
               <div className="mt-6 space-y-3">
                 {activeNode.inspector.context_lines.map((line) => (
-                  <div key={`${activeNode.id}-${line}`} className="border-4 border-ink bg-white px-4 py-3 shadow-brutal">
+                  <div key={`${activeNode.id}-${line}`} className="border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft">
                     <p className="text-sm font-bold leading-relaxed">{line}</p>
                   </div>
                 ))}
                 {nodeDetailLoading ? (
                   <>
-                    <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
-                      <div className="h-4 w-32 animate-pulse bg-white" />
+                    <div className="border-4 border-ink bg-bone px-4 py-3 shadow-brutalSoft">
+                      <div className="h-4 w-32 animate-pulse bg-canvas" />
                     </div>
-                    <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
-                      <div className="h-4 w-40 animate-pulse bg-white" />
+                    <div className="border-4 border-ink bg-bone px-4 py-3 shadow-brutalSoft">
+                      <div className="h-4 w-40 animate-pulse bg-canvas" />
                     </div>
                   </>
                 ) : null}
-                <div className="border-4 border-ink bg-paper px-4 py-3 shadow-brutal">
+                <div className="border-4 border-ink bg-bone px-4 py-3 shadow-brutalSoft">
                   <p className="text-xs font-black uppercase tracking-[0.16em]">邻接连线</p>
                   <p className="mt-2 text-3xl font-black">{relatedEdges.length}</p>
                 </div>
@@ -633,7 +633,7 @@ export function GraphWorkspaceShell({
                       key={`${activeNode.id}-${node.id}`}
                       type="button"
                       onClick={() => onSelectNode(node.id)}
-                      className="grid w-full gap-3 border-4 border-ink bg-white px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1"
+                      className="grid w-full gap-3 border-4 border-ink bg-canvas px-4 py-4 text-left shadow-brutalSoft transition-transform hover:-translate-y-1"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
@@ -665,7 +665,7 @@ export function GraphWorkspaceShell({
                     <Link
                       key={`${activeNode.id}-${item.kind}-${item.id}`}
                       href={item.href}
-                      className="block border-4 border-ink bg-paper px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1"
+                      className="block border-4 border-ink bg-bone px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1"
                     >
                       <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
                       <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
@@ -717,8 +717,8 @@ export function GraphWorkspaceShell({
         </Panel>
       </section>
 
-      <Panel className="p-6" tone="time">
-        <p className="text-sm font-black uppercase tracking-[0.16em]">时间主干展开</p>
+      <Panel className="p-6" tone="time" intensity="quiet">
+        <p className="section-kicker">时间主干展开</p>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {backboneTimeline.map((item) => (
             visibleNodeIds.has(item.event_id ?? "") ? (
@@ -728,7 +728,7 @@ export function GraphWorkspaceShell({
                 onClick={() => {
                   if (item.event_id) onSelectNode(item.event_id);
                 }}
-                className="h-full border-4 border-ink bg-white px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1"
+                className="h-full border-4 border-ink bg-canvas px-4 py-4 text-left shadow-brutalSoft transition-transform hover:-translate-y-1"
               >
                 <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
                 <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
@@ -736,7 +736,7 @@ export function GraphWorkspaceShell({
               </button>
             ) : (
               <Link key={`${item.kind}-${item.id}`} href={item.href}>
-                <div className="h-full border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+                <div className="h-full border-4 border-ink bg-canvas px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.14em]">{item.kind}</p>
                   <p className="mt-2 text-lg font-black leading-tight">{item.title}</p>
                   <p className="mt-2 text-sm font-bold">{item.display_time ?? "待校时"}</p>
@@ -764,7 +764,7 @@ type TimelineBackboneRailProps = {
 
 function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSelectNode }: TimelineBackboneRailProps) {
   return (
-    <div className="mt-5 border-4 border-ink bg-paper px-4 py-4 shadow-brutal">
+    <div className="mt-5 border-4 border-ink bg-bone px-4 py-4 shadow-brutalSoft">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em]">Timeline Backbone</p>
@@ -787,8 +787,8 @@ function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSele
                   key={`${item.kind}-${item.id}`}
                   type="button"
                   onClick={() => onSelectNode(item.event_id!)}
-                  className={`border-4 border-ink px-4 py-4 text-left shadow-brutal transition-transform hover:-translate-y-1 ${
-                    isActive ? "bg-neon" : "bg-white"
+                  className={`border-4 border-ink px-4 py-4 text-left shadow-brutalSoft transition-transform hover:-translate-y-1 ${
+                    isActive ? "bg-neon" : "bg-canvas"
                   }`}
                 >
                   <p className="text-[11px] font-black uppercase tracking-[0.14em]">
@@ -802,7 +802,7 @@ function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSele
 
             return (
               <Link key={`${item.kind}-${item.id}`} href={item.href}>
-                <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal transition-transform hover:-translate-y-1">
+                <div className="border-4 border-ink bg-canvas px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.14em]">
                     #{index + 1} / {item.kind}
                   </p>
