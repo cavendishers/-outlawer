@@ -17,31 +17,6 @@ type EntityItem = {
   confidence_score?: number | null;
 };
 
-const COMMON_CHINESE_SURNAMES =
-  "赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于时傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵湛汪祁毛禹狄米贝明臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪干解应宗丁宣贲邓郁单杭洪包诸左石崔吉钮龚程嵇邢滑裴陆荣翁荀羊於惠甄曲家封芮羿储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘斜厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺屠蒙池乔阴鬱胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍郤璩桑桂濮牛寿通边扈燕冀郏浦尚农温别庄晏柴瞿阎充慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧殳沃利蔚越夔隆师巩厍聂晁勾敖融冷訾辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公";
-const COMMON_COMPOUND_SURNAMES = ["欧阳", "司马", "上官", "诸葛", "东方", "独孤", "夏侯", "尉迟", "长孙", "宇文", "司徒", "司空", "慕容", "令狐"];
-const INVALID_PERSON_SUFFIXES = ["在", "于", "的", "再"];
-
-function looksLikePersonName(value: string): boolean {
-  const candidate = value.trim();
-  if (/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2}$/.test(candidate)) {
-    return true;
-  }
-  if (!/^[\u4e00-\u9fff]{2,4}$/.test(candidate)) {
-    return false;
-  }
-  if (/[和与及在于的]/.test(candidate)) {
-    return false;
-  }
-  if (INVALID_PERSON_SUFFIXES.some((suffix) => candidate.endsWith(suffix))) {
-    return false;
-  }
-  if (COMMON_COMPOUND_SURNAMES.some((surname) => candidate.startsWith(surname))) {
-    return true;
-  }
-  return COMMON_CHINESE_SURNAMES.includes(candidate[0]);
-}
-
 export default function PeoplePage() {
   const [entities, setEntities] = useState<EntityItem[]>([]);
   const [query, setQuery] = useState("");
@@ -60,7 +35,7 @@ export default function PeoplePage() {
       });
   }, []);
 
-  const peopleEntities = entities.filter((entity) => entity.entity_type === "person" && looksLikePersonName(entity.display_name));
+  const peopleEntities = entities.filter((entity) => entity.entity_type === "person");
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const filteredEntities = peopleEntities.filter((entity) => {
     if (!normalizedQuery) return true;
