@@ -347,6 +347,10 @@ def persist_extraction_projection(
         entity_id = temp_entity_map.get(participant["entity_temp_id"])
         if not entity_id:
             continue
+        entity = db.get(Entity, entity_id)
+        if entity:
+            apply_entity_seen_time_from_event(entity, event)
+            db.add(entity)
         db.add(
             EventEntity(
                 event_id=event.id,
@@ -468,6 +472,16 @@ def persist_extraction_projection(
         relation_count=len(payload["relations"]),
         similarity_hint_count=len(payload.get("similarity_hints", [])),
     )
+
+
+def apply_entity_seen_time_from_event(entity: Entity, event: Event) -> None:
+    event_time = event.timeline_sort_time or event.start_time
+    if event_time is None:
+        return
+    if entity.first_seen_at is None or event_time < entity.first_seen_at:
+        entity.first_seen_at = event_time
+    if entity.last_seen_at is None or event_time > entity.last_seen_at:
+        entity.last_seen_at = event_time
 
 
 def persist_style_views(

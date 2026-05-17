@@ -93,7 +93,20 @@ def is_valid_ai_entity_candidate(name: str, entity_type: str) -> bool:
     if not is_valid_entity_candidate(name):
         return False
     if entity_type == "person":
-        return is_valid_person_name(name)
+        return is_valid_ai_person_name(name)
+    return True
+
+
+def is_valid_ai_person_name(value: str) -> bool:
+    candidate = value.strip()
+    if is_valid_person_name(candidate):
+        return True
+    if not re.fullmatch(r"[\u4e00-\u9fff]{2,6}", candidate):
+        return False
+    if any(particle in candidate for particle in PERSON_INVALID_PARTICLES):
+        return False
+    if any(stopword in candidate for stopword in PERSON_CONTEXT_STOPWORDS if len(stopword) > 1):
+        return False
     return True
 
 
@@ -286,6 +299,7 @@ def merge_chat_provider_payload(
 ) -> dict:
     summary = merge_summary(base_payload["summary"], ai_payload.get("summary"), text)
     entities = merge_entities(base_payload["entities"], ai_payload.get("entities"))
+    entities = backfill_entities_from_ai_references(entities, ai_payload, text)
     event = merge_event(base_payload["events"][0], ai_payload.get("events"), entities)
     relations = build_relations(note_id, entities, event["temp_id"])
     timeline = build_timeline_from_event(event)
@@ -378,6 +392,76 @@ def merge_entities(base_entities: list[dict[str, Any]], ai_entities: Any) -> lis
         merged_entities.append(entity)
 
     return merged_entities[:5] or base_entities
+
+
+def backfill_entities_from_ai_references(
+    entities: list[dict[str, Any]],
+    ai_payload: dict[str, Any],
+    text: str,
+) -> list[dict[str, Any]]:
+    existing_temp_ids = {entity["temp_id"] for entity in entities}
+    existing_names = {entity["resolution_hint"]["normalized_name"] for entity in entities}
+    reference_names: dict[str, tuple[str, str]] = {}
+
+    for event in ai_payload.get("events", []) if isinstance(ai_payload.get("events"), list) else []:
+        if not isinstance(event, dict):
+            continue
+        for participant in event.get("participants", []) if isinstance(event.get("participants"), list) else []:
+            if not isinstance(participant, dict):
+                continue
+            temp_id = safe_string_or_none(participant.get("entity_temp_id"))
+            name = safe_string_or_none(participant.get("entity_name"))
+            if temp_id and name:
+                reference_names[temp_id] = (name, "person")
+        for location in event.get("locations", []) if isinstance(event.get("locations"), list) else []:
+            if not isinstance(location, dict):
+                continue
+            temp_id = safe_string_or_none(location.get("entity_temp_id"))
+            name = safe_string_or_none(location.get("name"))
+            if temp_id and name:
+                reference_names.setdefault(temp_id, (name, "place"))
+
+    style_payload = ai_payload.get("style_payload")
+    if isinstance(style_payload, dict) and isinstance(style_payload.get("character_cards"), list):
+        for card in style_payload["character_cards"]:
+            if not isinstance(card, dict):
+                continue
+            temp_id = safe_string_or_none(card.get("entity_temp_id"))
+            name = (
+                safe_string_or_none(card.get("entity_name"))
+                or safe_string_or_none(card.get("display_name"))
+            )
+            if temp_id and name:
+                reference_names.setdefault(temp_id, (name, "person"))
+
+    merged = list(entities)
+    for temp_id, (name, entity_type) in reference_names.items():
+        normalized_name = normalize_name(name)
+        if temp_id in existing_temp_ids or normalized_name in existing_names:
+            continue
+        if not normalized_name or not is_valid_ai_entity_candidate(name, entity_type):
+            continue
+        merged.append(
+            {
+                "temp_id": temp_id,
+                "entity_type": entity_type,
+                "name": name,
+                "canonical_name": name,
+                "aliases": [],
+                "description": None,
+                "confidence": 0.78,
+                "evidence": find_text_evidence(text, name),
+                "resolution_hint": {
+                    "normalized_name": normalized_name,
+                    "possible_existing_entity_ids": [],
+                    "match_strategy": "referenced_temp_id",
+                },
+            }
+        )
+        existing_temp_ids.add(temp_id)
+        existing_names.add(normalized_name)
+
+    return merged
 
 
 def merge_event(base_event: dict[str, Any], ai_events: Any, entities: list[dict[str, Any]]) -> dict[str, Any]:
@@ -643,6 +727,13 @@ def merge_evidence_list(value: Any, fallback_text: str) -> list[dict[str, Any]]:
             }
         )
     return evidence or [{"text": fallback_text, "start": 0, "end": len(fallback_text)}]
+
+
+def find_text_evidence(text: str, name: str) -> list[dict[str, Any]]:
+    start = text.find(name)
+    if start < 0:
+        return [{"text": name, "start": 0, "end": len(name)}]
+    return [{"text": name, "start": start, "end": start + len(name)}]
 
 
 def safe_string(value: Any, fallback: str) -> str:

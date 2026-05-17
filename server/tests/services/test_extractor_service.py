@@ -173,6 +173,105 @@ def test_build_extraction_payload_uses_deepseek_when_configured(monkeypatch) -> 
     get_settings.cache_clear()
 
 
+def test_build_extraction_payload_backfills_referenced_ai_participants(monkeypatch) -> None:
+    monkeypatch.setenv("EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setenv("CHAT_API_KEY", "test-key")
+    monkeypatch.setenv("CHAT_MODEL", "deepseek-v4-pro")
+    get_settings.cache_clear()
+
+    class FakeProvider(ChatModelProvider):
+        def extract_structured_knowledge(self, note_id: str, asset_id: str | None, text: str) -> dict:
+            return {
+                "summary": {
+                    "title": "雀神角逐",
+                    "short_summary": "法老林、李晓、红烧鱼三人角逐雀神。",
+                    "canonical_text": text,
+                    "category": "游戏活动",
+                    "tags": ["雀神"],
+                },
+                "entities": [
+                    {
+                        "temp_id": "ent_2",
+                        "entity_type": "person",
+                        "name": "李晓",
+                        "canonical_name": "李晓",
+                        "aliases": [],
+                        "description": None,
+                        "confidence": 0.9,
+                        "evidence": [{"text": "李晓", "start": 16, "end": 18}],
+                    },
+                    {
+                        "temp_id": "ent_3",
+                        "entity_type": "person",
+                        "name": "红烧鱼",
+                        "canonical_name": "红烧鱼",
+                        "aliases": [],
+                        "description": None,
+                        "confidence": 0.9,
+                        "evidence": [{"text": "红烧鱼", "start": 19, "end": 22}],
+                    },
+                ],
+                "events": [
+                    {
+                        "temp_id": "evt_1",
+                        "title": "雀神角逐",
+                        "event_type": "游戏比赛",
+                        "summary": "法老林、李晓、红烧鱼三人进行雀神称号的角逐。",
+                        "description": "法老林、李晓、红烧鱼三人进行雀神称号的角逐。",
+                        "time": {
+                            "time_text": "2026-05-16 晚上",
+                            "start_time": "2026-05-16T18:00:00+00:00",
+                            "end_time": None,
+                            "time_precision": "day",
+                            "timeline_sort_time": "2026-05-16T18:00:00+00:00",
+                        },
+                        "participants": [
+                            {"entity_temp_id": "ent_1", "entity_name": None, "role": "参赛者", "relation_type": "参与者"},
+                            {"entity_temp_id": "ent_2", "entity_name": None, "role": "参赛者", "relation_type": "参与者"},
+                            {"entity_temp_id": "ent_3", "entity_name": None, "role": "参赛者", "relation_type": "参与者"},
+                        ],
+                        "locations": [],
+                        "confidence": 0.9,
+                        "evidence": [{"text": text, "start": 0, "end": len(text)}],
+                    }
+                ],
+                "similarity_hints": [],
+                "style_payload": {
+                    "theme": "chunibyo",
+                    "title": "雀神角逐",
+                    "character_cards": [
+                        {
+                            "entity_temp_id": "ent_1",
+                            "display_name": "法老林",
+                            "epithet": "冥界牌手",
+                            "aura": "幽蓝鬼火环绕。",
+                        }
+                    ],
+                    "event_narrative": [],
+                },
+            }
+
+    monkeypatch.setattr("app.domains.extraction.extractor.build_chat_model_provider", lambda: FakeProvider())
+
+    payload = build_extraction_payload(
+        note_id="note-ai-backfill",
+        asset_id="asset-ai-backfill",
+        text="2026年5月16日晚上，法老林、李晓、红烧鱼角逐雀神。",
+    )
+
+    person_names = [entity["canonical_name"] for entity in payload["entities"] if entity["entity_type"] == "person"]
+    participant_ids = [participant["entity_temp_id"] for participant in payload["events"][0]["participants"]]
+
+    assert person_names == ["李晓", "红烧鱼", "法老林"]
+    assert participant_ids == ["ent_1", "ent_2", "ent_3"]
+    assert any(relation["source_ref"].get("temp_id") == "ent_1" for relation in payload["relations"])
+
+    monkeypatch.delenv("EXTRACTOR_PROVIDER", raising=False)
+    monkeypatch.delenv("CHAT_API_KEY", raising=False)
+    monkeypatch.delenv("CHAT_MODEL", raising=False)
+    get_settings.cache_clear()
+
+
 def test_build_extraction_payload_auto_falls_back_without_chat_key(monkeypatch) -> None:
     monkeypatch.setenv("EXTRACTOR_PROVIDER", "auto")
     monkeypatch.setenv("CHAT_API_KEY", "")
