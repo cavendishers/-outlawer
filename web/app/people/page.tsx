@@ -4,7 +4,6 @@ import { useDeferredValue, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { AuthGate } from "@/components/auth-gate";
-import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
 
 type EntityItem = {
@@ -51,84 +50,81 @@ export default function PeoplePage() {
 
   return (
     <AuthGate>
-      <main className="space-y-6">
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Panel className="p-6 md:p-8" tone="quiet">
-            <p className="page-kicker">People Index</p>
-            <h1 className="page-title mt-3">人物索引</h1>
-            <p className="page-lede">
-              把输入文本中的人物、组织与关键称号汇成名册。这里优先展示可追踪、可跳转、可继续编排的角色节点。
-            </p>
-          </Panel>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <Panel className="metric-card" tone="info" intensity="quiet">
-              <p className="section-kicker">已识别角色</p>
-              <p className="mt-3 text-5xl font-black">{peopleEntities.length}</p>
-            </Panel>
-            <Panel className="metric-card" tone="quiet" intensity="quiet">
-              <p className="section-kicker">当前筛选结果</p>
-              <p className="mt-3 text-5xl font-black">{filteredEntities.length}</p>
-            </Panel>
+      <main className="space-y-4">
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="workbench-title">人物索引</h1>
+                <span className="workbench-stamp bg-aqua">{peopleEntities.length} 人</span>
+                {normalizedQuery ? (
+                  <span className="workbench-stamp bg-canvas">{filteredEntities.length} 命中</span>
+                ) : null}
+              </div>
+              <p className="workbench-lede">
+                扫名字、别名和角色注释，进入人物档案查看时间线与相关事件。
+              </p>
+            </div>
+            <Link href="/inbox" className="tool-action bg-neon">
+              导入
+            </Link>
           </div>
         </section>
 
-        <Panel className="p-5" tone="quiet" intensity="quiet">
-          <label className="section-kicker" htmlFor="people-query">
-            快速检索
-          </label>
+        <section className="border-4 border-ink bg-bone px-4 py-3 shadow-brutal">
+          <label className="sr-only" htmlFor="people-query">快速检索</label>
           <input
             id="people-query"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="brutal-input mt-3 w-full text-lg font-semibold"
+            className="w-full border-2 border-ink bg-canvas px-3 py-2 text-base font-bold outline-none focus:border-4"
             placeholder="按名字、别名、类型搜索人物"
           />
-        </Panel>
+        </section>
 
         {error ? (
-          <Panel className="p-5 text-lg font-bold text-red-950" tone="danger">
+          <div className="border-4 border-ink bg-ember p-5 text-lg font-bold text-red-950 shadow-brutal">
             {error}
-          </Panel>
+          </div>
         ) : null}
 
         {filteredEntities.length ? (
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <section className="space-y-3">
             {filteredEntities.map((entity) => (
-              <Link key={entity.id} href={`/story/entity/${entity.id}`}>
-                <article className="dossier-card">
-                  <div className="dossier-card-content flex h-full flex-col justify-between">
-                  <div>
-                    <div className="flex items-start justify-between gap-4">
-                      <p className="meta-copy">{entity.entity_type}</p>
-                      {entity.confidence_score ? (
-                        <p className="meta-copy">
-                          {Math.round(entity.confidence_score * 100)}%
-                        </p>
-                      ) : null}
+              <Link key={entity.id} href={`/story/entity/${entity.id}`} className="block">
+                <article className="group dense-record md:grid-cols-[12rem_1fr]">
+                  <div className="dense-record-side bg-aqua">
+                    <p className="text-xs font-black tracking-[0.12em]">人物</p>
+                    <p className="mt-3 text-lg font-black leading-tight">{entity.display_name}</p>
+                  </div>
+                  <div className="dense-record-body">
+                    <div className="min-w-0">
+                      <p className="dense-record-title">{entity.canonical_name || entity.display_name}</p>
+                      <p className="dense-record-summary">
+                        {entity.description || "暂无角色注释，等待后续卷宗补足设定。"}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="brutal-chip">{entity.entity_type}</span>
+                        {(entity.aliases ?? []).slice(0, 2).map((alias) => (
+                          <span key={alias} className="brutal-chip">
+                            {alias}
+                          </span>
+                        ))}
+                        {entity.confidence_score ? (
+                          <span className="brutal-chip">置信度 {Math.round(entity.confidence_score * 100)}%</span>
+                        ) : null}
+                      </div>
                     </div>
-                    <p className="mt-4 text-3xl font-black leading-tight">{entity.display_name}</p>
-                    <p className="mt-2 text-base font-semibold text-muted">{entity.canonical_name}</p>
-                    <p className="body-copy mt-4 min-h-12">
-                      {entity.description || "暂无角色注释，等待后续卷宗补足设定。"}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {(entity.aliases ?? []).slice(0, 3).map((alias) => (
-                      <span key={alias} className="brutal-chip">
-                        {alias}
+                    <div className="flex items-start justify-start md:justify-end">
+                      <span className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny">
+                        查看
                       </span>
-                    ))}
-                    <span className="brutal-chip">
-                      查看档案
-                    </span>
-                  </div>
+                    </div>
                   </div>
                 </article>
               </Link>
             ))}
-          </div>
+          </section>
         ) : (
           <div className="empty-state">
             当前没有可展示的人物索引。先去导入一条文本卷宗，或者换一个检索词试试。

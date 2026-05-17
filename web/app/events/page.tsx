@@ -36,27 +36,27 @@ export default function EventsPage() {
   return (
     <AuthGate>
       <main className="space-y-4">
-        <section className="border-4 border-ink bg-bone px-4 py-4 shadow-brutal md:px-5">
+        <section className="workbench-header">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-[clamp(2rem,4vw,3.2rem)] font-black leading-none tracking-[-0.06em]">
+                <h1 className="workbench-title">
                   事件清单
                 </h1>
-                <span className="border-2 border-ink bg-gold px-3 py-1 text-xs font-black tracking-[0.12em]">
+                <span className="workbench-stamp bg-gold">
                   {events.length} 条
                 </span>
               </div>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-ink/60">
+              <p className="workbench-lede">
                 扫时间、标题、地点，进入详情再看人物和关系。
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link href="/inbox" className="border-2 border-ink bg-neon px-3 py-2 text-sm font-black shadow-brutalTiny transition-transform hover:-translate-y-0.5">
+              <Link href="/inbox" className="tool-action bg-neon">
                 导入
               </Link>
-              <Link href="/timeline" className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny transition-transform hover:-translate-y-0.5">
+              <Link href="/timeline" className="tool-action bg-canvas">
                 图谱
               </Link>
             </div>
@@ -72,20 +72,20 @@ export default function EventsPage() {
         <section className="space-y-3">
           {events.map((event) => (
             <Link key={event.id} href={`/events/${event.id}`} className="block">
-              <article className="group grid border-4 border-ink bg-bone shadow-brutal transition-transform hover:-translate-y-1 md:grid-cols-[12rem_1fr]">
-                <div className="border-b-4 border-ink bg-gold px-4 py-3 md:border-b-0 md:border-r-4">
+              <article className="group dense-record md:grid-cols-[12rem_1fr]">
+                <div className="dense-record-side bg-gold">
                   <p className="text-xs font-black tracking-[0.12em]">时间</p>
                   <p className="mt-3 text-lg font-black leading-tight">
                     {event.time_text ?? "待校准"}
                   </p>
                 </div>
 
-                <div className="grid gap-3 px-4 py-3 md:grid-cols-[1fr_auto]">
+                <div className="dense-record-body">
                   <div className="min-w-0">
-                    <p className="text-[clamp(1.35rem,2vw,1.8rem)] font-black leading-tight tracking-[-0.04em] transition-transform group-hover:translate-x-1">
+                    <p className="dense-record-title">
                       {event.title}
                     </p>
-                    <p className="mt-2 line-clamp-1 max-w-4xl text-sm font-bold leading-relaxed text-ink/60">
+                    <p className="dense-record-summary">
                       {event.summary ?? event.description ?? "暂无摘要，进入详情页查看更多事件信息。"}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">

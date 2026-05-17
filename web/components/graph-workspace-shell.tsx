@@ -350,7 +350,7 @@ export function GraphWorkspaceShell({
   if (!nodes.length) {
     return (
       <Panel className="p-6 md:p-8" tone="quiet">
-        <p className="page-kicker">Graph Workspace</p>
+        <p className="page-kicker">图谱工作台</p>
         <p className="mt-4 text-3xl font-black">当前没有可展开的图谱节点</p>
         <p className="body-copy mt-4">
           这个工作台还没有足够的事件或人物节点形成图谱。你可以先回到档案、人物或事件列表补充内容，再重新进入这里。
@@ -371,7 +371,7 @@ export function GraphWorkspaceShell({
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Panel className="p-6 md:p-8" tone="quiet">
-          <p className="page-kicker">Graph Workspace</p>
+          <p className="page-kicker">图谱工作台</p>
           <h1 className="page-title mt-3">{title}</h1>
           <p className="page-lede">{description}</p>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -767,7 +767,7 @@ function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSele
     <div className="mt-5 border-4 border-ink bg-bone px-4 py-4 shadow-brutalSoft">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em]">Timeline Backbone</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em]">时间主干</p>
           <p className="mt-2 text-sm font-bold leading-relaxed">
             把时间骨架直接压进图谱工作台里，优先在这里选中事件节点，再决定是否离开当前工作区。
           </p>

@@ -68,27 +68,24 @@ export default function TimelinePage() {
   return (
     <AuthGate>
       <main className="space-y-6">
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Panel className="p-6 md:p-8" tone="quiet">
-            <p className="page-kicker">Timeline Projection</p>
-            <h1 className="page-title mt-3">时间线 / 图谱视野</h1>
-            <p className="page-lede">
-              把零散记录压成一条可阅读的时间轨。每个时间点都能继续跳向事件详情，追溯上下文与参与者。
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/graph" className="brutal-action brutal-action-primary text-lg">
-                进入图谱工作台
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="workbench-title">时间线 / 图谱</h1>
+                <span className="workbench-stamp bg-gold">{items.length} 段</span>
+                <span className="workbench-stamp bg-aqua">{overview?.nodes.length ?? 0} 节点</span>
+              </div>
+              <p className="workbench-lede">
+                先看时间骨架，再进入图谱工作台追人物和事件关系。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/graph" className="tool-action bg-neon">
+                工作台
               </Link>
             </div>
-          </Panel>
-
-          <Panel className="metric-card" tone="info" intensity="quiet">
-            <p className="section-kicker">图谱节点</p>
-            <p className="mt-3 text-5xl font-black">{overview?.nodes.length ?? items.length}</p>
-            <p className="body-copy mt-4">
-              当前总览把近期事件和高频人物压进同一张网里，便于先看结构，再回到具体卷宗。
-            </p>
-          </Panel>
+          </div>
         </section>
 
         {error ? (
@@ -130,23 +127,30 @@ export default function TimelinePage() {
           </section>
         ) : null}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {items.map((item) => {
             const card = (
-              <div className="grid gap-4 md:grid-cols-[160px_1fr]">
-                <Panel className="flex items-center justify-center p-4 text-center text-lg font-black" tone="time" intensity="quiet">
+              <div className="group dense-record md:grid-cols-[12rem_1fr]">
+                <div className="dense-record-side bg-gold">
+                  <p className="text-xs font-black tracking-[0.12em]">时间</p>
+                  <p className="mt-3 text-lg font-black leading-tight">
                   {item.display_time ?? "未校时"}
-                </Panel>
-                <Panel className="relative overflow-hidden p-5" tone="quiet" intensity="quiet">
-                  <div className="absolute inset-y-0 left-0 w-3 bg-ink" />
-                  <div className="pl-4">
-                    <p className="meta-copy">
-                      {item.event_id ? "事件节点" : "笔记节点"}
-                    </p>
-                    <p className="mt-3 text-3xl font-black">{item.title}</p>
-                    <p className="body-copy mt-3">{item.summary ?? "暂无补充摘要。"}</p>
+                  </p>
+                </div>
+                <div className="dense-record-body">
+                  <div className="min-w-0">
+                    <p className="dense-record-title">{item.title}</p>
+                    <p className="dense-record-summary">{item.summary ?? "暂无补充摘要。"}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="brutal-chip">{item.event_id ? "事件节点" : "笔记节点"}</span>
+                    </div>
                   </div>
-                </Panel>
+                  <div className="flex items-start justify-start md:justify-end">
+                    <span className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny">
+                      查看
+                    </span>
+                  </div>
+                </div>
               </div>
             );
 

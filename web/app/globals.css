@@ -175,6 +175,46 @@ Visual token contract
     @apply h-full;
   }
 
+  .workbench-header {
+    @apply border-4 border-ink bg-bone px-4 py-4 shadow-brutal md:px-5;
+  }
+
+  .workbench-title {
+    @apply text-[clamp(2rem,4vw,3.2rem)] font-black leading-none tracking-[-0.06em];
+  }
+
+  .workbench-lede {
+    @apply mt-2 text-sm font-bold leading-relaxed text-ink/60;
+  }
+
+  .workbench-stamp {
+    @apply border-2 border-ink px-3 py-1 text-xs font-black tracking-[0.12em];
+  }
+
+  .tool-action {
+    @apply border-2 border-ink px-3 py-2 text-sm font-black shadow-brutalTiny transition-transform hover:-translate-y-0.5;
+  }
+
+  .dense-record {
+    @apply grid border-4 border-ink bg-bone shadow-brutal transition-transform hover:-translate-y-1;
+  }
+
+  .dense-record-side {
+    @apply border-b-4 border-ink px-4 py-3 md:border-b-0 md:border-r-4;
+  }
+
+  .dense-record-body {
+    @apply grid gap-3 px-4 py-3 md:grid-cols-[1fr_auto];
+  }
+
+  .dense-record-title {
+    @apply text-[clamp(1.35rem,2vw,1.8rem)] font-black leading-tight tracking-[-0.04em] transition-transform group-hover:translate-x-1;
+  }
+
+  .dense-record-summary {
+    @apply mt-2 line-clamp-1 max-w-4xl text-sm font-bold leading-relaxed text-ink/60;
+  }
+
   .metric-card {
     @apply border-4 border-ink p-5 shadow-brutalSoft;
   }

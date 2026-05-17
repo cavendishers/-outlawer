@@ -170,35 +170,31 @@ export default function SearchPage() {
 
   return (
     <AuthGate>
-      <main className="space-y-6">
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Panel className="p-6 md:p-8" tone="quiet">
-            <p className="page-kicker">Unified Retrieval</p>
-            <h1 className="page-title mt-3">统一搜索</h1>
-            <p className="page-lede">
-              把关键词检索、相似卷宗、人物命中和事件命中收拢在同一个入口里。先从字面线索切入，再用相似内容把你带回图谱真正的交叉点。
-            </p>
-          </Panel>
-
-          <Panel className="p-6" tone={loading || results ? "signal" : "info"}>
-            <p className="section-kicker">搜索态势</p>
-            <p className="mt-3 text-4xl font-black">{loading ? "检索中" : results ? "已聚合" : "待命中"}</p>
-            <p className="mt-4 text-sm font-semibold leading-relaxed">
-              {selectedNote
-                ? `当前相似检索种子：${selectedNote.title}`
-                : "还没有指定相似种子时，页面会先按关键词返回笔记、人物和事件。"}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+      <main className="space-y-4">
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="workbench-title">统一搜索</h1>
+                <span className={`workbench-stamp ${loading || results ? "bg-neon" : "bg-aqua"}`}>
+                  {loading ? "检索中" : results ? "已聚合" : "待命中"}
+                </span>
+              </div>
+              <p className="workbench-lede">
+                聚合关键词、相似卷宗、人物和事件结果。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <span className="brutal-chip">关键词</span>
-              <span className="brutal-chip">相似卷宗</span>
+              <span className="brutal-chip">相似</span>
               <span className="brutal-chip">人物</span>
               <span className="brutal-chip">事件</span>
             </div>
-          </Panel>
+          </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-5 md:p-6" tone="quiet" intensity="quiet">
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <Panel className="p-4" tone="quiet" intensity="quiet">
             <label className="section-kicker" htmlFor="global-search-query">
               关键词检索
             </label>
@@ -223,7 +219,7 @@ export default function SearchPage() {
             </div>
           </Panel>
 
-          <Panel className="p-5 md:p-6" tone="info" intensity="quiet">
+          <Panel className="p-4" tone="info" intensity="quiet">
             <label className="section-kicker" htmlFor="seed-note-select">
               相似检索种子
             </label>
@@ -240,8 +236,8 @@ export default function SearchPage() {
                 </option>
               ))}
             </select>
-            <p className="mt-4 text-sm font-semibold leading-relaxed">
-              选择一条卷宗后，页面会额外返回 embedding 相似笔记。适合在主题相近、命名不同的材料之间快速回溯。
+            <p className="mt-3 line-clamp-1 text-sm font-semibold leading-relaxed">
+              {selectedNote ? `种子：${selectedNote.title}` : "选择卷宗后启用相似检索。"}
             </p>
             <div className="mt-5">
               <button
@@ -272,7 +268,7 @@ export default function SearchPage() {
 
         {results ? (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <Panel className="metric-card" tone="signal" intensity="quiet">
                 <p className="section-kicker">总命中</p>
                 <p className="mt-3 text-4xl font-black">{results.stats.top_hit_count}</p>
@@ -295,33 +291,41 @@ export default function SearchPage() {
               </Panel>
             </section>
 
-            <section className="space-y-4">
-              <Panel className="p-5 md:p-6" tone="quiet" intensity="quiet">
-                <p className="section-kicker">Top Hits</p>
-                <p className="body-copy mt-3">
-                  先看最值得点开的命中，再决定是回到原始卷宗、人物档案，还是直接进入事件节点。
-                </p>
-              </Panel>
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="section-kicker">优先命中</p>
+                <span className="brutal-chip">{results.top_hits.length} 条</span>
+              </div>
               {results.top_hits.length ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-3">
                   {results.top_hits.map((hit) => (
-                    <Link key={`${hit.result_type}-${hit.id}`} href={hit.href}>
-                        <Panel className="flex h-full flex-col justify-between p-5 transition-transform hover:-translate-y-1" tone={toneForHit(hit.result_type)} intensity="quiet">
-                        <div>
-                          <p className="section-kicker">{labelForResultType(hit.result_type)}</p>
-                          <p className="card-title mt-3">{hit.label}</p>
-                          <p className="mt-3 text-sm font-semibold leading-relaxed">
-                            {hit.summary || "该条命中暂无额外摘要，进入详情页查看完整信息。"}
-                          </p>
+                    <Link key={`${hit.result_type}-${hit.id}`} href={hit.href} className="block">
+                      <article className="group dense-record md:grid-cols-[10rem_1fr]">
+                        <div className={`dense-record-side ${toneForHit(hit.result_type) === "info" ? "bg-aqua" : toneForHit(hit.result_type) === "time" ? "bg-gold" : toneForHit(hit.result_type) === "story" ? "bg-peach" : "bg-canvas"}`}>
+                          <p className="text-xs font-black tracking-[0.12em]">类型</p>
+                          <p className="mt-3 text-lg font-black leading-tight">{labelForResultType(hit.result_type)}</p>
                         </div>
-                        <div className="mt-5 flex flex-wrap gap-2">
-                          {hit.meta.filter(Boolean).map((item) => (
-                            <span key={item} className="brutal-chip">
-                              {item}
+                        <div className="dense-record-body">
+                          <div className="min-w-0">
+                            <p className="dense-record-title">{hit.label}</p>
+                            <p className="dense-record-summary">
+                              {hit.summary || "该条命中暂无额外摘要，进入详情页查看完整信息。"}
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {hit.meta.filter(Boolean).slice(0, 3).map((item) => (
+                                <span key={item} className="brutal-chip">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-start justify-start md:justify-end">
+                            <span className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny">
+                              查看
                             </span>
-                          ))}
+                          </div>
                         </div>
-                      </Panel>
+                      </article>
                     </Link>
                   ))}
                 </div>

@@ -1260,3 +1260,4 @@ Verification note:
 - `/events` title hierarchy was corrected so Chinese page titles use stable heavy body typography instead of the weaker display font, with card titles kept one level lower
 - `/events` was compressed into a higher-density work list: compact header, small tool actions, one-line summaries, and explained confidence chips instead of standalone percentage badges
 - global navigation was compressed into three primary links plus `知识库` and `更多` menus to reduce flat navigation overload
+- workbench list tokens were extracted from `/events` and applied to `/library`, `/people`, `/timeline`, and `/search` primary list surfaces

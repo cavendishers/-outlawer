@@ -107,7 +107,7 @@ export function EventConstellation({
       <div className="graph-canvas">
         <div className="border-b-4 border-ink bg-paper px-4 py-5 text-center md:px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="section-kicker">Graph Mode</p>
+            <p className="section-kicker">事件图谱</p>
             <p className="mt-2 text-3xl font-black leading-tight md:text-4xl">{eventTitle}</p>
             <p className="mt-3 text-sm font-semibold leading-relaxed text-muted md:text-base">{eventSummary}</p>
           </div>

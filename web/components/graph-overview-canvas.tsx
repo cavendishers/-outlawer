@@ -79,7 +79,7 @@ export function GraphOverviewCanvas({ title, nodes, edges }: GraphOverviewCanvas
     <div className="space-y-5">
       <div className="graph-canvas">
         <div className="border-b-4 border-ink bg-paper px-4 py-5 text-center md:px-6">
-          <p className="section-kicker">Overview Graph</p>
+          <p className="section-kicker">图谱总览</p>
           <p className="mt-2 text-3xl font-black leading-tight md:text-4xl">{title}</p>
           <p className="mx-auto mt-3 max-w-3xl text-sm font-semibold leading-relaxed text-muted md:text-base">
             事件节点负责串起时间，人物节点负责提供交叉连接。把鼠标移到任意节点上，就能快速读出这张网的重心。
