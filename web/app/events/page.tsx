@@ -38,18 +38,18 @@ export default function EventsPage() {
       <main className="space-y-5">
         <section className="border-4 border-ink bg-bone p-5 shadow-brutal md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-5">
-            <div className="max-w-4xl">
+            <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-3">
-                <p className="page-kicker">Event Dossier</p>
+                <p className="page-kicker">事件索引</p>
                 <span className="border-2 border-ink bg-gold px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
-                  {events.length} events
+                  {events.length} 条事件
                 </span>
               </div>
-              <h1 className="mt-3 font-display text-[clamp(3.2rem,7vw,6.6rem)] leading-[0.86]">
+              <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,4.4rem)] leading-[0.92]">
                 事件清单
               </h1>
-              <p className="mt-4 max-w-2xl text-base font-black leading-relaxed text-ink/65">
-                按时间追踪人物与事件的交叉点。先扫事件，再进入详情追关系。
+              <p className="mt-3 max-w-2xl text-base font-bold leading-relaxed text-ink/65">
+                先扫时间、标题和参与线索，再进入详情追关系。
               </p>
             </div>
 
@@ -74,21 +74,21 @@ export default function EventsPage() {
           {events.map((event) => (
             <Link key={event.id} href={`/events/${event.id}`} className="block">
               <article className="group grid border-4 border-ink bg-bone shadow-brutal transition-transform hover:-translate-y-1 md:grid-cols-[13rem_1fr]">
-                <div className="flex border-b-4 border-ink bg-gold p-5 md:border-b-0 md:border-r-4 md:p-6">
-                  <div className="flex min-h-24 w-full flex-col justify-between gap-5">
-                    <p className="text-xs font-black uppercase tracking-[0.16em]">Time Anchor</p>
-                    <p className="text-2xl font-black leading-tight">
+                <div className="flex border-b-4 border-ink bg-gold p-4 md:border-b-0 md:border-r-4 md:p-5">
+                  <div className="flex min-h-20 w-full flex-col justify-between gap-4">
+                    <p className="text-xs font-black tracking-[0.12em]">时间</p>
+                    <p className="text-xl font-black leading-tight">
                       {event.time_text ?? "待校准时间"}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:p-6">
+                <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
-                    <p className="text-[clamp(1.8rem,3vw,3.2rem)] font-black leading-[0.98] transition-transform group-hover:translate-x-1">
+                    <p className="text-[clamp(1.55rem,2.5vw,2.35rem)] font-black leading-tight transition-transform group-hover:translate-x-1">
                       {event.title}
                     </p>
-                    <p className="mt-3 line-clamp-2 max-w-4xl text-base font-black leading-relaxed text-ink/60">
+                    <p className="mt-3 line-clamp-2 max-w-4xl text-sm font-bold leading-relaxed text-ink/60 md:text-base">
                       {event.summary ?? event.description ?? "暂无摘要，进入详情页查看更多事件信息。"}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -103,11 +103,11 @@ export default function EventsPage() {
 
                   <div className="flex items-start justify-start md:justify-end">
                     {event.confidence_score ? (
-                      <span className="border-4 border-ink bg-canvas px-4 py-2 text-lg font-black shadow-brutal">
+                      <span className="border-4 border-ink bg-canvas px-3 py-2 text-base font-black shadow-brutal">
                         {Math.round(event.confidence_score * 100)}%
                       </span>
                     ) : (
-                      <span className="border-4 border-ink bg-canvas px-4 py-2 text-lg font-black shadow-brutal">
+                      <span className="border-4 border-ink bg-canvas px-3 py-2 text-base font-black shadow-brutal">
                         待审
                       </span>
                     )}
