@@ -117,6 +117,8 @@ export default function EventCurationPage() {
   });
   const [participantForm, setParticipantForm] = useState({
     entity_id: "",
+    entity_name: "",
+    entity_type: "person",
     role: "参与者",
     relation_type: "participates_in",
   });
@@ -236,14 +238,23 @@ export default function EventCurationPage() {
 
   async function handleParticipantSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!eventId || !participantForm.entity_id) return;
+    if (!eventId || (!participantForm.entity_id && !participantForm.entity_name.trim())) return;
     setBusy("participant");
     try {
       await apiFetch(`/curation/events/${eventId}/participants`, {
         method: "POST",
-        body: JSON.stringify(participantForm),
+        body: JSON.stringify({
+          entity_id: participantForm.entity_id || undefined,
+          entity_name: participantForm.entity_id ? undefined : participantForm.entity_name.trim(),
+          entity_type: participantForm.entity_id ? undefined : participantForm.entity_type,
+          role: participantForm.role,
+          relation_type: participantForm.relation_type,
+        }),
       });
+      setParticipantForm((current) => ({ ...current, entity_id: "", entity_name: "" }));
       await refreshContext();
+      const entityData = await apiFetch<{ items: EntityOption[] }>("/entities?page_size=100");
+      setEntities(entityData.items);
       startTransition(() => {
         setMessage("参与人物已更新。");
         setError("");
@@ -528,7 +539,7 @@ export default function EventCurationPage() {
             <form className="mt-5 space-y-4" onSubmit={handleParticipantSubmit}>
               <select
                 value={participantForm.entity_id}
-                onChange={(event) => setParticipantForm((current) => ({ ...current, entity_id: event.target.value }))}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, entity_id: event.target.value, entity_name: "" }))}
                 className="brutal-input w-full text-base"
               >
                 <option value="">选择人物或实体</option>
@@ -537,6 +548,23 @@ export default function EventCurationPage() {
                     {entity.display_name} / {entity.entity_type}
                   </option>
                 ))}
+              </select>
+              <input
+                value={participantForm.entity_name}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, entity_name: event.target.value, entity_id: "" }))}
+                className="brutal-input w-full text-base"
+                placeholder="或直接输入新人物名，例如：法老林"
+              />
+              <select
+                value={participantForm.entity_type}
+                onChange={(event) => setParticipantForm((current) => ({ ...current, entity_type: event.target.value }))}
+                className="brutal-input w-full text-base"
+                disabled={Boolean(participantForm.entity_id)}
+              >
+                <option value="person">person</option>
+                <option value="org">org</option>
+                <option value="place">place</option>
+                <option value="concept">concept</option>
               </select>
               <input
                 value={participantForm.role}

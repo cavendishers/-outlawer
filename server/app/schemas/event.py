@@ -22,7 +22,9 @@ class EventUpdateRequest(BaseModel):
 class EventParticipantUpsertRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    entity_id: str
+    entity_id: str | None = None
+    entity_name: str | None = None
+    entity_type: str | None = None
     role: str | None = None
     relation_type: str | None = None
 

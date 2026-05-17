@@ -176,6 +176,8 @@ def upsert_event_participant(
                 user_id=user.id,
                 event_id=event_id,
                 entity_id=payload.entity_id,
+                entity_name=payload.entity_name,
+                entity_type=payload.entity_type,
                 role=payload.role,
                 relation_type=payload.relation_type,
             )

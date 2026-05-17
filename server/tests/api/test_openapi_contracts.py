@@ -167,7 +167,8 @@ def test_curation_write_endpoints_publish_explicit_request_models() -> None:
         "timeline_sort_time",
         "location_text",
     }
-    assert participant_create["required"] == ["entity_id"]
+    assert "required" not in participant_create
+    assert set(participant_create["properties"]) == {"entity_id", "entity_name", "entity_type", "role", "relation_type"}
     assert event_relation_create["required"] == ["direction", "related_type", "related_id", "relation_type"]
     assert set(event_relation_update["properties"]) == {"direction", "related_type", "related_id", "relation_type"}
 

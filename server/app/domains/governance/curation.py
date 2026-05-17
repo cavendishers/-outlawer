@@ -231,12 +231,20 @@ def upsert_event_participant(
     *,
     user_id: str,
     event_id: str,
-    entity_id: str,
+    entity_id: str | None,
+    entity_name: str | None = None,
+    entity_type: str | None = None,
     role: str | None = None,
     relation_type: str | None = None,
 ) -> dict[str, Any]:
     event = get_owned_event(db, user_id=user_id, event_id=event_id)
-    entity = get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+    entity = resolve_event_participant_entity(
+        db,
+        user_id=user_id,
+        entity_id=entity_id,
+        entity_name=entity_name,
+        entity_type=entity_type,
+    )
     normalized_relation_type = clean_required_string(relation_type or "participates_in", "Relation type is required")
 
     row = db.scalar(select(EventEntity).where(EventEntity.event_id == event.id, EventEntity.entity_id == entity.id))
@@ -261,6 +269,48 @@ def upsert_event_participant(
         "role": row.role,
         "relation_type": row.relation_type,
     }
+
+
+def resolve_event_participant_entity(
+    db: Session,
+    *,
+    user_id: str,
+    entity_id: str | None,
+    entity_name: str | None,
+    entity_type: str | None,
+) -> Entity:
+    if entity_id:
+        return get_owned_entity(db, user_id=user_id, entity_id=entity_id)
+
+    cleaned_name = clean_required_string(entity_name, "Participant entity name is required")
+    cleaned_type = clean_optional_string(entity_type) or "person"
+    normalized = normalize_name(cleaned_name)
+    if not normalized:
+        raise ValueError("Participant entity name is required")
+
+    existing = db.scalar(
+        select(Entity).where(
+            Entity.user_id == user_id,
+            Entity.normalized_name == normalized,
+        )
+    )
+    if existing:
+        return existing
+
+    entity = Entity(
+        user_id=user_id,
+        entity_type=cleaned_type,
+        canonical_name=cleaned_name,
+        display_name=cleaned_name,
+        description=None,
+        alias_json=[],
+        normalized_name=normalized,
+        status="active",
+        confidence_score=1.0,
+    )
+    db.add(entity)
+    db.flush()
+    return entity
 
 
 def remove_event_participant(db: Session, *, user_id: str, event_id: str, entity_id: str) -> dict[str, Any]:
