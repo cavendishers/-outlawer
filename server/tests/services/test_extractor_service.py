@@ -1,4 +1,5 @@
 from app.core.config import get_settings
+from app.domains.extraction.bailian import build_bailian_media_content_item, choose_bailian_model
 from app.domains.extraction.chat_provider import ChatModelProvider
 from app.domains.extraction.extractor import build_extraction_payload
 from app.domains.extraction.openrouter import (
@@ -334,6 +335,31 @@ def test_multimodal_helpers_build_expected_content_items() -> None:
     assert audio_item["input_audio"]["format"] == "mp3"
     assert video_item["type"] == "video_url"
     assert video_item["video_url"]["url"].startswith("data:video/mp4;base64,")
+
+
+def test_bailian_multimodal_helpers_use_data_url_audio_and_configured_models(monkeypatch) -> None:
+    monkeypatch.setenv("BAILIAN_VISION_MODEL", "qwen-vl-test")
+    monkeypatch.setenv("BAILIAN_VIDEO_MODEL", "qwen-video-test")
+    monkeypatch.setenv("BAILIAN_AUDIO_MODEL", "qwen-audio-test")
+    get_settings.cache_clear()
+
+    audio_item = build_bailian_media_content_item("audio", "audio/wav", b"wav-bytes")
+    image_item = build_bailian_media_content_item("image", "image/png", b"png-bytes")
+    video_item = build_bailian_media_content_item("video", "video/mp4", b"mp4-bytes")
+
+    assert audio_item["type"] == "input_audio"
+    assert audio_item["input_audio"]["data"].startswith("data:audio/wav;base64,")
+    assert audio_item["input_audio"]["format"] == "wav"
+    assert image_item["image_url"]["url"].startswith("data:image/png;base64,")
+    assert video_item["video_url"]["url"].startswith("data:video/mp4;base64,")
+    assert choose_bailian_model("image") == "qwen-vl-test"
+    assert choose_bailian_model("video") == "qwen-video-test"
+    assert choose_bailian_model("audio") == "qwen-audio-test"
+
+    monkeypatch.delenv("BAILIAN_VISION_MODEL", raising=False)
+    monkeypatch.delenv("BAILIAN_VIDEO_MODEL", raising=False)
+    monkeypatch.delenv("BAILIAN_AUDIO_MODEL", raising=False)
+    get_settings.cache_clear()
 
 
 def test_multimodal_helpers_parse_json_with_fences_and_audio_format_fallbacks() -> None:

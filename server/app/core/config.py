@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     openrouter_max_tokens: int = 2200
     openrouter_multimodal_model: str = "openrouter/free"
     openrouter_multimodal_max_bytes: int = 12 * 1024 * 1024
+    vision_provider: str = "bailian"
+    audio_transcription_provider: str = "bailian"
+    bailian_api_key: str | None = None
+    bailian_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    bailian_vision_model: str = "qwen3.5-plus"
+    bailian_video_model: str = "qwen3.5-plus"
+    bailian_audio_model: str = "qwen3-omni-30b-a3b-captioner"
+    bailian_audio_stream: bool = False
+    bailian_timeout_seconds: float = 180.0
+    bailian_multimodal_max_bytes: int = 50 * 1024 * 1024
+    bailian_video_fps: float = 2.0
     sy_gpt_base_url: str = "https://console.viiideo.com"
     sy_gpt_api_key: str | None = None
     sy_gpt_timeout_seconds: float = 300.0

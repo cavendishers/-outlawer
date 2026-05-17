@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import struct
 import time
 import wave
@@ -11,6 +12,10 @@ from sqlalchemy import and_, select
 
 from app.core.database import SessionLocal
 from app.models.asset_derivative import AssetDerivative
+
+
+def bailian_configured() -> bool:
+    return bool(os.getenv("BAILIAN_API_KEY"))
 
 
 def assert_ok(response: httpx.Response) -> dict:
@@ -46,6 +51,25 @@ def build_test_wav(duration_seconds: int = 1, sample_rate: int = 16000) -> bytes
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(b"\x00\x00" * frame_count)
     return buffer.getvalue()
+
+
+def assert_multimodal_derivatives(
+    *,
+    normalized_derivative: AssetDerivative | None,
+    analysis_derivative: AssetDerivative | None,
+    expected_ai_markers: list[str],
+) -> None:
+    assert normalized_derivative is not None
+    if bailian_configured():
+        assert any(marker in normalized_derivative.content for marker in expected_ai_markers), normalized_derivative.content
+        assert analysis_derivative is not None
+        analysis_payload = json.loads(analysis_derivative.content)
+        assert analysis_payload.get("provider_name") == "bailian"
+        assert analysis_payload.get("model_name")
+        return
+
+    assert "当前未能完成多模态内容识别" in normalized_derivative.content
+    assert normalized_derivative.meta_json.get("parser") in {"bailian_not_configured", "bailian_multimodal_failed"}
 
 
 def main() -> None:
@@ -218,15 +242,11 @@ def main() -> None:
                 )
             )
         )
-        assert normalized_derivative is not None
-        assert "识别场景：" in normalized_derivative.content
-        assert "识别物件：" in normalized_derivative.content
-        assert "文档类型：" in normalized_derivative.content
-        assert analysis_derivative is not None
-        analysis_payload = json.loads(analysis_derivative.content)
-        assert "会议现场" in analysis_payload.get("observed_scene", [])
-        assert "白板" in analysis_payload.get("observed_objects", [])
-        assert analysis_payload.get("document_type")
+        assert_multimodal_derivatives(
+            normalized_derivative=normalized_derivative,
+            analysis_derivative=analysis_derivative,
+            expected_ai_markers=["识别场景：", "识别物件：", "文档类型：", "规范化内容："],
+        )
     image_asset_detail = assert_ok(client.get(f"{args.base_url}/assets/{image_asset['id']}", headers=headers))
     assert image_asset_detail["derivatives"], image_asset_detail
     assert any(item["derivative_type"] == "normalized_text" for item in image_asset_detail["derivatives"])
@@ -276,16 +296,15 @@ def main() -> None:
                 )
             )
         )
-        assert normalized_derivative is not None
-        assert "对话类型：" in normalized_derivative.content
-        assert "识别议题：" in normalized_derivative.content
-        assert analysis_derivative is not None
-        analysis_payload = json.loads(analysis_derivative.content)
-        assert analysis_payload.get("conversation_type")
-        assert analysis_payload.get("observed_topics")
+        assert_multimodal_derivatives(
+            normalized_derivative=normalized_derivative,
+            analysis_derivative=analysis_derivative,
+            expected_ai_markers=["对话类型：", "识别议题：", "音频片段：", "规范化内容："],
+        )
     audio_asset_detail = assert_ok(client.get(f"{args.base_url}/assets/{audio_asset['id']}", headers=headers))
     assert audio_asset_detail["derivatives"], audio_asset_detail
-    assert any(item["derivative_type"] == "analysis_json" for item in audio_asset_detail["derivatives"])
+    if bailian_configured():
+        assert any(item["derivative_type"] == "analysis_json" for item in audio_asset_detail["derivatives"])
 
     reprocess = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/reprocess", headers=headers))
     replay_job_id = reprocess["job_id"]

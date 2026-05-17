@@ -65,13 +65,13 @@ Primary responsibilities:
 - Celery workers
 - RabbitMQ as broker
 - Redis as cache and optional result backend
-- OpenRouter as the LLM gateway for structured extraction when configured
-- local OCR and ASR fallback inside the worker for multimodal parsing
+- DeepSeek/OpenAI-compatible chat provider for structured text extraction when configured
+- Alibaba Bailian/OpenAI-compatible multimodal models for image, audio, and video understanding
 
 Primary responsibilities:
 
-- media preprocessing
-- transcript and OCR pipelines
+- media normalization through AI provider calls
+- transcript, OCR, and scene evidence normalization from provider output
 - knowledge extraction
 - embedding generation
 - relation building
@@ -127,11 +127,8 @@ Keep these layers separate:
 4. API creates an async job.
 5. Worker consumes the job from RabbitMQ.
 6. Worker generates derivative text if needed.
-7. For image/audio/video assets, worker first attempts local parsing:
-   - image: Tesseract OCR
-   - audio: Vosk ASR
-   - video: frame OCR plus audio transcription
-8. If richer AI parsing is available, worker may enrich derivative text through OpenRouter.
+7. For image/audio/video assets, worker sends the raw media bytes to Alibaba Bailian-compatible multimodal models.
+8. If Bailian is unavailable or fails, worker stores a conservative metadata fallback with the parser error for retry.
 9. Worker extracts entities, events, time, tags, and relations.
 10. Worker stores raw extraction history in `extraction_runs`.
 11. Worker upserts canonical entities, events, relations, timeline items, and embeddings.

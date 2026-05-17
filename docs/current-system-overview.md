@@ -42,8 +42,8 @@ flowchart LR
     Rabbit --> Worker["Celery worker"]
     Worker --> MinIO
     Worker --> PG
-    Worker --> OpenRouter["OpenRouter AI models"]
-    Worker --> LocalMedia["Local OCR/ASR fallback: tesseract, ffmpeg, vosk"]
+    Worker --> DeepSeek["DeepSeek text model"]
+    Worker --> Bailian["Alibaba Bailian multimodal models"]
 ```
 
 ## Data Flow
@@ -51,7 +51,7 @@ flowchart LR
 ```mermaid
 flowchart TD
     Raw["Raw asset<br/>text/image/audio/video"] --> RawStore["raw_assets + MinIO object"]
-    RawStore --> Derivative["asset_derivatives<br/>OCR / image semantic hints / transcript / audio context / video scene evidence / normalized text"]
+    RawStore --> Derivative["asset_derivatives<br/>Bailian visual/audio/video analysis / transcript / scene evidence / normalized text"]
     Derivative --> Note["notes + note_chunks<br/>canonical searchable text"]
     Note --> Extraction["extraction_runs + extraction_evidence<br/>versioned AI output"]
     Extraction --> Entity["entities + entity_aliases + note_entities"]
@@ -100,9 +100,9 @@ sequenceDiagram
 - `DONE`: Alembic migration workflow and release smoke guidance.
 - `DONE`: Username/password login with bearer-token auth.
 - `DONE`: Raw text, image, audio, and video asset ingestion with raw preservation.
-- `DONE`: Image OCR, audio transcription, and video derivative text fallback using local tools.
-- `DONE`: Image derivatives now preserve semantic scene, object, action, document-type, and layout hints beyond OCR-only text.
-- `DONE`: Audio derivatives now preserve conversation type, speaker hints, topic hints, decisions, follow-ups, and transcript segments beyond flat transcript text.
+- `DONE`: Image, audio, and video derivative text now uses Alibaba Bailian-compatible AI models instead of local OCR/ASR in the main ingestion path.
+- `DONE`: Image derivatives preserve semantic scene, object, action, document-type, layout hints, visible text, and source attribution when the provider returns them.
+- `DONE`: Audio derivatives preserve transcript/context fields, speaker hints, topics, decisions, follow-ups, and transcript segments when the provider returns them.
 - `DONE`: Async job tracking and retry flow through Celery and RabbitMQ.
 - `DONE`: Note canonicalization, extraction-run persistence, and reprocessing entry point.
 - `DONE`: Extraction run history, per-run summary retrieval, and side-by-side diff snapshots for note reprocessing review.
@@ -111,7 +111,7 @@ sequenceDiagram
 - `DONE`: Reprocessing now creates `ready_for_review` extraction drafts that require explicit approve or reject before the active projection changes.
 - `DONE`: Entity, event, relation, note-link, timeline, and extraction-evidence persistence.
 - `DONE`: OpenRouter text extraction with free-model fallback batching and local heuristic fallback.
-- `DONE`: Multimodal derivative enrichment now combines local OCR/ASR parsing, image semantic hints, audio context hints, optional OpenRouter enhancement, and source attribution snippets.
+- `DONE`: Multimodal derivative enrichment now stores Bailian model analysis as `analysis_json` and normalized derivative text, with metadata fallback for retry when provider calls fail.
 - `DONE`: Video derivatives now preserve sampled scene time ranges and label direct OCR/ASR evidence separately from model-inferred context.
 - `DONE`: Embedding-backed similarity search, merge-candidate generation, and unified search page.
 - `DONE`: People index, library, event pages, timeline/global graph view, note detail, and story views.

@@ -6,7 +6,7 @@ An online, AI-assisted knowledge base inspired by Obsidian, with multimodal inge
 
 - Frontend: Next.js, TypeScript, Tailwind CSS
 - Backend: FastAPI, Python, Celery
-- AI Gateway: OpenRouter
+- AI Gateway: DeepSeek for text extraction, Alibaba Bailian for multimodal understanding
 - Queue: RabbitMQ
 - Database: PostgreSQL, pgvector
 - Cache: Redis
@@ -31,15 +31,7 @@ Operational runbooks live in [`docs/operations.md`](/Users/hongan/Documents/fxxk
 
 The system accepts text, audio, image, and video inputs. Raw materials are preserved separately. AI processing runs asynchronously to extract entities, events, timelines, relations, embeddings, and stylized story views without overwriting the source material.
 
-For multimodal assets, the worker now uses a layered parser strategy:
-
-- image: local Tesseract OCR first, then optional OpenRouter enrichment
-- image derivatives also include structured semantic hints for likely scene, visible objects, visible actions, image layout, and document/photo type
-- audio: local Vosk speech transcription, then optional OpenRouter enrichment
-- audio derivatives also include conversation type, speaker hints, topic hints, decision hints, follow-up hints, and time-ordered transcript segments when available
-- video: sampled frame OCR plus audio transcription, then optional OpenRouter enrichment
-- multimodal derivatives now preserve source attribution snippets so later extraction can see what came from OCR frames versus audio transcript
-- video derivatives also preserve sampled scene time ranges and label direct OCR/ASR evidence separately from model-inferred context
+For multimodal assets, the worker now sends image, audio, and video files to Alibaba Bailian-compatible models instead of using local OCR/ASR parsing. Raw files remain in MinIO, and model output is persisted as `asset_derivatives.analysis_json` plus normalized derivative text. If Bailian is not configured or the request fails, the system records a conservative metadata fallback and leaves the asset ready for retry.
 
 ## Current Delivery Status
 
@@ -59,8 +51,9 @@ For multimodal assets, the worker now uses a layered parser strategy:
 - Review workflow is available in the web app for merge-candidate filtering, accept/reject decisions, alias confirmation, and audited entity/event merges.
 - Event curation is available in the web app for manual correction of event fields, participants, and event-centered graph relations, including relation edit-in-place.
 - Entity curation is available in the web app for manual correction of canonical/display names, type, status, seen timestamps, trusted aliases, and entity-centered graph relations.
-- Image ingestion now preserves semantic derivative fields beyond OCR-only text, including scene, object, action, layout, and document-type hints.
-- Audio ingestion now preserves context derivative fields beyond flat transcripts, including speaker hints, topics, decisions, follow-ups, and transcript segments.
+- Image ingestion now uses Bailian vision models to preserve semantic derivative fields, including visible text, scene, object, action, layout, and document-type hints.
+- Audio ingestion now uses Bailian audio models to preserve transcript/context derivative fields, including speaker hints, topics, decisions, follow-ups, and transcript segments.
+- Video ingestion now uses Bailian vision/video models to preserve visible scene evidence, inferred context, and key scene segments.
 - 运维后台基础页已经上线，可检查 jobs、失败重试、原始 assets、派生摘要和 note extraction runs，并通过 `/api/v1/operations/overview` 汇总失败任务、待审抽取、待合并候选和最近操作动作。
 - note 创建/回放、review 审核、entity/event curation 写接口现在都使用显式 Pydantic 请求模型，并通过 OpenAPI 契约测试锁定字段边界。
 - auth、assets、jobs、notes、entities、events、timeline、story views 的核心响应模型也已经显式化，OpenAPI 可直接反映分页、详情、回放 diff 和图谱概览结构。
@@ -115,7 +108,19 @@ Text notes now use this pipeline by default in local development when `EXTRACTOR
 - persist entities, events, relations, timeline items, extraction evidence, and merge candidates
 - generate a separate chunibyo-style story payload without overwriting canonical knowledge
 
-When OpenRouter free-model quota is exhausted, the backend falls back to local multimodal parsing for image, audio, and video ingestion so the note pipeline can still continue with normalized derivative text.
+To enable Bailian multimodal understanding for image, audio, and video assets, set:
+
+```bash
+VISION_PROVIDER=bailian
+AUDIO_TRANSCRIPTION_PROVIDER=bailian
+BAILIAN_API_KEY=your_dashscope_key
+BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+BAILIAN_VISION_MODEL=qwen3.5-plus
+BAILIAN_VIDEO_MODEL=qwen3.5-plus
+BAILIAN_AUDIO_MODEL=qwen3-omni-30b-a3b-captioner
+```
+
+Multimodal ingestion no longer calls local OCR/ASR parsers in the main worker path. When Bailian is unavailable, the backend stores a metadata fallback with the parser error so the asset can be retried after configuration is fixed.
 
 ## Development Rules
 
@@ -129,7 +134,7 @@ When OpenRouter free-model quota is exhausted, the backend falls back to local m
 - MinIO stores original files; PostgreSQL stores structured data; pgvector stores embeddings.
 - Docker Compose is the default local and initial production deployment path.
 - Every completed phase must be manually reflected in the related docs.
-- `api` and `worker` images include `ffmpeg` and `tesseract`; backend Python dependencies include `vosk` for local ASR fallback.
+- Multimodal understanding should go through configured AI providers; local OCR/ASR modules are legacy utilities and are not called by the main ingestion path.
 - New read-heavy APIs should prefer query services over route-level query composition.
 - The `web` dev container stays on `NODE_ENV=development`, but production build verification must override to `NODE_ENV=production`.
 - The `web` dev container uses a dedicated `.next-dev` output directory and clears that mounted cache on startup, so production builds do not corrupt the active Next.js dev runtime.

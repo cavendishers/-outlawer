@@ -1,10 +1,24 @@
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+
+import app.models  # noqa: F401
+from app.core.config import get_settings
+from app.core.database import Base
+from app.models.asset_derivative import AssetDerivative
 from app.models.raw_asset import RawAsset
 from app.domains.extraction.asset_text import (
     build_multimodal_canonical_text,
     build_multimodal_fallback_text,
+    generate_asset_text_derivative,
     merge_multimodal_payloads,
     normalize_multimodal_list,
 )
+
+
+def make_db():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine, tables=[RawAsset.__table__, AssetDerivative.__table__])
+    return sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)()
 
 
 def test_build_multimodal_canonical_text_includes_core_sections() -> None:
@@ -304,3 +318,62 @@ def test_merge_multimodal_payloads_combines_local_and_ai_observations() -> None:
     assert merged["video_scene_segments"][1]["evidence_type"] == "model_inference"
     assert len(merged["audio_segments"]) == 1
     assert merged["audio_segments"][0]["transcript"] == "张三介绍项目启动安排"
+
+
+def test_generate_asset_text_derivative_uses_bailian_instead_of_local_parser(monkeypatch) -> None:
+    monkeypatch.setenv("BAILIAN_API_KEY", "test-key")
+    monkeypatch.setenv("VISION_PROVIDER", "bailian")
+    get_settings.cache_clear()
+
+    db = make_db()
+    asset = RawAsset(
+        id="asset-bailian-image",
+        user_id="user-1",
+        asset_type="image",
+        source_type="manual",
+        title="白板会议照片",
+        object_key="objects/image.png",
+        mime_type="image/png",
+        file_size=128,
+        status="uploaded",
+    )
+    db.add(asset)
+    db.commit()
+
+    monkeypatch.setattr("app.domains.extraction.asset_text.download_bytes", lambda object_key: b"png-bytes")
+    monkeypatch.setattr(
+        "app.domains.extraction.asset_text.request_bailian_multimodal_derivative",
+        lambda **kwargs: {
+            "parser_name": "bailian_image_model",
+            "provider_name": "bailian",
+            "model_name": "qwen3.5-plus",
+            "canonical_text": "张三和李四在白板前讨论图谱。",
+            "short_summary": "AI 识别出白板会议场景。",
+            "observed_people": ["张三", "李四"],
+            "observed_scene": ["会议现场"],
+            "confidence": 0.82,
+        },
+    )
+    monkeypatch.setattr(
+        "app.domains.extraction.asset_text.build_local_media_derivative",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("local parser must not run")),
+        raising=False,
+    )
+
+    text = generate_asset_text_derivative(asset, db)
+
+    assert "规范化内容：" in text
+    assert "张三和李四在白板前讨论图谱。" in text
+    normalized = db.scalar(
+        select(AssetDerivative).where(
+            AssetDerivative.asset_id == asset.id,
+            AssetDerivative.derivative_type == "normalized_text",
+        )
+    )
+    assert normalized is not None
+    assert normalized.meta_json["parser"] == "bailian_image_model"
+    assert normalized.meta_json["provider_name"] == "bailian"
+
+    monkeypatch.delenv("BAILIAN_API_KEY", raising=False)
+    monkeypatch.delenv("VISION_PROVIDER", raising=False)
+    get_settings.cache_clear()

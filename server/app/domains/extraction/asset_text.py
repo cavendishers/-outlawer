@@ -4,13 +4,12 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.core.minio import download_bytes
-from app.domains.extraction.local_media import build_local_media_derivative
+from app.domains.extraction.bailian import (
+    bailian_multimodal_enabled,
+    request_bailian_multimodal_derivative,
+)
 from app.models.asset_derivative import AssetDerivative
 from app.models.raw_asset import RawAsset
-from app.domains.extraction.openrouter import (
-    openrouter_enabled,
-    request_openrouter_multimodal_derivative,
-)
 
 
 def get_asset_text(asset: RawAsset, db: Session) -> str:
@@ -45,46 +44,23 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
         "asset_type": asset.asset_type,
         "mime_type": mime_type,
         "file_size": asset.file_size,
-        "parser": "metadata_fallback",
+        "parser": "bailian_not_configured",
     }
 
-    local_payload = build_local_media_derivative(asset.asset_type, asset.title, mime_type, media_bytes)
-    if local_payload:
-        derivative_payload = local_payload
-        parsed_text = build_multimodal_canonical_text(asset, derivative_payload)
-        derivative_meta = {
-            **derivative_meta,
-            "parser": str(local_payload.get("parser_name") or "local_media_parser"),
-            "short_summary": local_payload.get("short_summary"),
-            "observed_time": local_payload.get("observed_time"),
-            "observed_scene": local_payload.get("observed_scene"),
-            "observed_objects": local_payload.get("observed_objects"),
-            "observed_actions": local_payload.get("observed_actions"),
-            "document_type": local_payload.get("document_type"),
-            "image_layout": local_payload.get("image_layout"),
-            "speaker_hints": local_payload.get("speaker_hints"),
-            "observed_topics": local_payload.get("observed_topics"),
-            "observed_decisions": local_payload.get("observed_decisions"),
-            "observed_follow_ups": local_payload.get("observed_follow_ups"),
-            "conversation_type": local_payload.get("conversation_type"),
-            "audio_segments": local_payload.get("audio_segments"),
-            "confidence": local_payload.get("confidence"),
-            "source_attribution": local_payload.get("source_attribution"),
-        }
-
-    if openrouter_enabled():
+    if bailian_multimodal_enabled(asset.asset_type):
         try:
-            openrouter_payload = request_openrouter_multimodal_derivative(
+            derivative_payload = request_bailian_multimodal_derivative(
                 asset_type=asset.asset_type,
                 title=asset.title,
                 mime_type=mime_type,
                 content=media_bytes,
             )
-            derivative_payload = merge_multimodal_payloads(derivative_payload, openrouter_payload)
             parsed_text = build_multimodal_canonical_text(asset, derivative_payload)
             derivative_meta = {
                 **derivative_meta,
-                "parser": "local_plus_openrouter_multimodal" if local_payload else "openrouter_multimodal",
+                "parser": str(derivative_payload.get("parser_name") or "bailian_multimodal"),
+                "provider_name": derivative_payload.get("provider_name") or "bailian",
+                "model_name": derivative_payload.get("model_name"),
                 "short_summary": derivative_payload.get("short_summary"),
                 "observed_people": derivative_payload.get("observed_people"),
                 "observed_events": derivative_payload.get("observed_events"),
@@ -109,6 +85,7 @@ def generate_asset_text_derivative(asset: RawAsset, db: Session) -> str:
         except Exception as exc:  # noqa: BLE001
             derivative_meta = {
                 **derivative_meta,
+                "parser": "bailian_multimodal_failed",
                 "parser_error": str(exc),
             }
 

@@ -55,9 +55,10 @@ Production compose file:
 - OpenRouter extraction is enabled with `EXTRACTOR_PROVIDER=openrouter` plus `OPENROUTER_API_KEY`
 - OpenRouter free-model fallback uses `OPENROUTER_MODELS`; `OPENROUTER_MODEL` is prepended as the preferred first model when set
 - OpenRouter allows at most three fallback models per request; the backend chunks longer free-model lists into three-model batches
+- Bailian multimodal understanding is enabled with `VISION_PROVIDER=bailian`, `AUDIO_TRANSCRIPTION_PROVIDER=bailian`, and `BAILIAN_API_KEY`
+- Bailian uses the OpenAI-compatible endpoint configured by `BAILIAN_BASE_URL`; default models are `BAILIAN_VISION_MODEL=qwen3.5-plus`, `BAILIAN_VIDEO_MODEL=qwen3.5-plus`, and `BAILIAN_AUDIO_MODEL=qwen3-omni-30b-a3b-captioner`
 - dev `api` and `worker` images install `.[dev]`, so `python -m pytest` can run inside the `api` container after boot
-- dev `api` and `worker` images also install `ffmpeg` and `tesseract-ocr`; Python dependencies include `vosk` for local multimodal parsing fallback
-- first audio parsing on a fresh container downloads small Vosk models into `/tmp/outlawer-models`
+- local OCR/ASR modules are legacy utilities; the main image/audio/video ingestion path now uses Bailian AI models and falls back only to metadata when the provider is unavailable
 
 ## Persistent Data
 
