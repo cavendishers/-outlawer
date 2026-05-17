@@ -129,74 +129,60 @@ export default function ReviewPage() {
 
   return (
     <AuthGate>
-      <main className="space-y-6">
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Review Queue</p>
-            <h1 className="mt-3 font-display text-[clamp(2.5rem,6vw,5rem)] leading-[0.9]">实体与事件审核台</h1>
-            <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
-              这里负责把自动抽取的候选关系变成可追责的图谱决策。每次操作都会留下审核记录，后续可以继续扩展成多人协作校对流。
-            </p>
-          </Panel>
-
-          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-            <Panel className="p-5" tone="signal">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">当前候选</p>
-              <p className="mt-3 text-5xl font-black">{items.length}</p>
-            </Panel>
-            <Panel className="p-5" tone="info">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">人物候选</p>
-              <p className="mt-3 text-5xl font-black">{entityCount}</p>
-            </Panel>
-            <Panel className="p-5" tone="time">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">事件候选</p>
-              <p className="mt-3 text-5xl font-black">{eventCount}</p>
-            </Panel>
+      <main className="space-y-4">
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <h1 className="workbench-title">审核队列</h1>
+              <p className="workbench-lede">
+                把自动抽取的合并候选转成可追责的图谱决策，优先处理高相似、共享人物或时间接近的记录。
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+              <span className="workbench-stamp bg-canvas">候选 {items.length}</span>
+              <span className="workbench-stamp bg-gold">待处理 {pendingCount}</span>
+              <span className="workbench-stamp bg-aqua">人物 {entityCount}</span>
+              <span className="workbench-stamp bg-peach">事件 {eventCount}</span>
+            </div>
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1fr_0.8fr_0.8fr]">
-          <Panel className="p-5" tone="default">
-            <label htmlFor="review-status" className="text-xs font-black uppercase tracking-[0.16em]">
+        <section className="border-4 border-ink bg-canvas px-4 py-3 shadow-brutalSoft">
+          <div className="grid gap-3 md:grid-cols-[minmax(12rem,16rem)_minmax(12rem,16rem)_1fr] md:items-end">
+            <label htmlFor="review-status" className="grid gap-1 text-xs font-black tracking-[0.12em]">
               队列状态
+              <select
+                id="review-status"
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="brutal-input px-3 py-2 text-sm font-black"
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id="review-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="brutal-input mt-3 w-full text-lg font-semibold"
-            >
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Panel>
 
-          <Panel className="p-5" tone="info">
-            <label htmlFor="review-object-type" className="text-xs font-black uppercase tracking-[0.16em]">
+            <label htmlFor="review-object-type" className="grid gap-1 text-xs font-black tracking-[0.12em]">
               对象类型
+              <select
+                id="review-object-type"
+                value={objectType}
+                onChange={(event) => setObjectType(event.target.value)}
+                className="brutal-input px-3 py-2 text-sm font-black"
+              >
+                <option value="">全部对象</option>
+                <option value="entity">人物</option>
+                <option value="event">事件</option>
+              </select>
             </label>
-            <select
-              id="review-object-type"
-              value={objectType}
-              onChange={(event) => setObjectType(event.target.value)}
-              className="brutal-input mt-3 w-full text-lg font-semibold"
-            >
-              <option value="">全部对象</option>
-              <option value="entity">人物</option>
-              <option value="event">事件</option>
-            </select>
-          </Panel>
 
-          <Panel className="p-5" tone="story">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">待处理数量</p>
-            <p className="mt-3 text-5xl font-black">{pendingCount}</p>
-            <p className="mt-4 text-sm font-bold leading-relaxed">
-              推荐优先清理高分候选，尤其是共享人物和时间高度接近的事件对。
+            <p className="text-sm font-bold leading-relaxed text-ink/60 md:text-right">
+              这里展示当前筛选下的候选，不用额外大数字抢占审核内容。
             </p>
-          </Panel>
+          </div>
         </section>
 
         {message ? (

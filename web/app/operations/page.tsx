@@ -248,26 +248,28 @@ export default function OperationsPage() {
 
   return (
     <AuthGate>
-      <main className="space-y-6">
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Panel className="p-6 md:p-8" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.2em]">Operations Console</p>
-            <h1 className="mt-3 font-display text-[clamp(2.4rem,6vw,5rem)] leading-[0.9]">运维后台</h1>
-            <p className="mt-4 max-w-3xl text-lg font-bold leading-relaxed">
-              这里集中检查异步任务、失败重试、原始资产、派生内容和抽取运行。它不是面向最终阅读的页面，而是给操作者快速定位“哪一步坏了”。
-            </p>
-          </Panel>
-
-          <Panel className="p-6" tone={failedJobs ? "danger" : "success"}>
-            <p className="text-xs font-black uppercase tracking-[0.16em]">当前风险</p>
-            <p className="mt-3 text-5xl font-black">{failedJobs}</p>
-            <p className="mt-3 text-base font-bold leading-relaxed">
-              当前任务池中的失败任务数量。失败任务可以在下方任务详情里直接重试，待审草稿和 merge 候选也会在下方集中提示。
-            </p>
-            <button type="button" className="brutal-action brutal-action-secondary mt-5" onClick={loadOverview}>
-              刷新后台
-            </button>
-          </Panel>
+      <main className="space-y-4">
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <h1 className="workbench-title">运维后台</h1>
+              <p className="workbench-lede">
+                集中检查异步任务、失败重试、原始资产、派生内容和抽取运行，快速定位处理链路里的断点。
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+              <span className={`workbench-stamp ${failedJobs ? "bg-ember" : "bg-mint"}`}>失败任务 {failedJobs}</span>
+              <span className="workbench-stamp bg-gold">活跃任务 {activeJobs}</span>
+              <span className="workbench-stamp bg-aqua">待审抽取 {pendingRuns}</span>
+              <span className="workbench-stamp bg-canvas">知识卷宗 {noteTotal}</span>
+              <button type="button" className="tool-action bg-canvas" onClick={loadOverview}>
+                刷新
+              </button>
+              <Link href="/review" className="tool-action bg-canvas">
+                审核队列
+              </Link>
+            </div>
+          </div>
         </section>
 
         {error ? (
@@ -276,18 +278,18 @@ export default function OperationsPage() {
           </Panel>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-3 md:grid-cols-4">
           <MetricCard label="任务总数" value={overview?.jobs.total ?? jobTotal} description={`活跃 ${activeJobs} / 失败 ${failedJobs}`} tone="info" />
           <MetricCard label="原始资产" value={overview?.assets.total ?? assetTotal} description="文本、图片、音频、视频原始输入" tone="default" />
-          <MetricCard label="知识卷宗" value={noteTotal} description="已经创建或等待处理的 note" tone="story" />
+          <MetricCard label="知识卷宗" value={noteTotal} description="已经创建或等待处理的卷宗" tone="story" />
           <MetricCard label="待审草稿" value={pendingRuns} description="全局待审抽取草稿" tone={pendingRuns ? "time" : "success"} />
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
           <Panel className="p-5" tone="danger">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-black uppercase tracking-[0.16em]">Backlog Radar</p>
-              <Link href="/review" className="brutal-action text-sm">
+              <p className="section-kicker">积压雷达</p>
+              <Link href="/review" className="tool-action bg-canvas">
                 打开审核队列
               </Link>
             </div>
@@ -338,7 +340,7 @@ export default function OperationsPage() {
           </Panel>
 
           <Panel className="p-5" tone="paper">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">最近操作动作</p>
+            <p className="section-kicker">最近操作动作</p>
             <div className="mt-5 space-y-3">
               {overview?.activity.recent_actions.length ? (
                 overview.activity.recent_actions.map((item) => (
@@ -364,7 +366,7 @@ export default function OperationsPage() {
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
           <Panel className="p-5" tone="signal">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">待合并候选</p>
+            <p className="section-kicker">待合并候选</p>
             <div className="mt-5 space-y-3">
               {overview?.review.recent_candidates.length ? (
                 overview.review.recent_candidates.map((candidate) => (
@@ -373,7 +375,7 @@ export default function OperationsPage() {
                       <p className="text-xs font-black uppercase tracking-[0.14em]">
                         {candidate.object_type} / {candidate.status}
                       </p>
-                      <span className="brutal-chip">score {candidate.score.toFixed(2)}</span>
+                      <span className="brutal-chip">相似度 {candidate.score.toFixed(2)}</span>
                     </div>
                     <p className="mt-3 text-base font-black">
                       {candidate.source_label ?? "未知源对象"} ↔ {candidate.candidate_label ?? "未知候选对象"}
@@ -381,13 +383,13 @@ export default function OperationsPage() {
                   </Link>
                 ))
               ) : (
-                <EmptyState text="当前没有待处理的 merge candidate。" />
+                <EmptyState text="当前没有待处理的合并候选。" />
               )}
             </div>
           </Panel>
 
           <Panel className="p-5" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">资产类型分布</p>
+            <p className="section-kicker">资产类型分布</p>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {(overview?.assets.by_type ?? []).map((item) => (
                 <div key={item.status} className="surface-inset border-4 border-ink p-4">
@@ -403,8 +405,8 @@ export default function OperationsPage() {
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Panel className="p-5" tone="info">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-black uppercase tracking-[0.16em]">任务队列</p>
-              <span className="brutal-chip">{loading ? "loading" : `${jobs.length} visible`}</span>
+              <p className="section-kicker">任务队列</p>
+              <span className="brutal-chip">{loading ? "加载中" : `显示 ${jobs.length}`}</span>
             </div>
             <div className="mt-5 space-y-3">
               {jobs.map((job) => (
@@ -422,7 +424,7 @@ export default function OperationsPage() {
                   </div>
                   <p className="mt-3 break-all text-sm font-bold">{job.target_type}: {job.target_id}</p>
                   <p className="mt-2 text-xs font-black uppercase tracking-[0.12em]">
-                    retry {job.retry_count} / {formatStamp(job.created_at)}
+                    重试 {job.retry_count} / {formatStamp(job.created_at)}
                   </p>
                   {job.error_message ? (
                     <p className="mt-2 max-h-12 overflow-hidden text-sm font-bold text-red-950">{job.error_message}</p>
@@ -434,7 +436,7 @@ export default function OperationsPage() {
           </Panel>
 
           <Panel className="p-5" tone={selectedJob?.status === "failed" ? "danger" : "default"}>
-            <p className="text-sm font-black uppercase tracking-[0.16em]">任务详情</p>
+            <p className="section-kicker">任务详情</p>
             {selectedJob ? (
               <div className="mt-5 space-y-4">
                 <div className="surface-inset border-4 border-ink p-4">
@@ -461,8 +463,8 @@ export default function OperationsPage() {
                     </button>
                   ) : null}
                 </div>
-                <JsonBlock title="Payload" value={selectedJob.payload_json} />
-                <JsonBlock title="Result" value={selectedJob.result_json} />
+                <JsonBlock title="请求负载" value={selectedJob.payload_json} />
+                <JsonBlock title="执行结果" value={selectedJob.result_json} />
               </div>
             ) : (
               <EmptyState text="从左侧选择一个任务查看详情。" />
@@ -472,7 +474,7 @@ export default function OperationsPage() {
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Panel className="p-5" tone="default">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">原始资产</p>
+            <p className="section-kicker">原始资产</p>
             <div className="mt-5 space-y-3">
               {assets.map((asset) => (
                 <button
@@ -498,7 +500,7 @@ export default function OperationsPage() {
           </Panel>
 
           <Panel className="p-5" tone="paper">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">资产派生检查</p>
+            <p className="section-kicker">资产派生检查</p>
             {selectedAsset ? (
               <div className="mt-5 space-y-4">
                 <div className="surface-inset border-4 border-ink p-4">
@@ -511,7 +513,7 @@ export default function OperationsPage() {
                     ) : null}
                   </div>
                   <p className="mt-3 break-all text-sm font-bold">
-                    {selectedAsset.asset_type} / {selectedAsset.mime_type ?? "text"} / {selectedAsset.object_key ?? "inline text"}
+                    {selectedAsset.asset_type} / {selectedAsset.mime_type ?? "text"} / {selectedAsset.object_key ?? "内联文本"}
                   </p>
                   {selectedAsset.original_text ? (
                     <p className="mt-3 border-4 border-ink bg-white p-3 text-sm font-bold leading-relaxed">
@@ -537,21 +539,21 @@ export default function OperationsPage() {
                         <span className="brutal-chip">{derivative.version}</span>
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm font-bold leading-relaxed">{derivative.content_preview}</p>
-                      <JsonBlock title="Meta" value={derivative.meta_json} compact />
+                      <JsonBlock title="元数据" value={derivative.meta_json} compact />
                     </div>
                   ))}
                   {!selectedAsset.derivatives.length ? <EmptyState text="这个资产还没有派生内容。" /> : null}
                 </div>
               </div>
             ) : (
-              <EmptyState text="从左侧选择一个资产查看 OCR、ASR、语义提示或 normalized_text。" />
+              <EmptyState text="从左侧选择一个资产查看文字识别、转写、语义提示或规范化文本。" />
             )}
           </Panel>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Panel className="p-5" tone="story">
-            <p className="text-sm font-black uppercase tracking-[0.16em]">抽取运行入口</p>
+            <p className="section-kicker">抽取运行入口</p>
             <div className="mt-5 space-y-3">
               {notes.map((note) => (
                 <button
@@ -575,8 +577,8 @@ export default function OperationsPage() {
 
           <Panel className="p-5" tone="info">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-black uppercase tracking-[0.16em]">Extraction Runs</p>
-              {selectedNote ? <Link href={`/notes/${selectedNote.id}`} className="brutal-action text-sm">打开卷宗</Link> : null}
+              <p className="section-kicker">抽取运行记录</p>
+              {selectedNote ? <Link href={`/notes/${selectedNote.id}`} className="tool-action bg-canvas">打开卷宗</Link> : null}
             </div>
             {selectedNote ? <p className="mt-3 text-2xl font-black">{selectedNote.title}</p> : null}
             <div className="mt-5 space-y-3">
@@ -590,7 +592,7 @@ export default function OperationsPage() {
                   </div>
                   <p className="mt-3 text-lg font-black">{run.summary.title || "未命名抽取运行"}</p>
                   <p className="mt-2 text-sm font-bold leading-relaxed">
-                    entity {run.summary.entity_count} / event {run.summary.event_count} / relation {run.summary.relation_count}
+                    人物 {run.summary.entity_count} / 事件 {run.summary.event_count} / 关系 {run.summary.relation_count}
                   </p>
                   <p className="mt-2 text-xs font-black uppercase tracking-[0.12em]">{formatStamp(run.created_at)}</p>
                 </div>
@@ -616,10 +618,12 @@ function MetricCard({
   tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger";
 }) {
   return (
-    <Panel className="p-5" tone={tone}>
-      <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
-      <p className="mt-3 text-4xl font-black">{value}</p>
-      <p className="mt-3 text-sm font-bold leading-relaxed">{description}</p>
+    <Panel className="p-4" tone={tone} intensity="quiet">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-black tracking-[0.12em]">{label}</p>
+        <p className="text-2xl font-black leading-none">{value}</p>
+      </div>
+      <p className="mt-3 text-sm font-bold leading-relaxed text-ink/65">{description}</p>
     </Panel>
   );
 }
@@ -636,10 +640,12 @@ function BacklogSignalCard({
   tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger";
 }) {
   return (
-    <Panel className="p-4" tone={tone}>
-      <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
-      <p className="mt-3 text-3xl font-black">{value}</p>
-      <p className="mt-3 text-sm font-bold leading-relaxed">{description}</p>
+    <Panel className="p-4" tone={tone} intensity="quiet">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-black tracking-[0.12em]">{label}</p>
+        <p className="text-2xl font-black leading-none">{value}</p>
+      </div>
+      <p className="mt-3 text-sm font-bold leading-relaxed text-ink/65">{description}</p>
     </Panel>
   );
 }

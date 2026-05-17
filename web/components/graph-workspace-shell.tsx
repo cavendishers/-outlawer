@@ -349,52 +349,43 @@ export function GraphWorkspaceShell({
 
   if (!nodes.length) {
     return (
-      <Panel className="p-6 md:p-8" tone="quiet">
-        <p className="page-kicker">图谱工作台</p>
-        <p className="mt-4 text-3xl font-black">当前没有可展开的图谱节点</p>
-        <p className="body-copy mt-4">
-          这个工作台还没有足够的事件或人物节点形成图谱。你可以先回到档案、人物或事件列表补充内容，再重新进入这里。
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/library" className="brutal-action brutal-action-secondary">
-            返回档案库
-          </Link>
-          <Link href="/timeline" className="brutal-action brutal-action-primary">
-            打开时间线
-          </Link>
+      <Panel className="workbench-header" tone="quiet">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <h1 className="workbench-title">图谱工作台</h1>
+            <p className="workbench-lede">
+              当前没有足够的事件或人物节点形成图谱。先补充档案、人物或事件，再回到这里编辑关系。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/library" className="tool-action bg-canvas">
+              返回档案库
+            </Link>
+            <Link href="/timeline" className="tool-action bg-neon">
+              打开时间线
+            </Link>
+          </div>
         </div>
       </Panel>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel className="p-6 md:p-8" tone="quiet">
-          <p className="page-kicker">图谱工作台</p>
-          <h1 className="page-title mt-3">{title}</h1>
-          <p className="page-lede">{description}</p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <span className="brutal-chip">{scope}</span>
-            <span className="brutal-chip">{stats.node_count} nodes</span>
-            <span className="brutal-chip">{stats.edge_count} edges</span>
-            <span className="brutal-chip">{stats.timeline_count} timeline</span>
+    <div className="space-y-4">
+      <section className="workbench-header">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <h1 className="workbench-title">{title}</h1>
+            <p className="workbench-lede">{description}</p>
           </div>
-        </Panel>
-
-        <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-          <Panel className="metric-card" tone="time" intensity="quiet">
-            <p className="section-kicker">事件节点</p>
-            <p className="mt-3 text-4xl font-black">{stats.event_count}</p>
-          </Panel>
-          <Panel className="metric-card" tone="info" intensity="quiet">
-            <p className="section-kicker">人物节点</p>
-            <p className="mt-3 text-4xl font-black">{stats.entity_count}</p>
-          </Panel>
-          <Panel className="metric-card" tone="quiet" intensity="quiet">
-            <p className="section-kicker">当前焦点</p>
-            <p className="mt-3 text-2xl font-black leading-tight">{activeNode?.label ?? "未选择节点"}</p>
-          </Panel>
+          <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+            <span className="workbench-stamp bg-canvas">{scope}</span>
+            <span className="workbench-stamp bg-peach">事件 {stats.event_count}</span>
+            <span className="workbench-stamp bg-aqua">人物 {stats.entity_count}</span>
+            <span className="workbench-stamp bg-canvas">节点 {stats.node_count}</span>
+            <span className="workbench-stamp bg-gold">连线 {stats.edge_count}</span>
+            <span className="workbench-stamp bg-mint">当前 {activeNode?.label ?? "未选择"}</span>
+          </div>
         </div>
       </section>
 
@@ -517,12 +508,12 @@ export function GraphWorkspaceShell({
           <div className="mt-5 border-4 border-ink bg-bone p-4 shadow-brutalSoft">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-[0.16em]">连线聚焦</p>
-              <span className="brutal-chip">{visibleEdges.length} visible edges</span>
+              <span className="brutal-chip">可见连线 {visibleEdges.length}</span>
             </div>
             {selectedEdge && selectedEdgeSource && selectedEdgeTarget ? (
               <div className="mt-4 border-4 border-ink bg-neon px-4 py-4 shadow-brutal">
                 <p className="text-[11px] font-black uppercase tracking-[0.14em]">
-                  {selectedEdge.edge_type} / weight {selectedEdge.weight.toFixed(2)}
+                  {selectedEdge.edge_type} / 权重 {selectedEdge.weight.toFixed(2)}
                 </p>
                 <p className="mt-2 text-lg font-black leading-tight">
                   {selectedEdgeSource.label} → {selectedEdgeTarget.label}
