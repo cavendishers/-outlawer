@@ -45,7 +45,7 @@ export default function EventsPage() {
                   {events.length} 条事件
                 </span>
               </div>
-              <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,4.4rem)] leading-[0.92]">
+              <h1 className="mt-3 text-[clamp(2.6rem,5vw,4.6rem)] font-black leading-[0.92] tracking-[-0.08em]">
                 事件清单
               </h1>
               <p className="mt-3 max-w-2xl text-base font-bold leading-relaxed text-ink/65">
@@ -85,7 +85,7 @@ export default function EventsPage() {
 
                 <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
-                    <p className="text-[clamp(1.55rem,2.5vw,2.35rem)] font-black leading-tight transition-transform group-hover:translate-x-1">
+                    <p className="text-[clamp(1.45rem,2.2vw,2.1rem)] font-black leading-tight tracking-[-0.04em] transition-transform group-hover:translate-x-1">
                       {event.title}
                     </p>
                     <p className="mt-3 line-clamp-2 max-w-4xl text-sm font-bold leading-relaxed text-ink/60 md:text-base">

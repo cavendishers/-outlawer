@@ -1257,3 +1257,4 @@ Verification note:
 - follow-up visual correction removed the dossier-card left black rail and restored full hard nav/card shadows after review on the event list screenshot
 - `/events` was promoted into the first list-page sample: short task-bar hero, event count stamp, and time-anchor event cards that make the records the visual focus
 - `/events` follow-up removed decorative English labels and reduced work-page title/card typography to avoid homepage-scale poster sizing on dense lists
+- `/events` title hierarchy was corrected so Chinese page titles use stable heavy body typography instead of the weaker display font, with card titles kept one level lower
