@@ -117,6 +117,9 @@ type GraphEventCurationContext = {
   event: {
     id: string;
     title: string;
+    summary: string | null;
+    event_type: string | null;
+    status: string | null;
   };
   participants: GraphEventParticipant[];
   relations: GraphRelationItem[];
@@ -132,6 +135,8 @@ type GraphEntityCurationContext = {
     id: string;
     display_name: string;
     entity_type: string;
+    description: string | null;
+    status: string;
   };
   relations: GraphRelationItem[];
   stats: {
@@ -154,6 +159,49 @@ type GraphParticipantPayload = {
   relation_type: string | null;
 };
 
+type GraphNodeUpdatePayload = {
+  title?: string;
+  summary?: string | null;
+  type?: string | null;
+  status?: string | null;
+};
+
+type GraphConflict = {
+  id: string;
+  severity: string;
+  conflict_type: string;
+  title: string;
+  summary: string;
+  node_ids: string[];
+  edge_label: string | null;
+  href: string;
+};
+
+type GraphActionLog = {
+  id: string;
+  target_type: string;
+  target_id: string;
+  action_type: string;
+  status_before: string | null;
+  status_after: string | null;
+  created_at: string | null;
+  summary: string;
+};
+
+type GraphViewpoint = {
+  id: string;
+  name: string;
+  description: string | null;
+  scope: string;
+  anchor_type: string | null;
+  anchor_id: string | null;
+  filters_json: Record<string, unknown>;
+  layout_json: Record<string, unknown>;
+  href: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 type GraphWorkspaceShellProps = {
   title: string;
   description: string;
@@ -167,9 +215,21 @@ type GraphWorkspaceShellProps = {
     event_count: number;
     entity_count: number;
     timeline_count: number;
+    conflict_count: number;
+    low_confidence_edge_count: number;
+    orphan_node_count: number;
   };
   filters: GraphWorkspaceFilters;
+  conflicts: GraphConflict[];
+  recentActions: GraphActionLog[];
+  viewpoints: GraphViewpoint[];
+  viewpointName: string;
+  viewpointBusy: boolean;
+  viewpointMessage: string;
   activeNodeId: string | null;
+  onViewpointNameChange: (value: string) => void;
+  onSaveViewpoint: () => Promise<void>;
+  onDismissViewpointMessage: () => void;
   onSelectNode: (nodeId: string) => void;
   onUpdateFilters: (updates: Partial<GraphWorkspaceAppliedFilters>, reset?: boolean) => void;
   nodeDetail: GraphNodeDetail | null;
@@ -190,6 +250,7 @@ type GraphWorkspaceShellProps = {
     relationId?: string
   ) => Promise<void>;
   onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
+  onUpdateNode: (nodeType: "event" | "entity", nodeId: string, payload: GraphNodeUpdatePayload) => Promise<void>;
 };
 
 type PositionedNode = GraphNode & {
@@ -252,6 +313,18 @@ function defaultRelatedTypeForNode(activeNode: GraphNode, nodes: GraphNode[]): "
   if (activeNode.node_type === "event" && candidateTypes.includes("entity")) return "entity";
   if (activeNode.node_type === "entity" && candidateTypes.includes("event")) return "event";
   return candidateTypes[0] ?? "event";
+}
+
+function formatGraphDate(value: string | null): string {
+  if (!value) return "暂无时间";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 type GraphFilterPanelProps = {
@@ -384,6 +457,83 @@ function GraphFilterPanel({ filters, hasBackendFilters, onUpdateFilters }: Graph
   );
 }
 
+type GraphViewpointRailProps = {
+  viewpoints: GraphViewpoint[];
+  viewpointName: string;
+  viewpointBusy: boolean;
+  viewpointMessage: string;
+  onViewpointNameChange: (value: string) => void;
+  onSaveViewpoint: () => Promise<void>;
+  onDismissViewpointMessage: () => void;
+};
+
+function GraphViewpointRail({
+  viewpoints,
+  viewpointName,
+  viewpointBusy,
+  viewpointMessage,
+  onViewpointNameChange,
+  onSaveViewpoint,
+  onDismissViewpointMessage,
+}: GraphViewpointRailProps) {
+  return (
+    <div className="mb-5 border-4 border-ink bg-bone p-4 shadow-brutalSoft">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="section-kicker">保存视角</p>
+          <p className="mt-2 text-sm font-bold leading-relaxed text-muted">
+            把当前锚点、过滤条件和焦点节点存成快捷入口，后续治理可以直接回到这张图。
+          </p>
+        </div>
+        <span className="brutal-chip">{viewpoints.length} 个视角</span>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <input
+          value={viewpointName}
+          onChange={(event) => onViewpointNameChange(event.target.value)}
+          placeholder="视角名称，例如：启动会议关系校验"
+          className="min-w-0 border-4 border-ink bg-canvas px-4 py-3 text-sm font-black shadow-brutalTiny outline-none focus:bg-neon"
+        />
+        <button
+          type="button"
+          onClick={() => void onSaveViewpoint()}
+          disabled={viewpointBusy}
+          className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {viewpointBusy ? "保存中..." : "保存当前视角"}
+        </button>
+      </div>
+      {viewpointMessage ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-4 border-ink bg-mint px-4 py-3 shadow-brutalTiny">
+          <p className="text-sm font-bold">{viewpointMessage}</p>
+          <button type="button" onClick={onDismissViewpointMessage} className="text-xs font-black tracking-[0.14em]">
+            关闭
+          </button>
+        </div>
+      ) : null}
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+        {viewpoints.length ? (
+          viewpoints.slice(0, 8).map((viewpoint) => (
+            <Link
+              key={viewpoint.id}
+              href={viewpoint.href}
+              className="min-w-56 border-4 border-ink bg-canvas px-4 py-3 shadow-brutalTiny transition-transform hover:-translate-y-1"
+            >
+              <p className="text-[11px] font-black uppercase tracking-[0.14em]">{viewpoint.scope}</p>
+              <p className="mt-2 line-clamp-2 text-base font-black leading-tight">{viewpoint.name}</p>
+              <p className="mt-2 text-xs font-bold text-muted">{formatGraphDate(viewpoint.updated_at)}</p>
+            </Link>
+          ))
+        ) : (
+          <div className="surface-inset min-w-full border-4 border-dashed border-ink p-4 text-sm font-bold">
+            暂时没有保存过的视角。先用过滤器收窄范围，再保存成常用工作入口。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function GraphWorkspaceShell({
   title,
   description,
@@ -393,7 +543,16 @@ export function GraphWorkspaceShell({
   timelineFocus,
   stats,
   filters,
+  conflicts,
+  recentActions,
+  viewpoints,
+  viewpointName,
+  viewpointBusy,
+  viewpointMessage,
   activeNodeId,
+  onViewpointNameChange,
+  onSaveViewpoint,
+  onDismissViewpointMessage,
   onSelectNode,
   onUpdateFilters,
   nodeDetail,
@@ -409,6 +568,7 @@ export function GraphWorkspaceShell({
   onRemoveEventParticipant,
   onUpsertRelation,
   onRemoveRelation,
+  onUpdateNode,
 }: GraphWorkspaceShellProps) {
   const [viewMode, setViewMode] = useState<GraphWorkspaceViewMode>("all");
   const [selectedEdgeKey, setSelectedEdgeKey] = useState("");
@@ -560,7 +720,7 @@ export function GraphWorkspaceShell({
           ? "仅人物"
           : "时间主干",
     focusNeighborhoodOnly ? "焦点邻域" : "全局可见",
-            normalizedSearchQuery ? `搜索：${searchQuery.trim()}` : "未搜索",
+    normalizedSearchQuery ? `搜索：${searchQuery.trim()}` : "未搜索",
   ];
   const canvasStatusSummary = [...appliedFilterChips, ...filterSummary].join(" · ");
   const effectiveTimelineContext = nodeDetail?.timeline_context?.length ? nodeDetail.timeline_context : timelineFocus;
@@ -622,6 +782,9 @@ export function GraphWorkspaceShell({
             <span className="workbench-stamp bg-aqua">人物 {stats.entity_count}</span>
             <span className="workbench-stamp bg-canvas">节点 {stats.node_count}</span>
             <span className="workbench-stamp bg-gold">连线 {stats.edge_count}</span>
+            <span className={`workbench-stamp ${stats.conflict_count ? "bg-ember" : "bg-mint"}`}>
+              提示 {stats.conflict_count}
+            </span>
             <span className="workbench-stamp bg-mint">当前 {activeNode?.label ?? "未选择"}</span>
           </div>
         </div>
@@ -629,6 +792,15 @@ export function GraphWorkspaceShell({
 
       <section className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
         <Panel className="p-6 md:p-8" tone="quiet" intensity="quiet">
+          <GraphViewpointRail
+            viewpoints={viewpoints}
+            viewpointName={viewpointName}
+            viewpointBusy={viewpointBusy}
+            viewpointMessage={viewpointMessage}
+            onViewpointNameChange={onViewpointNameChange}
+            onSaveViewpoint={onSaveViewpoint}
+            onDismissViewpointMessage={onDismissViewpointMessage}
+          />
           <GraphFilterPanel filters={filters} onUpdateFilters={onUpdateFilters} hasBackendFilters={hasBackendFilters} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="section-kicker">共享画布</p>
@@ -993,7 +1165,9 @@ export function GraphWorkspaceShell({
                 onRemoveEventParticipant={onRemoveEventParticipant}
                 onUpsertRelation={onUpsertRelation}
                 onRemoveRelation={onRemoveRelation}
+                onUpdateNode={onUpdateNode}
               />
+              <GraphGovernanceRail conflicts={conflicts} recentActions={recentActions} stats={stats} />
             </>
           ) : (
             <p className="mt-4 text-base font-bold">当前没有可用节点。</p>
@@ -1106,6 +1280,90 @@ function TimelineBackboneRail({ items, activeEventId, selectableEventIds, onSele
   );
 }
 
+type GraphGovernanceRailProps = {
+  conflicts: GraphConflict[];
+  recentActions: GraphActionLog[];
+  stats: {
+    conflict_count: number;
+    low_confidence_edge_count: number;
+    orphan_node_count: number;
+  };
+};
+
+function GraphGovernanceRail({ conflicts, recentActions, stats }: GraphGovernanceRailProps) {
+  return (
+    <div className="mt-8 space-y-4 border-t-4 border-ink pt-6">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.16em]">Graph Governance</p>
+        <p className="mt-2 text-base font-bold leading-relaxed">
+          系统会把低置信关系、标签冲突和孤立节点抬到这里，方便你在同一张图里完成校正。
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="border-4 border-ink bg-ember px-4 py-3 shadow-brutalTiny">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em]">冲突提示</p>
+          <p className="mt-2 text-2xl font-black">{stats.conflict_count}</p>
+        </div>
+        <div className="border-4 border-ink bg-gold px-4 py-3 shadow-brutalTiny">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em]">低置信连线</p>
+          <p className="mt-2 text-2xl font-black">{stats.low_confidence_edge_count}</p>
+        </div>
+        <div className="border-4 border-ink bg-canvas px-4 py-3 shadow-brutalTiny">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em]">孤立节点</p>
+          <p className="mt-2 text-2xl font-black">{stats.orphan_node_count}</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <p className="text-xs font-black uppercase tracking-[0.16em]">关系冲突提示</p>
+        {conflicts.length ? (
+          conflicts.map((conflict) => (
+            <Link
+              key={conflict.id}
+              href={conflict.href}
+              className={`block border-4 border-ink px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1 ${
+                conflict.severity === "high" ? "bg-ember" : conflict.severity === "medium" ? "bg-gold" : "bg-canvas"
+              }`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                  {conflict.severity} / {conflict.conflict_type}
+                </p>
+                {conflict.edge_label ? <span className="brutal-chip">{conflict.edge_label}</span> : null}
+              </div>
+              <p className="mt-2 text-base font-black leading-tight">{conflict.title}</p>
+              <p className="mt-2 text-sm font-bold leading-relaxed">{conflict.summary}</p>
+            </Link>
+          ))
+        ) : (
+          <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+            当前视图没有检测到明显关系冲突。
+          </div>
+        )}
+      </div>
+      <div className="space-y-3">
+        <p className="text-xs font-black uppercase tracking-[0.16em]">最近图谱操作</p>
+        {recentActions.length ? (
+          recentActions.map((action) => (
+            <div key={action.id} className="border-4 border-ink bg-bone px-4 py-4 shadow-brutalSoft">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+                  {action.target_type} / {action.action_type}
+                </p>
+                <span className="brutal-chip">{formatGraphDate(action.created_at)}</span>
+              </div>
+              <p className="mt-2 text-sm font-bold leading-relaxed">{action.summary}</p>
+            </div>
+          ))
+        ) : (
+          <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
+            暂时没有图谱治理操作历史。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type InlineGraphEditRailProps = {
   activeNode: GraphNode;
   nodes: GraphNode[];
@@ -1125,6 +1383,7 @@ type InlineGraphEditRailProps = {
     relationId?: string
   ) => Promise<void>;
   onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
+  onUpdateNode: (nodeType: "event" | "entity", nodeId: string, payload: GraphNodeUpdatePayload) => Promise<void>;
 };
 
 function InlineGraphEditRail({
@@ -1141,7 +1400,14 @@ function InlineGraphEditRail({
   onRemoveEventParticipant,
   onUpsertRelation,
   onRemoveRelation,
+  onUpdateNode,
 }: InlineGraphEditRailProps) {
+  const [nodeForm, setNodeForm] = useState<GraphNodeUpdatePayload>({
+    title: activeNode.inspector.title,
+    summary: activeNode.inspector.summary ?? "",
+    type: activeNode.meta[0] ?? "",
+    status: "",
+  });
   const [participantForm, setParticipantForm] = useState<GraphParticipantPayload>({
     entity_id: "",
     role: "参与者",
@@ -1189,6 +1455,32 @@ function InlineGraphEditRail({
   }, [activeNode.id, currentEditingRelation, nodes, relationForm.related_type]);
 
   useEffect(() => {
+    setNodeForm({
+      title:
+        curationContext?.kind === "event"
+          ? curationContext.event.title
+          : curationContext?.kind === "entity"
+            ? curationContext.entity.display_name
+            : activeNode.inspector.title,
+      summary:
+        curationContext?.kind === "event"
+          ? curationContext.event.summary ?? ""
+          : curationContext?.kind === "entity"
+            ? curationContext.entity.description ?? ""
+            : activeNode.inspector.summary ?? "",
+      type:
+        curationContext?.kind === "event"
+          ? curationContext.event.event_type ?? ""
+          : curationContext?.kind === "entity"
+            ? curationContext.entity.entity_type
+            : activeNode.meta[0] ?? "",
+      status:
+        curationContext?.kind === "event"
+          ? curationContext.event.status ?? ""
+          : curationContext?.kind === "entity"
+            ? curationContext.entity.status
+            : "",
+    });
     setEditingRelationId("");
     setParticipantForm({
       entity_id: "",
@@ -1201,7 +1493,7 @@ function InlineGraphEditRail({
       related_id: "",
       relation_type: activeNode.node_type === "event" ? EVENT_RELATION_TYPE_OPTIONS[0] : ENTITY_RELATION_TYPE_OPTIONS[0],
     });
-  }, [activeNode.id, activeNode.node_type, nodes]);
+  }, [activeNode.id, activeNode.inspector.summary, activeNode.inspector.title, activeNode.meta, activeNode.node_type, curationContext, nodes]);
 
   useEffect(() => {
     if (!relationTargetTypeChoices.includes(relationForm.related_type)) {
@@ -1244,6 +1536,16 @@ function InlineGraphEditRail({
       entity_id: "",
       role: "参与者",
       relation_type: "participates_in",
+    });
+  }
+
+  async function handleNodeSubmit() {
+    if (activeNode.node_type !== "event" && activeNode.node_type !== "entity") return;
+    await onUpdateNode(activeNode.node_type, activeNode.id, {
+      title: nodeForm.title?.trim() || activeNode.label,
+      summary: nodeForm.summary?.trim() || null,
+      type: nodeForm.type?.trim() || null,
+      status: nodeForm.status?.trim() || null,
     });
   }
 
@@ -1328,6 +1630,52 @@ function InlineGraphEditRail({
       {!curationLoading && !curationContext ? (
         <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
           当前节点暂时没有可用的内联治理上下文，你仍然可以先跳到完整校对页继续操作。
+        </div>
+      ) : null}
+
+      {curationContext ? (
+        <div className="border-4 border-ink bg-white px-4 py-4 shadow-brutal">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-black uppercase tracking-[0.16em]">节点基础信息</p>
+            <span className="brutal-chip">{activeNode.node_type === "event" ? "事件节点" : "人物节点"}</span>
+          </div>
+          <div className="mt-4 grid gap-3">
+            <input
+              value={nodeForm.title ?? ""}
+              onChange={(event) => setNodeForm((current) => ({ ...current, title: event.target.value }))}
+              placeholder={activeNode.node_type === "event" ? "事件标题" : "人物名称"}
+              className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+            />
+            <textarea
+              value={nodeForm.summary ?? ""}
+              onChange={(event) => setNodeForm((current) => ({ ...current, summary: event.target.value }))}
+              placeholder={activeNode.node_type === "event" ? "事件摘要" : "人物描述"}
+              rows={3}
+              className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                value={nodeForm.type ?? ""}
+                onChange={(event) => setNodeForm((current) => ({ ...current, type: event.target.value }))}
+                placeholder={activeNode.node_type === "event" ? "事件类型" : "人物类型"}
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              />
+              <input
+                value={nodeForm.status ?? ""}
+                onChange={(event) => setNodeForm((current) => ({ ...current, status: event.target.value }))}
+                placeholder="状态，例如：confirmed"
+                className="border-4 border-ink bg-paper px-3 py-3 text-sm font-bold"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleNodeSubmit()}
+              disabled={mutationBusyKey === `node-update-${activeNode.node_type}-${activeNode.id}`}
+              className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {mutationBusyKey === `node-update-${activeNode.node_type}-${activeNode.id}` ? "更新中..." : "更新节点信息"}
+            </button>
+          </div>
         </div>
       ) : null}
 

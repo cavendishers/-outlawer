@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domains.retrieval import entity_query, event_query, timeline_query
+from app.models.review import ReviewAction
 
 
 @dataclass(frozen=True)
@@ -75,10 +77,10 @@ def get_graph_workspace(
         depth=depth,
     )
     if event_id:
-        return apply_workspace_filters(build_event_workspace(db, user_id=user_id, event_id=event_id), filters)
+        return finalize_workspace(db, apply_workspace_filters(build_event_workspace(db, user_id=user_id, event_id=event_id), filters), user_id=user_id)
     if entity_id:
-        return apply_workspace_filters(build_entity_workspace(db, user_id=user_id, entity_id=entity_id), filters)
-    return apply_workspace_filters(build_overview_workspace(db, user_id=user_id), filters)
+        return finalize_workspace(db, apply_workspace_filters(build_entity_workspace(db, user_id=user_id, entity_id=entity_id), filters), user_id=user_id)
+    return finalize_workspace(db, apply_workspace_filters(build_overview_workspace(db, user_id=user_id), filters), user_id=user_id)
 
 
 def get_graph_node_detail(
@@ -302,12 +304,16 @@ def expand_by_depth(anchor_id: str, edges: list[dict[str, Any]], depth: int) -> 
 
 
 def build_stats(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], timeline_focus: list[dict[str, Any]]) -> dict[str, int]:
+    conflicts = build_workspace_conflicts(nodes, edges)
     return {
         "node_count": len(nodes),
         "edge_count": len(edges),
         "event_count": sum(1 for node in nodes if node["node_type"] == "event"),
         "entity_count": sum(1 for node in nodes if node["node_type"] == "entity"),
         "timeline_count": len(timeline_focus),
+        "conflict_count": len(conflicts),
+        "low_confidence_edge_count": sum(1 for edge in edges if float(edge.get("weight") or 0) < 0.55),
+        "orphan_node_count": len(find_orphan_node_ids(nodes, edges)),
     }
 
 
@@ -720,6 +726,7 @@ def workspace_payload(
     edges: list[dict[str, Any]],
     timeline_focus: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    conflicts = build_workspace_conflicts(nodes, edges)
     return {
         "scope": scope,
         "title": title,
@@ -734,8 +741,137 @@ def workspace_payload(
             "event_count": sum(1 for node in nodes if node["node_type"] == "event"),
             "entity_count": sum(1 for node in nodes if node["node_type"] == "entity"),
             "timeline_count": len(timeline_focus),
+            "conflict_count": len(conflicts),
+            "low_confidence_edge_count": sum(1 for edge in edges if float(edge.get("weight") or 0) < 0.55),
+            "orphan_node_count": len(find_orphan_node_ids(nodes, edges)),
         },
+        "conflicts": conflicts,
     }
+
+
+def finalize_workspace(db: Session, workspace: dict[str, Any], *, user_id: str) -> dict[str, Any]:
+    conflicts = build_workspace_conflicts(workspace.get("nodes", []), workspace.get("edges", []))
+    return {
+        **workspace,
+        "conflicts": conflicts,
+        "stats": {
+            **workspace.get("stats", {}),
+            "conflict_count": len(conflicts),
+            "low_confidence_edge_count": sum(1 for edge in workspace.get("edges", []) if float(edge.get("weight") or 0) < 0.55),
+            "orphan_node_count": len(find_orphan_node_ids(workspace.get("nodes", []), workspace.get("edges", []))),
+        },
+        "recent_actions": list_graph_actions(db, user_id=user_id),
+    }
+
+
+def build_workspace_conflicts(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    conflicts: list[dict[str, Any]] = []
+    node_ids = {node["id"] for node in nodes}
+    node_by_id = {node["id"]: node for node in nodes}
+    edge_pairs: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for edge in edges:
+        source_id = edge["source_id"]
+        target_id = edge["target_id"]
+        weight = float(edge.get("weight") or 0)
+        if weight < 0.55:
+            conflicts.append(
+                {
+                    "id": f"low-confidence-{source_id}-{target_id}-{edge['edge_type']}",
+                    "severity": "medium",
+                    "conflict_type": "low_confidence_edge",
+                    "title": "低置信关系",
+                    "summary": f"{node_by_id.get(source_id, {}).get('label', source_id)} 与 {node_by_id.get(target_id, {}).get('label', target_id)} 的 `{edge['label']}` 权重偏低。",
+                    "node_ids": [source_id, target_id],
+                    "edge_label": edge.get("label"),
+                    "href": graph_href_for_node(source_id, node_by_id),
+                }
+            )
+        pair_key = (source_id, target_id, edge["edge_type"])
+        edge_pairs.setdefault(pair_key, []).append(edge)
+
+    for (source_id, target_id, edge_type), pair_edges in edge_pairs.items():
+        labels = {edge.get("label") for edge in pair_edges if edge.get("label")}
+        if len(labels) > 1:
+            conflicts.append(
+                {
+                    "id": f"relation-label-conflict-{source_id}-{target_id}-{edge_type}",
+                    "severity": "high",
+                    "conflict_type": "relation_label_conflict",
+                    "title": "关系标签冲突",
+                    "summary": f"同一对节点存在多个 `{edge_type}` 标签：{' / '.join(sorted(labels))}",
+                    "node_ids": [source_id, target_id],
+                    "edge_label": edge_type,
+                    "href": graph_href_for_node(source_id, node_by_id),
+                }
+            )
+
+    for node_id in find_orphan_node_ids(nodes, edges):
+        node = node_by_id[node_id]
+        conflicts.append(
+            {
+                "id": f"orphan-node-{node_id}",
+                "severity": "low",
+                "conflict_type": "orphan_node",
+                "title": "孤立节点",
+                "summary": f"{node['label']} 当前没有可见关系，可能需要扩大过滤范围或补充连接。",
+                "node_ids": [node_id],
+                "edge_label": None,
+                "href": graph_href_for_node(node_id, node_by_id),
+            }
+        )
+    return conflicts[:12]
+
+
+def find_orphan_node_ids(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> set[str]:
+    connected_ids = {edge["source_id"] for edge in edges} | {edge["target_id"] for edge in edges}
+    return {node["id"] for node in nodes if not node.get("is_anchor") and node["id"] not in connected_ids}
+
+
+def graph_href_for_node(node_id: str, node_by_id: dict[str, dict[str, Any]]) -> str:
+    node = node_by_id.get(node_id)
+    if not node:
+        return "/graph"
+    if node["node_type"] == "event":
+        return f"/graph?event_id={node_id}"
+    if node["node_type"] == "entity":
+        return f"/graph?entity_id={node_id}"
+    return "/graph"
+
+
+def list_graph_actions(db: Session, *, user_id: str, limit: int = 8) -> list[dict[str, Any]]:
+    rows = db.scalars(
+        select(ReviewAction)
+        .where(
+            ReviewAction.user_id == user_id,
+            ReviewAction.action_type.in_(
+                [
+                    "update_entity",
+                    "update_event",
+                    "upsert_event_participant",
+                    "remove_event_participant",
+                    "add_relation",
+                    "upsert_relation",
+                    "update_relation",
+                    "remove_relation",
+                ]
+            ),
+        )
+        .order_by(ReviewAction.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "id": row.id,
+            "target_type": row.target_type,
+            "target_id": row.target_id,
+            "action_type": row.action_type,
+            "status_before": row.status_before,
+            "status_after": row.status_after,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "summary": f"{row.target_type} {row.target_id} 执行了 {row.action_type}",
+        }
+        for row in rows
+    ]
 
 
 def build_timeline_context_for_node(

@@ -8,6 +8,7 @@ from app.api.v1 import (
     entities,
     events,
     graph,
+    graph_viewpoints,
     health,
     image_generations,
     jobs,
@@ -35,4 +36,5 @@ api_router.include_router(operations.router, prefix="/operations", tags=["operat
 api_router.include_router(review.router, prefix="/review", tags=["review"])
 api_router.include_router(views.router, prefix="/views", tags=["views"])
 api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
+api_router.include_router(graph_viewpoints.router, prefix="/graph-viewpoints", tags=["graph-viewpoints"])
 api_router.include_router(image_generations.router, prefix="/image-generations", tags=["image-generations"])

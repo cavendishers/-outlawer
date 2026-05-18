@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.api.serializers import isoformat, serialize_job
 from app.models.ai_job import AIJob
+from app.models.entity import Entity, EventEntity, Relation
+from app.models.event import Event
 from app.models.extraction import ExtractionRun, MergeCandidate
+from app.models.graph_viewpoint import GraphViewpoint
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
@@ -89,6 +92,25 @@ def get_operations_overview(db: Session, *, user_id: str) -> dict[str, Any]:
         .order_by(ReviewAction.created_at.desc())
         .limit(8)
     ).all()
+    recent_graph_actions = db.scalars(
+        select(ReviewAction)
+        .where(
+            ReviewAction.user_id == user_id,
+            ReviewAction.action_type.in_(
+                [
+                    "update_entity",
+                    "update_event",
+                    "upsert_event_participant",
+                    "remove_event_participant",
+                    "add_relation",
+                    "update_relation",
+                    "remove_relation",
+                ]
+            ),
+        )
+        .order_by(ReviewAction.created_at.desc())
+        .limit(8)
+    ).all()
 
     return {
         "jobs": {
@@ -143,6 +165,20 @@ def get_operations_overview(db: Session, *, user_id: str) -> dict[str, Any]:
         },
         "activity": {
             "recent_actions": [_serialize_activity_item(action) for action in recent_actions],
+        },
+        "graph_quality": {
+            "viewpoint_count": int(db.scalar(select(func.count()).select_from(GraphViewpoint).where(GraphViewpoint.user_id == user_id)) or 0),
+            "low_confidence_relation_count": int(
+                db.scalar(
+                    select(func.count())
+                    .select_from(Relation)
+                    .where(Relation.user_id == user_id, Relation.confidence_score.is_not(None), Relation.confidence_score < 0.55)
+                )
+                or 0
+            ),
+            "orphan_entity_count": count_orphan_entities(db, user_id=user_id),
+            "orphan_event_count": count_orphan_events(db, user_id=user_id),
+            "recent_graph_actions": [_serialize_activity_item(action) for action in recent_graph_actions],
         },
     }
 
@@ -206,3 +242,53 @@ def _summarize_action(action: ReviewAction) -> str:
     if action.target_type == "merge_candidate":
         return f"merge candidate {action.target_id} 执行了 {action_label}"
     return f"{action.target_type} {action.target_id} 执行了 {action_label}"
+
+
+def count_orphan_entities(db: Session, *, user_id: str) -> int:
+    linked_entity_ids = {
+        row[0]
+        for row in db.execute(
+            select(EventEntity.entity_id).join(Event, Event.id == EventEntity.event_id).where(Event.user_id == user_id)
+        ).all()
+    }
+    relation_entity_ids = {
+        row[0]
+        for row in db.execute(
+            select(Relation.source_id).where(Relation.user_id == user_id, Relation.source_type == "entity")
+        ).all()
+    } | {
+        row[0]
+        for row in db.execute(
+            select(Relation.target_id).where(Relation.user_id == user_id, Relation.target_type == "entity")
+        ).all()
+    }
+    connected_ids = linked_entity_ids | relation_entity_ids
+    query = select(func.count()).select_from(Entity).where(Entity.user_id == user_id)
+    if connected_ids:
+        query = query.where(Entity.id.not_in(connected_ids))
+    return int(db.scalar(query) or 0)
+
+
+def count_orphan_events(db: Session, *, user_id: str) -> int:
+    participant_event_ids = {
+        row[0]
+        for row in db.execute(
+            select(EventEntity.event_id).join(Event, Event.id == EventEntity.event_id).where(Event.user_id == user_id)
+        ).all()
+    }
+    relation_event_ids = {
+        row[0]
+        for row in db.execute(
+            select(Relation.source_id).where(Relation.user_id == user_id, Relation.source_type == "event")
+        ).all()
+    } | {
+        row[0]
+        for row in db.execute(
+            select(Relation.target_id).where(Relation.user_id == user_id, Relation.target_type == "event")
+        ).all()
+    }
+    connected_ids = participant_event_ids | relation_event_ids
+    query = select(func.count()).select_from(Event).where(Event.user_id == user_id)
+    if connected_ids:
+        query = query.where(Event.id.not_in(connected_ids))
+    return int(db.scalar(query) or 0)

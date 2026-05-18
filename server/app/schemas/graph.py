@@ -61,6 +61,31 @@ class GraphWorkspaceStatsResponse(BaseModel):
     event_count: int
     entity_count: int
     timeline_count: int
+    conflict_count: int = 0
+    low_confidence_edge_count: int = 0
+    orphan_node_count: int = 0
+
+
+class GraphWorkspaceConflictResponse(BaseModel):
+    id: str
+    severity: str
+    conflict_type: str
+    title: str
+    summary: str
+    node_ids: list[str] = Field(default_factory=list)
+    edge_label: str | None = None
+    href: str
+
+
+class GraphWorkspaceActionLogResponse(BaseModel):
+    id: str
+    target_type: str
+    target_id: str
+    action_type: str
+    status_before: str | None = None
+    status_after: str | None = None
+    created_at: str | None = None
+    summary: str
 
 
 class GraphWorkspaceAppliedFiltersResponse(BaseModel):
@@ -111,3 +136,5 @@ class GraphWorkspaceResponse(BaseModel):
     timeline_focus: list[GraphWorkspaceTimelineItemResponse] = Field(default_factory=list)
     stats: GraphWorkspaceStatsResponse
     filters: GraphWorkspaceFiltersResponse
+    conflicts: list[GraphWorkspaceConflictResponse] = Field(default_factory=list)
+    recent_actions: list[GraphWorkspaceActionLogResponse] = Field(default_factory=list)

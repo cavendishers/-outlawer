@@ -121,7 +121,12 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[CurationRelationItemResponse]`
 - `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
 - `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`; supported query parameters are `event_id`, `entity_id`, `node_types`, `relation_types`, `start`, `end`, `min_weight`, and `depth`
+- `GraphWorkspaceResponse.stats` includes graph quality counters: `conflict_count`, `low_confidence_edge_count`, and `orphan_node_count`
+- `GraphWorkspaceResponse.conflicts` returns visible conflict hints for low-confidence edges, duplicate relation labels, and orphan nodes
+- `GraphWorkspaceResponse.recent_actions` returns recent graph-governance actions such as node edits, participant edits, and relation edits
 - `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`; it accepts the same graph scope/filter query parameters as `/graph/workspace`
+- `GET /api/v1/graph-viewpoints` returns `Envelope[CollectionData[GraphViewpointResponse]]`
+- `POST /api/v1/graph-viewpoints` accepts `GraphViewpointCreateRequest` and returns `Envelope[GraphViewpointResponse]`
 - `GET /api/v1/operations/overview` returns `Envelope[OperationsOverviewResponse]`
 - `POST /api/v1/image-generations` returns `Envelope[ImageGenerationCreateResponse]`
 - `GET /api/v1/image-generations` returns `Envelope[PaginatedData[ImageGenerationResponse]]`
@@ -380,6 +385,7 @@ Responsibilities:
 Responsibilities:
 
 - aggregate failed-job alerts, raw asset type counts, extraction-review backlog, merge-candidate backlog, and recent operator actions
+- aggregate graph quality signals, including saved viewpoint count, low-confidence relations, orphan entities, orphan events, and recent graph-governance actions
 - provide operator-routing links into note detail, review, and curation pages
 - keep the operations console from stitching together unrelated list endpoints for top-level health signals
 

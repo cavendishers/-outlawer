@@ -101,6 +101,19 @@ type StatusCount = {
   count: number;
 };
 
+type OperationsActionItem = {
+  id: string;
+  target_type: string;
+  target_id: string;
+  action_type: string;
+  status_before: string | null;
+  status_after: string | null;
+  created_at: string | null;
+  href: string;
+  href_label: string;
+  summary: string;
+};
+
 type OperationsOverview = {
   jobs: {
     total: number;
@@ -145,18 +158,14 @@ type OperationsOverview = {
     }>;
   };
   activity: {
-    recent_actions: Array<{
-      id: string;
-      target_type: string;
-      target_id: string;
-      action_type: string;
-      status_before: string | null;
-      status_after: string | null;
-      created_at: string | null;
-      href: string;
-      href_label: string;
-      summary: string;
-    }>;
+    recent_actions: OperationsActionItem[];
+  };
+  graph_quality: {
+    viewpoint_count: number;
+    low_confidence_relation_count: number;
+    orphan_entity_count: number;
+    orphan_event_count: number;
+    recent_graph_actions: OperationsActionItem[];
   };
 };
 
@@ -283,6 +292,65 @@ export default function OperationsPage() {
           <MetricCard label="原始资产" value={overview?.assets.total ?? assetTotal} description="文本、图片、音频、视频原始输入" tone="default" />
           <MetricCard label="知识卷宗" value={noteTotal} description="已经创建或等待处理的卷宗" tone="story" />
           <MetricCard label="待审草稿" value={pendingRuns} description="全局待审抽取草稿" tone={pendingRuns ? "time" : "success"} />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <Panel className="p-5" tone="time">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="section-kicker">图谱质量</p>
+              <Link href="/graph" className="tool-action bg-canvas">
+                打开图谱工作台
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <BacklogSignalCard
+                label="保存视角"
+                value={overview?.graph_quality.viewpoint_count ?? 0}
+                description="可复用的图谱治理入口"
+                tone="info"
+              />
+              <BacklogSignalCard
+                label="低置信关系"
+                value={overview?.graph_quality.low_confidence_relation_count ?? 0}
+                description="优先人工确认的关系边"
+                tone={overview?.graph_quality.low_confidence_relation_count ? "time" : "success"}
+              />
+              <BacklogSignalCard
+                label="孤立人物"
+                value={overview?.graph_quality.orphan_entity_count ?? 0}
+                description="未连接事件或关系的人物"
+                tone={overview?.graph_quality.orphan_entity_count ? "signal" : "success"}
+              />
+              <BacklogSignalCard
+                label="孤立事件"
+                value={overview?.graph_quality.orphan_event_count ?? 0}
+                description="未连接参与者或关系的事件"
+                tone={overview?.graph_quality.orphan_event_count ? "signal" : "success"}
+              />
+            </div>
+          </Panel>
+
+          <Panel className="p-5" tone="paper">
+            <p className="section-kicker">图谱治理操作</p>
+            <div className="mt-5 space-y-3">
+              {overview?.graph_quality.recent_graph_actions.length ? (
+                overview.graph_quality.recent_graph_actions.map((item) => (
+                  <Link key={item.id} href={item.href} className="surface-inset block border-4 border-ink p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.14em]">
+                        {item.target_type} / {item.action_type}
+                      </p>
+                      <p className="text-xs font-black uppercase tracking-[0.12em]">{formatStamp(item.created_at)}</p>
+                    </div>
+                    <p className="mt-3 text-sm font-bold leading-relaxed">{item.summary}</p>
+                    <span className="brutal-chip mt-4 inline-flex">{item.href_label}</span>
+                  </Link>
+                ))
+              ) : (
+                <EmptyState text="当前还没有图谱治理操作。" />
+              )}
+            </div>
+          </Panel>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -615,7 +683,7 @@ function MetricCard({
   label: string;
   value: number;
   description: string;
-  tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger";
+  tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger" | "paper";
 }) {
   return (
     <Panel className="p-4" tone={tone} intensity="quiet">
@@ -637,7 +705,7 @@ function BacklogSignalCard({
   label: string;
   value: number;
   description: string;
-  tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger";
+  tone: "default" | "info" | "story" | "signal" | "time" | "success" | "danger" | "paper";
 }) {
   return (
     <Panel className="p-4" tone={tone} intensity="quiet">

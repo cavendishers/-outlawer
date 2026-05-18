@@ -365,6 +365,9 @@ def test_curation_endpoints_publish_explicit_response_models() -> None:
 def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
     graph_workspace_schema = _response_data_schema("/api/v1/graph/workspace", "get")
     graph_node_detail_schema = _response_data_schema("/api/v1/graph/nodes/{node_type}/{node_id}", "get")
+    graph_viewpoint_create_schema = _request_schema("/api/v1/graph-viewpoints", "post")
+    graph_viewpoint_list_schema = _response_data_schema("/api/v1/graph-viewpoints", "get")
+    graph_viewpoint_create_response_schema = _response_data_schema("/api/v1/graph-viewpoints", "post")
 
     assert set(graph_workspace_schema["properties"]) == {
         "scope",
@@ -376,6 +379,14 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "timeline_focus",
         "stats",
         "filters",
+        "conflicts",
+        "recent_actions",
+    }
+    stats_schema = _resolve_schema(graph_workspace_schema["properties"]["stats"])
+    assert set(stats_schema["properties"]) >= {
+        "conflict_count",
+        "low_confidence_edge_count",
+        "orphan_node_count",
     }
     assert set(graph_node_detail_schema["properties"]) == {
         "node",
@@ -383,6 +394,26 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "connected_edges",
         "timeline_context",
         "anchor_actions",
+    }
+    assert graph_viewpoint_create_schema["additionalProperties"] is False
+    assert set(graph_viewpoint_create_schema["properties"]) == {
+        "name",
+        "description",
+        "scope",
+        "anchor_type",
+        "anchor_id",
+        "filters_json",
+        "layout_json",
+    }
+    assert graph_viewpoint_create_schema["required"] == ["name"]
+    assert set(graph_viewpoint_list_schema["properties"]) >= {"items", "total"}
+    assert set(graph_viewpoint_create_response_schema["properties"]) >= {
+        "id",
+        "name",
+        "scope",
+        "filters_json",
+        "layout_json",
+        "href",
     }
 
 
@@ -395,4 +426,5 @@ def test_operations_overview_endpoint_publishes_explicit_response_model() -> Non
         "review",
         "extraction",
         "activity",
+        "graph_quality",
     }

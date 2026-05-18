@@ -64,8 +64,13 @@ type GraphWorkspaceData = {
     event_count: number;
     entity_count: number;
     timeline_count: number;
+    conflict_count: number;
+    low_confidence_edge_count: number;
+    orphan_node_count: number;
   };
   filters: GraphWorkspaceFilters;
+  conflicts: GraphConflict[];
+  recent_actions: GraphActionLog[];
 };
 
 type GraphWorkspaceAppliedFilters = {
@@ -143,6 +148,9 @@ type EventNodeCurationContext = {
   event: {
     id: string;
     title: string;
+    summary: string | null;
+    event_type: string | null;
+    status: string | null;
   };
   participants: EventParticipantItem[];
   relations: GraphRelationItem[];
@@ -158,6 +166,8 @@ type EntityNodeCurationContext = {
     id: string;
     display_name: string;
     entity_type: string;
+    description: string | null;
+    status: string;
   };
   relations: GraphRelationItem[];
   stats: {
@@ -178,6 +188,49 @@ type GraphParticipantPayload = {
   entity_id: string;
   role: string | null;
   relation_type: string | null;
+};
+
+type GraphNodeUpdatePayload = {
+  title?: string;
+  summary?: string | null;
+  type?: string | null;
+  status?: string | null;
+};
+
+type GraphConflict = {
+  id: string;
+  severity: string;
+  conflict_type: string;
+  title: string;
+  summary: string;
+  node_ids: string[];
+  edge_label: string | null;
+  href: string;
+};
+
+type GraphActionLog = {
+  id: string;
+  target_type: string;
+  target_id: string;
+  action_type: string;
+  status_before: string | null;
+  status_after: string | null;
+  created_at: string | null;
+  summary: string;
+};
+
+type GraphViewpoint = {
+  id: string;
+  name: string;
+  description: string | null;
+  scope: string;
+  anchor_type: string | null;
+  anchor_id: string | null;
+  filters_json: Record<string, unknown>;
+  layout_json: Record<string, unknown>;
+  href: string;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export function GraphPageClient() {
@@ -201,6 +254,10 @@ export function GraphPageClient() {
   const [mutationBusyKey, setMutationBusyKey] = useState("");
   const [mutationMessage, setMutationMessage] = useState("");
   const [mutationError, setMutationError] = useState("");
+  const [viewpoints, setViewpoints] = useState<GraphViewpoint[]>([]);
+  const [viewpointName, setViewpointName] = useState("");
+  const [viewpointBusy, setViewpointBusy] = useState(false);
+  const [viewpointMessage, setViewpointMessage] = useState("");
   const [error, setError] = useState("");
 
   function buildScopeParams() {
@@ -221,6 +278,11 @@ export function GraphPageClient() {
     return apiFetch<GraphWorkspaceData>(`/graph/workspace${query ? `?${query}` : ""}`);
   }
 
+  async function fetchGraphViewpoints(): Promise<GraphViewpoint[]> {
+    const data = await apiFetch<{ items: GraphViewpoint[]; total: number }>("/graph-viewpoints");
+    return data.items;
+  }
+
   async function fetchNodeDetailData(node: GraphWorkspaceData["nodes"][number]): Promise<GraphNodeDetail> {
     const query = buildScopeParams().toString();
     return apiFetch<GraphNodeDetail>(`/graph/nodes/${node.node_type}/${node.id}${query ? `?${query}` : ""}`);
@@ -231,7 +293,7 @@ export function GraphPageClient() {
   ): Promise<GraphNodeCurationContext | null> {
     if (node.node_type === "event") {
       const data = await apiFetch<{
-        event: { id: string; title: string };
+        event: { id: string; title: string; summary: string | null; event_type: string | null; status: string | null };
         participants: EventParticipantItem[];
         relations: GraphRelationItem[];
         stats: { participant_count: number; relation_count: number };
@@ -246,7 +308,7 @@ export function GraphPageClient() {
     }
     if (node.node_type === "entity") {
       const data = await apiFetch<{
-        entity: { id: string; display_name: string; entity_type: string };
+        entity: { id: string; display_name: string; entity_type: string; description: string | null; status: string };
         relations: GraphRelationItem[];
         stats: { relation_count: number };
       }>(`/curation/entities/${node.id}`);
@@ -286,10 +348,11 @@ export function GraphPageClient() {
   }
 
   useEffect(() => {
-    fetchWorkspaceData()
-      .then((data) => {
+    Promise.all([fetchWorkspaceData(), fetchGraphViewpoints().catch(() => [])])
+      .then(([data, viewpointData]) => {
         startTransition(() => {
           setWorkspace(data);
+          setViewpoints(viewpointData);
           setNodeDetail(null);
           setCurationContext(null);
           setError("");
@@ -499,6 +562,78 @@ export function GraphPageClient() {
     }
   }
 
+  async function handleUpdateNode(nodeType: "event" | "entity", nodeId: string, payload: GraphNodeUpdatePayload) {
+    const normalized =
+      nodeType === "event"
+        ? {
+            title: payload.title,
+            summary: payload.summary,
+            event_type: payload.type,
+            status: payload.status,
+          }
+        : {
+            display_name: payload.title,
+            description: payload.summary,
+            entity_type: payload.type,
+            status: payload.status,
+          };
+    setMutationBusyKey(`node-update-${nodeType}-${nodeId}`);
+    try {
+      await apiFetch(`/curation/${nodeType === "event" ? "events" : "entities"}/${nodeId}`, {
+        method: "PATCH",
+        body: JSON.stringify(normalized),
+      });
+      await refreshGraphStateForNode(nodeType, nodeId);
+      startTransition(() => {
+        setMutationMessage("节点基础信息已更新，图谱工作台已刷新。");
+        setMutationError("");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setMutationError(err instanceof Error ? err.message : "节点基础信息更新失败");
+      });
+    } finally {
+      setMutationBusyKey("");
+    }
+  }
+
+  async function handleSaveViewpoint() {
+    if (!workspace) return;
+    const name = viewpointName.trim() || `${workspace.title} ${new Date().toLocaleString("zh-CN")}`;
+    const filtersJson = {
+      ...workspace.filters.applied,
+      active_node_id: activeNode?.id ?? null,
+    };
+    setViewpointBusy(true);
+    try {
+      const created = await apiFetch<GraphViewpoint>("/graph-viewpoints", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          description: workspace.description,
+          scope: workspace.scope,
+          anchor_type: workspace.anchor?.node_type ?? null,
+          anchor_id: workspace.anchor?.id ?? null,
+          filters_json: filtersJson,
+          layout_json: {
+            active_node_id: activeNode?.id ?? null,
+          },
+        }),
+      });
+      startTransition(() => {
+        setViewpoints((current) => [created, ...current.filter((item) => item.id !== created.id)].slice(0, 20));
+        setViewpointName("");
+        setViewpointMessage("当前图谱视角已保存。");
+      });
+    } catch (err) {
+      startTransition(() => {
+        setViewpointMessage(err instanceof Error ? err.message : "保存图谱视角失败");
+      });
+    } finally {
+      setViewpointBusy(false);
+    }
+  }
+
   return (
     <AuthGate>
       <main className="space-y-6">
@@ -518,7 +653,16 @@ export function GraphPageClient() {
             timelineFocus={workspace.timeline_focus}
             stats={workspace.stats}
             filters={workspace.filters}
+            conflicts={workspace.conflicts}
+            recentActions={workspace.recent_actions}
+            viewpoints={viewpoints}
+            viewpointName={viewpointName}
+            viewpointBusy={viewpointBusy}
+            viewpointMessage={viewpointMessage}
             activeNodeId={activeNode?.id ?? null}
+            onViewpointNameChange={setViewpointName}
+            onSaveViewpoint={handleSaveViewpoint}
+            onDismissViewpointMessage={() => setViewpointMessage("")}
             onSelectNode={handleSelectNode}
             onUpdateFilters={handleUpdateFilters}
             nodeDetail={nodeDetail}
@@ -534,6 +678,7 @@ export function GraphPageClient() {
             onRemoveEventParticipant={handleRemoveEventParticipant}
             onUpsertRelation={handleUpsertRelation}
             onRemoveRelation={handleRemoveRelation}
+            onUpdateNode={handleUpdateNode}
           />
         ) : (
           <GraphPageLoadingPanel />

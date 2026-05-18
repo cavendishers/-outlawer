@@ -75,9 +75,18 @@ class OperationsActivitySummaryResponse(BaseModel):
     recent_actions: list[OperationsActivityItemResponse] = Field(default_factory=list)
 
 
+class OperationsGraphQualityResponse(BaseModel):
+    viewpoint_count: int
+    low_confidence_relation_count: int
+    orphan_entity_count: int
+    orphan_event_count: int
+    recent_graph_actions: list[OperationsActivityItemResponse] = Field(default_factory=list)
+
+
 class OperationsOverviewResponse(BaseModel):
     jobs: OperationsJobSummaryResponse
     assets: OperationsAssetSummaryResponse
     review: OperationsReviewSummaryResponse
     extraction: OperationsExtractionSummaryResponse
     activity: OperationsActivitySummaryResponse
+    graph_quality: OperationsGraphQualityResponse

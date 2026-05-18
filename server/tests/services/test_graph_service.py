@@ -3,7 +3,11 @@ from app.domains.retrieval.graph_query import (
     build_graph_overview_network,
     build_related_event_suggestions,
 )
-from app.domains.retrieval.graph_workspace import apply_workspace_filters, normalize_graph_filters
+from app.domains.retrieval.graph_workspace import (
+    apply_workspace_filters,
+    build_workspace_conflicts,
+    normalize_graph_filters,
+)
 
 
 def test_build_related_event_suggestions_prioritizes_shared_people_and_similarity() -> None:
@@ -180,3 +184,24 @@ def test_graph_workspace_filters_apply_relation_weight_and_time_window() -> None
     assert {node["id"] for node in filtered["nodes"]} == {"evt-1", "ent-1"}
     assert [edge["label"] for edge in filtered["edges"]] == ["参与"]
     assert [item["event_id"] for item in filtered["timeline_focus"]] == ["evt-1"]
+
+
+def test_graph_workspace_conflicts_flag_low_confidence_label_conflict_and_orphan_nodes() -> None:
+    nodes = [
+        {"id": "evt-1", "node_type": "event", "label": "事件一", "subtitle": "2026-04-18", "meta": []},
+        {"id": "ent-1", "node_type": "entity", "label": "人物一", "subtitle": "person", "meta": []},
+        {"id": "ent-2", "node_type": "entity", "label": "孤立人物", "subtitle": "person", "meta": []},
+    ]
+    edges = [
+        {"source_id": "evt-1", "target_id": "ent-1", "edge_type": "participates_in", "label": "参与者", "weight": 0.4},
+        {"source_id": "evt-1", "target_id": "ent-1", "edge_type": "participates_in", "label": "主持人", "weight": 0.8},
+    ]
+
+    conflicts = build_workspace_conflicts(nodes, edges)
+
+    assert {item["conflict_type"] for item in conflicts} == {
+        "low_confidence_edge",
+        "relation_label_conflict",
+        "orphan_node",
+    }
+    assert any(item["node_ids"] == ["ent-2"] for item in conflicts)

@@ -195,6 +195,7 @@ def update_event(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     event = get_owned_event(db, user_id=user_id, event_id=event_id)
+    status_before = event.status
 
     for field in EVENT_EDITABLE_FIELDS:
         if field not in payload:
@@ -218,6 +219,16 @@ def update_event(
     db.add(event)
     sync_timeline_items_for_event(db, event)
     sync_event_style_view_titles(db, event)
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="event",
+        target_id=event.id,
+        action_type="update_event",
+        status_before=status_before,
+        status_after=event.status,
+        payload_json={field: payload[field] for field in EVENT_EDITABLE_FIELDS if field in payload},
+    )
     db.commit()
     db.refresh(event)
     return {
@@ -270,6 +281,22 @@ def upsert_event_participant(
         role=row.role,
         relation_type=row.relation_type,
         created_entity=created_entity,
+    )
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="event",
+        target_id=event.id,
+        action_type="upsert_event_participant",
+        status_before=None,
+        status_after=row.relation_type,
+        payload_json={
+            "entity_id": entity.id,
+            "entity_name": entity.display_name,
+            "role": row.role,
+            "relation_type": row.relation_type,
+            "created_entity": created_entity,
+        },
     )
 
     db.commit()
@@ -418,6 +445,16 @@ def remove_event_participant(db: Session, *, user_id: str, event_id: str, entity
     for relation in relations:
         if is_hidden_participant_relation(relation):
             db.delete(relation)
+    log_curation_action(
+        db,
+        user_id=user_id,
+        target_type="event",
+        target_id=event.id,
+        action_type="remove_event_participant",
+        status_before="participates_in",
+        status_after=None,
+        payload_json={"entity_id": entity.id, "entity_name": entity.display_name},
+    )
 
     db.commit()
     return {"event_id": event.id, "entity_id": entity.id, "status": "removed"}

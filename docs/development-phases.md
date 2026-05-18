@@ -1110,7 +1110,7 @@ Documents updated manually after completion:
 
 ## Phase 26: Graph Workspace And Canvas Editing
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Goal:
 
@@ -1327,6 +1327,41 @@ Verification completed for current slice:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - browser smoke on `/notes/{id}/analysis` -> passed with real analysis workflow data and no horizontal overflow
 - browser smoke on `/notes/{id}/analysis` -> passed with enhanced evidence labels, graph/curation links, and object-level diff sections
+
+## Phase 30: Graph Governance Workbench
+
+Status: `IN_PROGRESS`
+
+Goal:
+
+- turn the shared graph workspace into a practical governance console where saved viewpoints, inline corrections, conflict hints, operation history, and operations quality metrics work together
+
+Current slice delivered:
+
+- added persistent graph viewpoints with Alembic migration, SQLAlchemy model, Pydantic schemas, domain service, and `/api/v1/graph-viewpoints` list/create APIs
+- extended `/api/v1/graph/workspace` with `conflicts`, `recent_actions`, and quality counters for conflict count, low-confidence edges, and orphan nodes
+- graph conflict hints currently cover low-confidence visible edges, duplicate labels on the same relation shape, and orphan visible nodes
+- curation writes now log event updates, participant upserts/removals, and relation actions so graph history can be shown in the workspace and operations console
+- `/graph` can save the current anchor/filter/focus state as a viewpoint and reopen saved viewpoints as quick links
+- `/graph` now supports inline node field correction for event/entity title, summary/description, type, and status, in addition to the existing participant and relation editing
+- `/graph` now shows conflict hints, quality counters, and recent graph-governance actions in the node inspector rail
+- `/operations` now shows graph quality metrics and recent graph-governance actions alongside job/review/asset operations signals
+
+Remaining work:
+
+- add delete/rename support for saved viewpoints if they become noisy
+- add relation-level conflict resolution buttons once relation ids are present in graph edge read models
+- add richer graph operation diff summaries instead of generic action labels
+
+Verification completed for current slice:
+
+- `python3 -m compileall server/app`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api alembic upgrade head`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_graph_service.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/integration/test_e2e_curation_flow.py tests/integration/test_e2e_entity_curation_flow.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
+- browser smoke on `/graph` and `/operations` -> passed with saved-viewpoint, graph-quality, and no-horizontal-overflow checks
 
 Additional Phase 28 status notes:
 
