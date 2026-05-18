@@ -343,6 +343,8 @@ def main() -> None:
         assert analysis_workflow["runs"], analysis_workflow
         assert "raw_result_json" in analysis_workflow["runs"][0]
         assert "normalized_result_json" in analysis_workflow["runs"][0]
+        assert "raw_normalized_diff" in analysis_workflow
+        assert "evidence_groups" in analysis_workflow
         event_ids, entity_ids = get_note_projection_ids(note_id)
         assert event_ids, event_ids
         assert entity_ids, entity_ids
@@ -501,6 +503,8 @@ def main() -> None:
         analysis_workflow_after_reprocess = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/analysis-workflow", headers=headers))
         assert analysis_workflow_after_reprocess["stats"]["run_count"] >= 2
         assert analysis_workflow_after_reprocess["stats"]["job_count"] >= 2
+        assert "raw_normalized_diff" in analysis_workflow_after_reprocess
+        assert "evidence_groups" in analysis_workflow_after_reprocess
         applied_runs = [item for item in extraction_runs["items"] if item["is_applied"]]
         review_runs = [item for item in extraction_runs["items"] if item["status"] == "ready_for_review"]
         assert len(applied_runs) == 1, extraction_runs

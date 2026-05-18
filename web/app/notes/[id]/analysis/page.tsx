@@ -67,6 +67,40 @@ type WorkflowRun = {
   normalized_result_json: Record<string, unknown>;
 };
 
+type WorkflowDiffCollection = {
+  changed: boolean;
+  added: Array<Record<string, unknown>>;
+  removed: Array<Record<string, unknown>>;
+  changed_items: Array<{
+    key: string;
+    base: Record<string, unknown>;
+    candidate: Record<string, unknown>;
+  }>;
+  unchanged_count: number;
+  base_count: number;
+  candidate_count: number;
+};
+
+type WorkflowDiffSection = {
+  changed: boolean;
+  fields: Array<{
+    field: string;
+    base: unknown;
+    candidate: unknown;
+    changed: boolean;
+  }>;
+};
+
+type WorkflowDiff = {
+  changed: boolean;
+  summary: WorkflowDiffSection;
+  entities: WorkflowDiffCollection;
+  events: WorkflowDiffCollection;
+  relations: WorkflowDiffCollection;
+  similarity_hints: WorkflowDiffCollection;
+  style_payload: WorkflowDiffSection;
+};
+
 type WorkflowData = {
   note: NoteDetail;
   asset: {
@@ -122,6 +156,27 @@ type WorkflowData = {
     created_at: string | null;
     updated_at: string | null;
   }>;
+  evidence_groups: Array<{
+    target_type: string;
+    target_id: string;
+    field_names: string[];
+    evidence_count: number;
+    average_confidence: number | null;
+    samples: Array<{
+      id: string;
+      target_type: string;
+      target_id: string;
+      field_name: string | null;
+      evidence_text: string;
+      evidence_offset_start: number | null;
+      evidence_offset_end: number | null;
+      extractor_name: string;
+      extractor_version: string;
+      confidence_score: number | null;
+      created_at: string | null;
+    }>;
+  }>;
+  raw_normalized_diff: WorkflowDiff;
   replay_actions: Array<{
     id: string;
     action_type: string;
@@ -390,6 +445,11 @@ export default function NoteAnalysisPage() {
                 </div>
               </Panel>
             </section>
+
+            <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+              <DiffSummaryPanel diff={workflow.raw_normalized_diff} />
+              <EvidenceGroupsPanel groups={workflow.evidence_groups} />
+            </section>
           </>
         ) : !error ? (
           <Panel className="p-6" tone="quiet">
@@ -408,6 +468,119 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
       <p className="mt-3 break-words text-xl font-black leading-tight">{value}</p>
       <p className="mt-2 text-xs font-bold text-muted">{detail}</p>
     </div>
+  );
+}
+
+function DiffSummaryPanel({ diff }: { diff: WorkflowDiff }) {
+  const collectionRows = [
+    ["人物", diff.entities],
+    ["事件", diff.events],
+    ["关系", diff.relations],
+    ["相似线索", diff.similarity_hints],
+  ] as const;
+  const changedSummaryFields = diff.summary.fields.filter((item) => item.changed);
+  const changedStyleFields = diff.style_payload.fields.filter((item) => item.changed);
+
+  return (
+    <Panel className="p-5" tone="quiet" intensity="quiet">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="section-kicker">规范化差异</p>
+          <h2 className="mt-2 text-2xl font-black">原始输出 vs 系统规范化</h2>
+          <p className="mt-2 text-sm font-bold text-muted">
+            {diff.changed ? "系统在入库前对模型输出做过结构调整。" : "当前应用运行的原始输出与规范化结果一致。"}
+          </p>
+        </div>
+        <span className={`workbench-stamp ${diff.changed ? "bg-gold" : "bg-mint"}`}>
+          {diff.changed ? "有差异" : "无差异"}
+        </span>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {collectionRows.map(([label, section]) => (
+          <div key={label} className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
+            <p className="text-sm font-black">{label}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="brutal-chip">新增 {section.added.length}</span>
+              <span className="brutal-chip">移除 {section.removed.length}</span>
+              <span className="brutal-chip">变更 {section.changed_items.length}</span>
+              <span className="brutal-chip">保留 {section.unchanged_count}</span>
+            </div>
+            <p className="mt-3 text-xs font-bold text-muted">
+              原始 {section.base_count} / 规范化 {section.candidate_count}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <DiffFieldCard title="摘要字段变化" fields={changedSummaryFields} />
+        <DiffFieldCard title="故事视图字段变化" fields={changedStyleFields} />
+      </div>
+    </Panel>
+  );
+}
+
+function DiffFieldCard({ title, fields }: { title: string; fields: WorkflowDiffSection["fields"] }) {
+  return (
+    <div className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-black">{title}</p>
+        <span className="brutal-chip">{fields.length} 项</span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {fields.length ? fields.slice(0, 4).map((field) => (
+          <div key={field.field} className="border-2 border-ink bg-white px-3 py-2">
+            <p className="text-xs font-black text-muted">{field.field}</p>
+            <p className="mt-1 break-words text-sm font-bold leading-relaxed">
+              {stringifyShort(field.base)} {"->"} {stringifyShort(field.candidate)}
+            </p>
+          </div>
+        )) : <p className="text-sm font-bold text-muted">无字段变化</p>}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups"] }) {
+  return (
+    <Panel className="p-5" tone="info" intensity="quiet">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="section-kicker">证据链</p>
+          <h2 className="mt-2 text-2xl font-black">实体、事件、关系的来源片段</h2>
+          <p className="mt-2 text-sm font-bold text-muted">优先展示证据最多的对象，帮助判断 AI 为什么这样抽取。</p>
+        </div>
+        <span className="workbench-stamp bg-aqua">{groups.length} 组</span>
+      </div>
+      <div className="mt-5 space-y-3">
+        {groups.length ? groups.slice(0, 8).map((group) => (
+          <article key={`${group.target_type}-${group.target_id}`} className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-black tracking-[0.14em]">{formatTargetType(group.target_type)}</p>
+                <p className="mt-2 break-words text-lg font-black">{shortId(group.target_id)}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="brutal-chip">证据 {group.evidence_count}</span>
+                <span className="brutal-chip">置信 {formatConfidence(group.average_confidence)}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {group.field_names.map((field) => <span key={field} className="brutal-chip">{field}</span>)}
+            </div>
+            <div className="mt-3 space-y-2">
+              {group.samples.map((sample) => (
+                <div key={sample.id} className="border-2 border-ink bg-white px-3 py-2">
+                  <p className="text-sm font-bold leading-relaxed">{sample.evidence_text}</p>
+                  <p className="mt-2 text-xs font-black text-muted">
+                    {sample.extractor_name} / {sample.extractor_version} / {sample.field_name ?? "unknown"} / {formatConfidence(sample.confidence_score)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </article>
+        )) : <p className="empty-state">暂无抽取证据。后续投影或重新抽取后会在这里显示来源片段。</p>}
+      </div>
+    </Panel>
   );
 }
 
@@ -560,6 +733,24 @@ function formatReplayAction(value: string): string {
   if (value === "reject_extraction_run") return "审批拒绝";
   if (value === "regenerate_story_view") return "重生成故事视图";
   return value;
+}
+
+function formatTargetType(value: string): string {
+  if (value === "entity") return "人物/实体";
+  if (value === "event") return "事件";
+  if (value === "relation") return "关系";
+  return value;
+}
+
+function formatConfidence(value: number | null): string {
+  if (value === null || Number.isNaN(value)) return "未知";
+  return `${Math.round(value * 100)}%`;
+}
+
+function stringifyShort(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "空";
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text.length > 120 ? `${text.slice(0, 120)}...` : text;
 }
 
 function formatStamp(value: string | null): string {

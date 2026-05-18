@@ -166,4 +166,6 @@ The next implementation slice should continue blueprint Phase C while preserving
 - `DONE`: `/notes/{id}/analysis` exposes the trace as a workbench page with pipeline steps, model/provider metadata, raw model output, normalized result JSON, source material, derived text, task records, projection history, and audit notes.
 - `DONE`: `/notes/{id}/analysis` now supports step-level operations for re-running extraction, re-applying a selected projection, and regenerating the note story view from the active extraction run.
 - `DONE`: story regeneration is persisted through `POST /api/v1/notes/{note_id}/story/regenerate` and records a `regenerate_story_view` replay action so the operation history remains auditable.
-- `NEXT`: deepen evidence counts per extracted entity, event, and relation, then add side-by-side raw-output versus normalized-output diffing on the analysis page.
+- `DONE`: analysis workflow responses now include evidence groups for extracted entities, events, and relations, including evidence counts, average confidence, field names, and source snippets.
+- `DONE`: `/notes/{id}/analysis` now includes an active-run raw-output versus normalized-output diff summary so users can see where system normalization changed model output before projection.
+- `NEXT`: add richer object labels to evidence groups and a deeper side-by-side object diff drilldown beyond the current summary panel.

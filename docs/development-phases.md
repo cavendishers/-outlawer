@@ -84,6 +84,11 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase 29 step-action slice
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase 29 step-action slice
 - browser smoke on `/notes/{id}/analysis` -> passed after Phase 29 step-action slice
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py` -> passed after Phase 29 evidence/diff slice
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase 29 evidence/diff slice
+- `cd web && npx tsc --noEmit` -> passed after Phase 29 evidence/diff slice
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase 29 evidence/diff slice
+- browser smoke on `/notes/{id}/analysis` -> passed after Phase 29 evidence/diff slice
 
 ## Architecture Blueprint Track
 
@@ -1299,16 +1304,20 @@ Current slice delivered:
 - the analysis workflow includes a `story_rendering` step so story-view generation is visible in the same pipeline as extraction and projection
 - operation history is rendered as a dedicated audit timeline with action names, status transitions, run ids, projection ids, timestamps, model names, and operator notes
 - full API e2e now asserts story regeneration and the `regenerate_story_view` replay audit action
+- `GET /api/v1/notes/{note_id}/analysis-workflow` now returns evidence groups with target type, target id, field names, evidence count, average confidence, and sample source snippets
+- `GET /api/v1/notes/{note_id}/analysis-workflow` now returns an active-run raw-output versus normalized-output diff summary
+- `/notes/[id]/analysis` now shows a readable evidence-chain panel and a raw/normalized diff summary panel
 
 Remaining work:
 
-- add clearer evidence counts per extracted entity, event, and relation
-- add side-by-side raw-output versus normalized-output diffing on the analysis page
+- add richer object labels to evidence groups so target ids can be replaced by entity/event/relation display names
+- add a deeper side-by-side object diff drilldown beyond the current summary-level diff panel
 
 Verification completed for current slice:
 
 - `python3 -m compileall server/app`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py tests/services/test_projection_service.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py`
 - `cd web && npx tsc --noEmit`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`

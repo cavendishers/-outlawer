@@ -11,6 +11,7 @@ from app.models.ai_job import AIJob
 from app.models.asset_derivative import AssetDerivative
 from app.models.extraction import ExtractionEvidence, ProjectionVersion
 from app.domains.replay.service import (
+    compare_extraction_payloads,
     compare_extraction_runs,
     get_extraction_run,
     list_extraction_runs,
@@ -132,17 +133,24 @@ def get_note_analysis_workflow(db: Session, *, user_id: str, note_id: str) -> di
         )
         or 0
     )
-    evidence_samples = [
-        item.evidence_text
-        for item in db.scalars(
+    evidence_items = list(
+        db.scalars(
             select(ExtractionEvidence)
             .where(ExtractionEvidence.user_id == user_id, ExtractionEvidence.source_note_id == note.id)
             .order_by(ExtractionEvidence.created_at.desc())
-            .limit(5)
         ).all()
+    )
+    evidence_samples = [
+        item.evidence_text
+        for item in evidence_items[:5]
     ]
     latest_run = runs[-1] if runs else None
     active_run = next((run for run in runs if run.id == applied_run_id), latest_run)
+    raw_normalized_diff = (
+        compare_extraction_payloads(active_run.raw_result_json or {}, active_run.normalized_result_json or {})
+        if active_run
+        else empty_extraction_diff()
+    )
 
     return {
         "note": serialize_note(note),
@@ -173,6 +181,8 @@ def get_note_analysis_workflow(db: Session, *, user_id: str, note_id: str) -> di
         "derivatives": [serialize_analysis_derivative(derivative) for derivative in derivatives],
         "runs": [serialize_analysis_run(run, applied_run_id=applied_run_id) for run in runs],
         "projections": [serialize_analysis_projection(projection) for projection in projections],
+        "evidence_groups": build_evidence_groups(evidence_items),
+        "raw_normalized_diff": raw_normalized_diff,
         "replay_actions": [serialize_replay_action(action) for action in replay_actions],
     }
 
@@ -241,6 +251,81 @@ def serialize_analysis_projection(projection: ProjectionVersion) -> dict[str, An
         "summary_json": projection.summary_json or {},
         "created_at": serialize_dt(projection.created_at),
         "updated_at": serialize_dt(projection.updated_at),
+    }
+
+
+def build_evidence_groups(evidence_items: list[ExtractionEvidence]) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in evidence_items:
+        key = (item.target_type, item.target_id)
+        if key not in groups:
+            groups[key] = {
+                "target_type": item.target_type,
+                "target_id": item.target_id,
+                "field_names": [],
+                "evidence_count": 0,
+                "average_confidence": None,
+                "samples": [],
+                "_confidence_sum": 0.0,
+                "_confidence_count": 0,
+            }
+        group = groups[key]
+        field_name = item.field_name or "unknown"
+        if field_name not in group["field_names"]:
+            group["field_names"].append(field_name)
+        group["evidence_count"] += 1
+        if item.confidence_score is not None:
+            group["_confidence_sum"] += item.confidence_score
+            group["_confidence_count"] += 1
+        if len(group["samples"]) < 3:
+            group["samples"].append(serialize_analysis_evidence(item))
+
+    for group in groups.values():
+        group["average_confidence"] = (
+            round(group["_confidence_sum"] / group["_confidence_count"], 4)
+            if group["_confidence_count"]
+            else None
+        )
+        del group["_confidence_sum"]
+        del group["_confidence_count"]
+    return sorted(groups.values(), key=lambda item: (-item["evidence_count"], item["target_type"], item["target_id"]))
+
+
+def serialize_analysis_evidence(item: ExtractionEvidence) -> dict[str, Any]:
+    return {
+        "id": item.id,
+        "target_type": item.target_type,
+        "target_id": item.target_id,
+        "field_name": item.field_name,
+        "evidence_text": truncate_text(item.evidence_text, limit=420) or "",
+        "evidence_offset_start": item.evidence_offset_start,
+        "evidence_offset_end": item.evidence_offset_end,
+        "extractor_name": item.extractor_name,
+        "extractor_version": item.extractor_version,
+        "confidence_score": item.confidence_score,
+        "created_at": serialize_dt(item.created_at),
+    }
+
+
+def empty_extraction_diff() -> dict[str, Any]:
+    empty_collection = {
+        "changed": False,
+        "added": [],
+        "removed": [],
+        "changed_items": [],
+        "unchanged_count": 0,
+        "base_count": 0,
+        "candidate_count": 0,
+    }
+    empty_section = {"changed": False, "fields": []}
+    return {
+        "changed": False,
+        "summary": empty_section,
+        "entities": empty_collection,
+        "events": empty_collection,
+        "relations": empty_collection,
+        "similarity_hints": empty_collection,
+        "style_payload": empty_section,
     }
 
 

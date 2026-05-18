@@ -460,6 +460,25 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
                 updated_at=now,
             )
         )
+        db.add(
+            ExtractionEvidence(
+                id="evidence-1",
+                user_id="user-1",
+                source_note_id="note-1",
+                source_asset_id="asset-1",
+                target_type="entity",
+                target_id="entity-1",
+                field_name="canonical_name",
+                evidence_text="张三参加启动会",
+                evidence_offset_start=11,
+                evidence_offset_end=18,
+                extractor_name="deepseek",
+                extractor_version="v1",
+                confidence_score=0.82,
+                created_at=now,
+                updated_at=now,
+            )
+        )
         db.commit()
 
         workflow = get_note_analysis_workflow(db, user_id="user-1", note_id="note-1")
@@ -470,6 +489,12 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
     assert workflow["stats"]["derivative_count"] == 1
     assert workflow["stats"]["run_count"] == 1
     assert workflow["stats"]["replay_action_count"] == 1
+    assert workflow["stats"]["evidence_count"] == 1
+    assert workflow["evidence_groups"][0]["target_type"] == "entity"
+    assert workflow["evidence_groups"][0]["evidence_count"] == 1
+    assert workflow["evidence_groups"][0]["average_confidence"] == 0.82
+    assert workflow["evidence_groups"][0]["samples"][0]["evidence_text"] == "张三参加启动会"
+    assert workflow["raw_normalized_diff"]["changed"] is False
     assert [step["step_key"] for step in workflow["steps"]] == [
         "raw_asset",
         "text_preparation",

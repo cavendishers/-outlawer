@@ -233,6 +233,8 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
         "derivatives",
         "runs",
         "projections",
+        "evidence_groups",
+        "raw_normalized_diff",
         "replay_actions",
     }
     assert set(run_compare_schema["properties"]) == {"note_id", "base_run", "candidate_run", "diff"}

@@ -132,6 +132,29 @@ class AnalysisWorkflowProjectionResponse(BaseModel):
     updated_at: str | None = None
 
 
+class AnalysisWorkflowEvidenceSampleResponse(BaseModel):
+    id: str
+    target_type: str
+    target_id: str
+    field_name: str | None = None
+    evidence_text: str
+    evidence_offset_start: int | None = None
+    evidence_offset_end: int | None = None
+    extractor_name: str
+    extractor_version: str
+    confidence_score: float | None = None
+    created_at: str | None = None
+
+
+class AnalysisWorkflowEvidenceGroupResponse(BaseModel):
+    target_type: str
+    target_id: str
+    field_names: list[str] = Field(default_factory=list)
+    evidence_count: int
+    average_confidence: float | None = None
+    samples: list[AnalysisWorkflowEvidenceSampleResponse] = Field(default_factory=list)
+
+
 class AnalysisWorkflowStepResponse(BaseModel):
     step_key: str
     title: str
@@ -172,21 +195,6 @@ class ReplayActionResponse(BaseModel):
     prompt_version: str | None = None
     schema_version: str | None = None
     note: str | None = None
-
-
-class AnalysisWorkflowResponse(BaseModel):
-    note: NoteResponse
-    asset: AnalysisWorkflowAssetResponse | None = None
-    active_run_id: str | None = None
-    latest_run_id: str | None = None
-    active_projection_id: str | None = None
-    stats: AnalysisWorkflowStatsResponse
-    steps: list[AnalysisWorkflowStepResponse] = Field(default_factory=list)
-    jobs: list[AnalysisWorkflowJobResponse] = Field(default_factory=list)
-    derivatives: list[AnalysisWorkflowDerivativeResponse] = Field(default_factory=list)
-    runs: list[AnalysisWorkflowRunResponse] = Field(default_factory=list)
-    projections: list[AnalysisWorkflowProjectionResponse] = Field(default_factory=list)
-    replay_actions: list[ReplayActionResponse] = Field(default_factory=list)
 
 
 class ProjectionResultResponse(BaseModel):
@@ -243,6 +251,23 @@ class ExtractionRunCompareResponse(BaseModel):
     base_run: ExtractionRunResponse
     candidate_run: ExtractionRunResponse
     diff: ExtractionRunCompareDiffResponse
+
+
+class AnalysisWorkflowResponse(BaseModel):
+    note: NoteResponse
+    asset: AnalysisWorkflowAssetResponse | None = None
+    active_run_id: str | None = None
+    latest_run_id: str | None = None
+    active_projection_id: str | None = None
+    stats: AnalysisWorkflowStatsResponse
+    steps: list[AnalysisWorkflowStepResponse] = Field(default_factory=list)
+    jobs: list[AnalysisWorkflowJobResponse] = Field(default_factory=list)
+    derivatives: list[AnalysisWorkflowDerivativeResponse] = Field(default_factory=list)
+    runs: list[AnalysisWorkflowRunResponse] = Field(default_factory=list)
+    projections: list[AnalysisWorkflowProjectionResponse] = Field(default_factory=list)
+    evidence_groups: list[AnalysisWorkflowEvidenceGroupResponse] = Field(default_factory=list)
+    raw_normalized_diff: ExtractionRunCompareDiffResponse
+    replay_actions: list[ReplayActionResponse] = Field(default_factory=list)
 
 
 class NoteExtractionRunApplyResponse(BaseModel):
