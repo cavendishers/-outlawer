@@ -18,11 +18,13 @@ from app.schemas.note import (
     NoteExtractionRunApproveResponse,
     NoteExtractionRunRejectResponse,
     NoteReplayActionRequest,
+    NoteStoryRegenerateResponse,
     NoteResponse,
     ProjectionResultResponse,
     ReplayActionResponse,
 )
 from app.domains.extraction.asset_text import get_asset_text
+from app.domains.projection.service import regenerate_note_style_view_from_payload
 from app.domains.retrieval import note_query
 from app.domains.replay.service import (
     RUN_STATUS_REJECTED,
@@ -32,12 +34,14 @@ from app.domains.replay.service import (
     get_extraction_run,
     list_extraction_runs,
     list_note_replay_actions,
+    log_replay_action,
     reject_reviewable_extraction_run,
     resolve_applied_run_id,
     serialize_replay_action,
     serialize_extraction_run,
 )
 from app.shared.messaging.jobs import dispatch_job
+from app.api.v1.views import story_to_dict
 
 router = APIRouter()
 
@@ -329,3 +333,41 @@ def reprocess_note(note_id: str, db: DbSession, user=Depends(get_current_user)) 
     db.refresh(job)
     dispatch_job(job)
     return ok({"note_id": note.id, "job_id": job.id})
+
+
+@router.post("/{note_id}/story/regenerate", response_model=Envelope[NoteStoryRegenerateResponse])
+def regenerate_note_story(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    note = db.get(Note, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    runs = list_extraction_runs(db, user_id=user.id, note_id=note.id)
+    applied_run_id = resolve_applied_run_id(runs)
+    run = next((item for item in runs if item.id == applied_run_id), runs[0] if runs else None)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No extraction run available")
+    style_payload = (run.normalized_result_json or {}).get("style_payload")
+    if not isinstance(style_payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No style payload available")
+
+    story = regenerate_note_style_view_from_payload(
+        db,
+        user_id=user.id,
+        note_id=note.id,
+        style_payload=style_payload,
+    )
+    log_replay_action(
+        db,
+        user_id=user.id,
+        note_id=note.id,
+        run=run,
+        action_type="regenerate_story_view",
+        previous_run_id=applied_run_id,
+        projection_version_id=note.active_projection_id,
+        previous_projection_version_id=note.active_projection_id,
+        operator_note="从分析工作流重生成故事视图。",
+        status_before="story_ready",
+        status_after="story_regenerated",
+    )
+    db.commit()
+    db.refresh(story)
+    return ok({"note_id": note.id, "story_view": story_to_dict(story), "run_id": run.id})

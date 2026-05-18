@@ -164,4 +164,6 @@ The next implementation slice should continue blueprint Phase C while preserving
 
 - `DONE`: note analysis now has a dedicated read model and page. `GET /api/v1/notes/{note_id}/analysis-workflow` stitches together the raw asset, asset derivatives, AI jobs, extraction runs, projection versions, and replay audit actions for one note.
 - `DONE`: `/notes/{id}/analysis` exposes the trace as a workbench page with pipeline steps, model/provider metadata, raw model output, normalized result JSON, source material, derived text, task records, projection history, and audit notes.
-- `NEXT`: single-step rerun should build on this workflow surface, starting with re-running extraction or projection without re-uploading the source asset.
+- `DONE`: `/notes/{id}/analysis` now supports step-level operations for re-running extraction, re-applying a selected projection, and regenerating the note story view from the active extraction run.
+- `DONE`: story regeneration is persisted through `POST /api/v1/notes/{note_id}/story/regenerate` and records a `regenerate_story_view` replay action so the operation history remains auditable.
+- `NEXT`: deepen evidence counts per extracted entity, event, and relation, then add side-by-side raw-output versus normalized-output diffing on the analysis page.

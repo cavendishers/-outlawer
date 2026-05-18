@@ -23,6 +23,7 @@ REPLAY_ACTION_TYPES = {
     "auto_apply_extraction_run",
     "approve_extraction_run",
     "reject_extraction_run",
+    "regenerate_story_view",
 }
 PROJECTION_STATUS_APPLIED = "applied"
 PROJECTION_STATUS_SUPERSEDED = "superseded"

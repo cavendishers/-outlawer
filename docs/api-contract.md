@@ -92,6 +92,7 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/approve` returns `Envelope[NoteExtractionRunApproveResponse]`
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject` returns `Envelope[NoteExtractionRunRejectResponse]`
 - `POST /api/v1/notes/{note_id}/reprocess` returns `Envelope[NoteCreateResponse]`
+- `POST /api/v1/notes/{note_id}/story/regenerate` returns `Envelope[NoteStoryRegenerateResponse]`
 - `GET /api/v1/views/story/note/{note_id}` returns `Envelope[StoryViewResponse]`
 - `GET /api/v1/views/story/entity/{entity_id}` returns `Envelope[StoryViewResponse]`
 - `GET /api/v1/search` returns `Envelope[SearchResultListResponse]`
@@ -239,6 +240,7 @@ Responsibilities:
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/reject`
 - `POST /api/v1/notes/{note_id}/extraction-runs/{run_id}/apply`
 - `POST /api/v1/notes/{note_id}/reprocess`
+- `POST /api/v1/notes/{note_id}/story/regenerate`
 
 Responsibilities:
 
@@ -252,7 +254,9 @@ Responsibilities:
 - create `ready_for_review` draft runs during reprocess when an active projection already exists
 - approve or reject reviewable draft runs explicitly before changing the current projection
 - apply a selected historical extraction run back into the current note projection
+- regenerate the note-level story view from the currently applied extraction run's `style_payload`
 - expose replay audit history for automatic and manual projection-apply actions, including projection-version ids
+- expose replay audit history for story-view regeneration actions
 - return the active note projection pointer and the projection version id created by apply/approve actions
 - return paginated note collections for library-style UIs
 

@@ -142,10 +142,16 @@ export default function NoteAnalysisPage() {
   const params = useParams<{ id: string }>();
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busyAction, setBusyAction] = useState("");
 
   useEffect(() => {
     if (!params?.id) return;
-    apiFetch<WorkflowData>(`/notes/${params.id}/analysis-workflow`)
+    void loadWorkflow(params.id);
+  }, [params]);
+
+  async function loadWorkflow(noteId: string) {
+    return apiFetch<WorkflowData>(`/notes/${noteId}/analysis-workflow`)
       .then((data) => {
         setWorkflow(data);
         setError("");
@@ -154,7 +160,36 @@ export default function NoteAnalysisPage() {
         setWorkflow(null);
         setError(err instanceof Error ? err.message : "分析工作流加载失败");
       });
-  }, [params]);
+  }
+
+  async function runWorkflowAction(action: "rerun_extraction" | "apply_projection" | "regenerate_story", runId?: string) {
+    if (!params?.id) return;
+    setBusyAction(`${action}-${runId ?? "note"}`);
+    try {
+      if (action === "rerun_extraction") {
+        const result = await apiFetch<{ note_id: string; job_id: string }>(`/notes/${params.id}/reprocess`, {
+          method: "POST",
+        });
+        setNotice(`已创建重跑抽取任务：${result.job_id}`);
+      } else if (action === "apply_projection" && runId) {
+        await apiFetch(`/notes/${params.id}/extraction-runs/${runId}/apply`, {
+          method: "POST",
+          body: JSON.stringify({ note: "从分析工作流重新应用投影。" }),
+        });
+        setNotice("已重新应用投影，当前工作流已刷新。");
+      } else if (action === "regenerate_story") {
+        await apiFetch(`/notes/${params.id}/story/regenerate`, { method: "POST" });
+        setNotice("已根据当前抽取运行重生成故事视图。");
+      }
+      await loadWorkflow(params.id);
+      setError("");
+    } catch (err) {
+      setNotice("");
+      setError(err instanceof Error ? err.message : "工作流操作失败");
+    } finally {
+      setBusyAction("");
+    }
+  }
 
   const activeRun = useMemo(
     () => workflow?.runs.find((run) => run.id === workflow.active_run_id) ?? workflow?.runs.at(-1) ?? null,
@@ -195,6 +230,17 @@ export default function NoteAnalysisPage() {
           </Panel>
         ) : null}
 
+        {notice ? (
+          <Panel className="p-5 text-base font-black" tone="success">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p>{notice}</p>
+              <button type="button" onClick={() => setNotice("")} className="brutal-action text-xs">
+                关闭
+              </button>
+            </div>
+          </Panel>
+        ) : null}
+
         {workflow ? (
           <>
             <Panel className="p-5" tone="info" intensity="quiet">
@@ -212,7 +258,25 @@ export default function NoteAnalysisPage() {
                   <p className="section-kicker">流水线</p>
                   <h2 className="mt-2 text-2xl font-black">从原始材料到知识图谱</h2>
                 </div>
-                <span className="brutal-chip">步骤 {workflow.steps.length}</span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void runWorkflowAction("rerun_extraction")}
+                    disabled={Boolean(busyAction)}
+                    className="brutal-action brutal-action-primary text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {busyAction === "rerun_extraction-note" ? "创建中..." : "重跑抽取"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void runWorkflowAction("regenerate_story")}
+                    disabled={Boolean(busyAction) || !activeRun}
+                    className="brutal-action brutal-action-info text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {busyAction === "regenerate_story-note" ? "生成中..." : "重生成故事"}
+                  </button>
+                  <span className="brutal-chip">步骤 {workflow.steps.length}</span>
+                </div>
               </div>
               <div className="mt-5 space-y-3">
                 {workflow.steps.map((step, index) => (
@@ -229,8 +293,16 @@ export default function NoteAnalysisPage() {
                           {step.provider_name ? <span className="brutal-chip">{step.provider_name}</span> : null}
                           {step.model_name ? <span className="brutal-chip">{step.model_name}</span> : null}
                           {step.duration_ms !== null ? <span className="brutal-chip">{step.duration_ms}ms</span> : null}
+                          {step.started_at ? <span className="brutal-chip">开始 {formatStamp(step.started_at)}</span> : null}
+                          {step.finished_at ? <span className="brutal-chip">完成 {formatStamp(step.finished_at)}</span> : null}
                           {step.output_refs.length ? <span className="brutal-chip">输出 {step.output_refs.length}</span> : null}
                         </div>
+                        <StepActions
+                          stepKey={step.step_key}
+                          activeRun={activeRun}
+                          busyAction={busyAction}
+                          onRunAction={runWorkflowAction}
+                        />
                         {step.evidence.length ? (
                           <div className="mt-3 space-y-2">
                             {step.evidence.map((item) => (
@@ -273,6 +345,24 @@ export default function NoteAnalysisPage() {
                           <span className="brutal-chip">{formatStamp(run.created_at)}</span>
                         </div>
                       </summary>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void runWorkflowAction("apply_projection", run.id)}
+                          disabled={Boolean(busyAction) || run.is_applied || run.status === "ready_for_review" || run.status === "rejected"}
+                          className="brutal-action brutal-action-primary text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {busyAction === `apply_projection-${run.id}` ? "应用中..." : run.is_applied ? "当前已应用" : "重新应用投影"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void runWorkflowAction("regenerate_story")}
+                          disabled={Boolean(busyAction) || !run.is_applied}
+                          className="brutal-action brutal-action-info text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {busyAction === "regenerate_story-note" ? "生成中..." : "用当前版本重生成故事"}
+                        </button>
+                      </div>
                       <div className="mt-4 grid gap-4 lg:grid-cols-2">
                         <JsonBlock title="模型原始输出" value={run.raw_result_json} />
                         <JsonBlock title="系统规范化结果" value={run.normalized_result_json} />
@@ -296,7 +386,7 @@ export default function NoteAnalysisPage() {
                   <InfoCard title="衍生内容" rows={workflow.derivatives.map((item) => [item.derivative_type, item.content_preview || item.version])} />
                   <InfoCard title="任务记录" rows={workflow.jobs.map((job) => [job.job_type, `${formatStatus(job.status)} / ${formatStamp(job.finished_at)}`])} />
                   <InfoCard title="投影版本" rows={workflow.projections.map((projection) => [shortId(projection.id), projection.action_type])} />
-                  <InfoCard title="审计动作" rows={workflow.replay_actions.map((action) => [formatReplayAction(action.action_type), action.note ?? `${formatStatus(action.status_before ?? "none")} -> ${formatStatus(action.status_after ?? "none")}`])} />
+                  <AuditTrail actions={workflow.replay_actions} />
                 </div>
               </Panel>
             </section>
@@ -321,6 +411,57 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
   );
 }
 
+function StepActions({
+  stepKey,
+  activeRun,
+  busyAction,
+  onRunAction,
+}: {
+  stepKey: string;
+  activeRun: WorkflowRun | null;
+  busyAction: string;
+  onRunAction: (action: "rerun_extraction" | "apply_projection" | "regenerate_story", runId?: string) => Promise<void>;
+}) {
+  if (stepKey === "knowledge_extraction") {
+    return (
+      <button
+        type="button"
+        onClick={() => void onRunAction("rerun_extraction")}
+        disabled={Boolean(busyAction)}
+        className="brutal-action brutal-action-primary mt-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busyAction === "rerun_extraction-note" ? "创建重跑任务中..." : "重跑抽取"}
+      </button>
+    );
+  }
+  if (stepKey === "projection" && activeRun) {
+    const cannotApply = ["ready_for_review", "rejected"].includes(activeRun.status);
+    return (
+      <button
+        type="button"
+        onClick={() => void onRunAction("apply_projection", activeRun.id)}
+        disabled={Boolean(busyAction) || cannotApply}
+        className="brutal-action brutal-action-primary mt-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busyAction === `apply_projection-${activeRun.id}` ? "重新应用中..." : "重新应用当前投影"}
+      </button>
+    );
+  }
+  if (stepKey === "story_rendering") {
+    return (
+      <button
+        type="button"
+        onClick={() => void onRunAction("regenerate_story")}
+        disabled={Boolean(busyAction) || !activeRun}
+        className="brutal-action brutal-action-info mt-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busyAction === "regenerate_story-note" ? "重生成中..." : "重生成故事视图"}
+      </button>
+    );
+  }
+  return null;
+}
+
 function InfoCard({ title, rows }: { title: string; rows: Array<[string, string]> }) {
   return (
     <div className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
@@ -332,6 +473,38 @@ function InfoCard({ title, rows }: { title: string; rows: Array<[string, string]
             <p className="mt-1 break-words text-sm font-bold leading-relaxed">{value}</p>
           </div>
         )) : <p className="text-sm font-bold text-muted">暂无记录</p>}
+      </div>
+    </div>
+  );
+}
+
+function AuditTrail({ actions }: { actions: WorkflowData["replay_actions"] }) {
+  return (
+    <div className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-black">操作历史</p>
+        <span className="brutal-chip">{actions.length} 条</span>
+      </div>
+      <div className="mt-3 space-y-3">
+        {actions.length ? actions.map((action) => (
+          <article key={action.id} className="border-2 border-ink bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-black">{formatReplayAction(action.action_type)}</p>
+                <p className="mt-1 text-xs font-bold text-muted">
+                  {formatStatus(action.status_before ?? "none")} {"->"} {formatStatus(action.status_after ?? "none")}
+                </p>
+              </div>
+              <span className="brutal-chip">{formatStamp(action.created_at)}</span>
+            </div>
+            {action.note ? <p className="mt-3 text-sm font-bold leading-relaxed">{action.note}</p> : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {action.run_id ? <span className="brutal-chip">运行 {shortId(action.run_id)}</span> : null}
+              {action.projection_version_id ? <span className="brutal-chip">投影 {shortId(action.projection_version_id)}</span> : null}
+              {action.model_name ? <span className="brutal-chip">{action.model_name}</span> : null}
+            </div>
+          </article>
+        )) : <p className="text-sm font-bold text-muted">暂无操作历史</p>}
       </div>
     </div>
   );
@@ -385,6 +558,7 @@ function formatReplayAction(value: string): string {
   if (value === "apply_extraction_run") return "手动重放";
   if (value === "approve_extraction_run") return "审批通过";
   if (value === "reject_extraction_run") return "审批拒绝";
+  if (value === "regenerate_story_view") return "重生成故事视图";
   return value;
 }
 

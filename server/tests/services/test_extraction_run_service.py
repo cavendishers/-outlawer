@@ -11,6 +11,7 @@ from app.models.extraction import ExtractionEvidence, ExtractionRun, ProjectionV
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
+from app.models.style_view import StyleView
 from app.models.user import User
 from app.domains.replay.service import (
     RUN_STATUS_READY_FOR_REVIEW,
@@ -349,6 +350,7 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
         ExtractionRun.__table__,
         ProjectionVersion.__table__,
         ExtractionEvidence.__table__,
+        StyleView.__table__,
         AIJob.__table__,
         ReviewAction.__table__,
     ]
@@ -474,6 +476,7 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
         "knowledge_extraction",
         "projection",
         "review_governance",
+        "story_rendering",
     ]
     assert workflow["runs"][0]["raw_result_json"]["summary"]["title"] == "启动会"
     assert workflow["steps"][2]["model_name"] == "deepseek-v4-pro"

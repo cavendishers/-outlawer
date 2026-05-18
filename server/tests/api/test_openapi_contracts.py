@@ -218,6 +218,7 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     approve_schema = _response_data_schema("/api/v1/notes/{note_id}/extraction-runs/{run_id}/approve", "post")
     reject_schema = _response_data_schema("/api/v1/notes/{note_id}/extraction-runs/{run_id}/reject", "post")
     reprocess_schema = _response_data_schema("/api/v1/notes/{note_id}/reprocess", "post")
+    story_regenerate_schema = _response_data_schema("/api/v1/notes/{note_id}/story/regenerate", "post")
 
     assert set(run_list_schema["properties"]) == {"items", "total"}
     assert set(analysis_workflow_schema["properties"]) == {
@@ -240,6 +241,7 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     assert set(approve_schema["properties"]) == {"note", "approved_run", "projection_result", "replay_actions"}
     assert set(reject_schema["properties"]) == {"note", "rejected_run", "replay_actions"}
     assert set(reprocess_schema["properties"]) == {"note_id", "job_id"}
+    assert set(story_regenerate_schema["properties"]) == {"note_id", "story_view", "run_id"}
 
     run_item_schema = _resolve_schema(run_list_schema["properties"]["items"]["items"])
     replay_action_item_schema = _resolve_schema(replay_actions_schema["properties"]["items"]["items"])

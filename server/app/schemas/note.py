@@ -36,6 +36,21 @@ class NoteCreateResponse(BaseModel):
     job_id: str
 
 
+class NoteStoryViewSnapshotResponse(BaseModel):
+    id: str
+    target_type: str
+    target_id: str
+    title: str
+    content: str
+    style_type: str
+
+
+class NoteStoryRegenerateResponse(BaseModel):
+    note_id: str
+    story_view: NoteStoryViewSnapshotResponse
+    run_id: str | None = None
+
+
 class ExtractionRunSummaryResponse(BaseModel):
     title: str
     category: str

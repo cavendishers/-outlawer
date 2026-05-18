@@ -1,8 +1,19 @@
 from datetime import UTC, datetime
 
-from app.domains.projection.service import apply_entity_seen_time_from_event, build_story_body, resolve_relation_object_id
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.core.database import Base
+from app.domains.projection.service import (
+    apply_entity_seen_time_from_event,
+    build_story_body,
+    regenerate_note_style_view_from_payload,
+    resolve_relation_object_id,
+)
 from app.models.entity import Entity
 from app.models.event import Event
+from app.models.style_view import StyleView
+from app.models.user import User
 
 
 def test_resolve_relation_object_id_prefers_note_id_and_temp_map() -> None:
@@ -35,6 +46,44 @@ def test_build_story_body_joins_only_non_empty_event_narrative_sections() -> Non
     )
 
     assert body == "第一幕\n第二幕"
+
+
+def test_regenerate_note_style_view_upserts_existing_story() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine, tables=[User.__table__, StyleView.__table__])
+    Session = sessionmaker(bind=engine)
+
+    with Session() as db:
+        db.add(User(id="user-1", username="admin", password_hash="hash", display_name="Admin"))
+        existing = StyleView(
+            id="story-1",
+            user_id="user-1",
+            target_type="note",
+            target_id="note-1",
+            style_type="chunibyo",
+            title="旧标题",
+            content="旧正文",
+        )
+        db.add(existing)
+        db.commit()
+
+        story = regenerate_note_style_view_from_payload(
+            db,
+            user_id="user-1",
+            note_id="note-1",
+            style_payload={
+                "title": "命运卷宗：启动会",
+                "event_narrative": [{"body": "第一幕"}, {"body": "第二幕"}],
+            },
+        )
+        db.commit()
+
+        rows = db.query(StyleView).all()
+
+    assert story.id == "story-1"
+    assert len(rows) == 1
+    assert rows[0].title == "命运卷宗：启动会"
+    assert rows[0].content == "第一幕\n第二幕"
 
 
 def test_apply_entity_seen_time_from_event_uses_event_time_bounds() -> None:

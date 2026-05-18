@@ -540,6 +540,37 @@ def persist_style_views(
             )
 
 
+def regenerate_note_style_view_from_payload(db: Session, *, user_id: str, note_id: str, style_payload: dict) -> StyleView:
+    story_body = build_story_body(style_payload)
+    story_title = style_payload.get("title") or "命运卷宗"
+    existing = db.scalar(
+        select(StyleView).where(
+            StyleView.user_id == user_id,
+            StyleView.target_type == "note",
+            StyleView.target_id == note_id,
+            StyleView.style_type == "chunibyo",
+        )
+    )
+    if existing:
+        existing.title = story_title
+        existing.content = story_body
+        db.add(existing)
+        db.flush()
+        return existing
+
+    story = StyleView(
+        user_id=user_id,
+        target_type="note",
+        target_id=note_id,
+        style_type="chunibyo",
+        title=story_title,
+        content=story_body,
+    )
+    db.add(story)
+    db.flush()
+    return story
+
+
 def build_story_body(style_payload: dict) -> str:
     return "\n".join(
         part["body"] for part in style_payload.get("event_narrative", []) if part.get("body")

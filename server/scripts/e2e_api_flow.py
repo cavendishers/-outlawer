@@ -547,6 +547,12 @@ def main() -> None:
         assert replay_actions["items"][0]["run_id"] == review_run_id
         assert replay_actions["items"][0]["projection_version_id"]
         assert replay_actions["items"][0]["note"] == "审批通过新的抽取草稿，确认草稿审批链路。"
+        regenerated_story = assert_ok(client.post(f"{args.base_url}/notes/{note_id}/story/regenerate", headers=headers))
+        assert regenerated_story["note_id"] == note_id
+        assert regenerated_story["run_id"] == review_run_id
+        assert regenerated_story["story_view"]["target_id"] == note_id
+        replay_actions_after_story = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/replay-actions", headers=headers))
+        assert any(item["action_type"] == "regenerate_story_view" for item in replay_actions_after_story["items"])
 
         second_asset = assert_ok(
             client.post(

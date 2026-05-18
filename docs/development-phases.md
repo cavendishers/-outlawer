@@ -79,6 +79,11 @@ Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Use
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 12
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/services/test_local_media_service.py tests/services/test_asset_text_service.py tests/services/test_extractor_service.py tests/api/test_openapi_contracts.py` -> passed after Phase C domain packaging slice 13
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase C domain packaging slice 13
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py tests/services/test_projection_service.py` -> passed after Phase 29 step-action slice
+- `cd web && npx tsc --noEmit` -> passed after Phase 29 step-action slice
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after Phase 29 step-action slice
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after Phase 29 step-action slice
+- browser smoke on `/notes/{id}/analysis` -> passed after Phase 29 step-action slice
 
 ## Architecture Blueprint Track
 
@@ -1289,17 +1294,21 @@ Current slice delivered:
 - `/notes/[id]/analysis` now presents the pipeline as a dedicated workbench page instead of burying analysis details inside the note detail page
 - `/notes/[id]` now links directly to the analysis process page
 - full API e2e now asserts the workflow endpoint after initial processing and after reprocess creates additional runs
+- `/notes/[id]/analysis` now exposes step-level actions for `重跑抽取`, `重新应用投影`, and `重生成故事视图`
+- `POST /api/v1/notes/{note_id}/story/regenerate` regenerates a note-level story view from the active extraction run's `style_payload`
+- the analysis workflow includes a `story_rendering` step so story-view generation is visible in the same pipeline as extraction and projection
+- operation history is rendered as a dedicated audit timeline with action names, status transitions, run ids, projection ids, timestamps, model names, and operator notes
+- full API e2e now asserts story regeneration and the `regenerate_story_view` replay audit action
 
 Remaining work:
 
-- add single-step rerun actions for extraction, projection, and story rendering
 - add clearer evidence counts per extracted entity, event, and relation
 - add side-by-side raw-output versus normalized-output diffing on the analysis page
 
 Verification completed for current slice:
 
 - `python3 -m compileall server/app`
-- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py tests/services/test_projection_service.py`
 - `cd web && npx tsc --noEmit`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`

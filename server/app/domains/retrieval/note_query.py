@@ -21,6 +21,7 @@ from app.domains.replay.service import (
 )
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
+from app.models.style_view import StyleView
 
 
 def get_owned_note(db: Session, *, user_id: str, note_id: str) -> Note:
@@ -111,6 +112,17 @@ def get_note_analysis_workflow(db: Session, *, user_id: str, note_id: str) -> di
             .order_by(ProjectionVersion.created_at.asc())
         ).all()
     )
+    story_views = list(
+        db.scalars(
+            select(StyleView)
+            .where(
+                StyleView.user_id == user_id,
+                StyleView.target_type == "note",
+                StyleView.target_id == note.id,
+            )
+            .order_by(StyleView.updated_at.desc())
+        ).all()
+    )
     replay_actions = list_note_replay_actions(db, user_id=user_id, note_id=note.id, limit=50)
     evidence_count = int(
         db.scalar(
@@ -153,6 +165,7 @@ def get_note_analysis_workflow(db: Session, *, user_id: str, note_id: str) -> di
             jobs=jobs,
             active_run=active_run,
             projections=projections,
+            story_views=story_views,
             replay_actions=replay_actions,
             evidence_samples=evidence_samples,
         ),
@@ -239,6 +252,7 @@ def build_analysis_steps(
     jobs: list[AIJob],
     active_run,
     projections: list[ProjectionVersion],
+    story_views: list[StyleView],
     replay_actions,
     evidence_samples: list[str],
 ) -> list[dict[str, Any]]:
@@ -317,6 +331,19 @@ def build_analysis_steps(
                 if (action.payload_json or {}).get("note")
             ][:3],
             "output_refs": [action.id for action in replay_actions[:5]],
+        },
+        {
+            "step_key": "story_rendering",
+            "title": "中二风故事视图",
+            "status": "completed" if story_views else "not_generated",
+            "started_at": serialize_dt(story_views[-1].created_at) if story_views else None,
+            "finished_at": serialize_dt(story_views[0].updated_at) if story_views else None,
+            "duration_ms": None,
+            "provider_name": active_run.provider_name if active_run else None,
+            "model_name": active_run.model_name if active_run else None,
+            "summary": f"当前已有 {len(story_views)} 个 note 级故事视图，可从已应用抽取运行重新生成。",
+            "evidence": [story_views[0].title] if story_views else [],
+            "output_refs": [story.id for story in story_views],
         },
     ]
 
