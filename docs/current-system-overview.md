@@ -168,4 +168,6 @@ The next implementation slice should continue blueprint Phase C while preserving
 - `DONE`: story regeneration is persisted through `POST /api/v1/notes/{note_id}/story/regenerate` and records a `regenerate_story_view` replay action so the operation history remains auditable.
 - `DONE`: analysis workflow responses now include evidence groups for extracted entities, events, and relations, including evidence counts, average confidence, field names, and source snippets.
 - `DONE`: `/notes/{id}/analysis` now includes an active-run raw-output versus normalized-output diff summary so users can see where system normalization changed model output before projection.
-- `NEXT`: add richer object labels to evidence groups and a deeper side-by-side object diff drilldown beyond the current summary panel.
+- `DONE`: evidence groups now resolve readable object labels, show source context around evidence snippets, and link directly into detail, curation, or graph views where applicable.
+- `DONE`: `/notes/{id}/analysis` now includes expandable object-level diff drilldowns for entity, event, and relation additions, removals, and changed items.
+- `NEXT`: move from linked curation to safe inline correction once write contracts are narrow enough for embedded edits.

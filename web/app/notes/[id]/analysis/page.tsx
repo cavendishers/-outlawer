@@ -159,6 +159,11 @@ type WorkflowData = {
   evidence_groups: Array<{
     target_type: string;
     target_id: string;
+    target_label: string;
+    target_subtitle: string;
+    detail_href: string | null;
+    curation_href: string | null;
+    graph_href: string | null;
     field_names: string[];
     evidence_count: number;
     average_confidence: number | null;
@@ -173,6 +178,8 @@ type WorkflowData = {
       extractor_name: string;
       extractor_version: string;
       confidence_score: number | null;
+      context_before: string;
+      context_after: string;
       created_at: string | null;
     }>;
   }>;
@@ -515,6 +522,11 @@ function DiffSummaryPanel({ diff }: { diff: WorkflowDiff }) {
         <DiffFieldCard title="摘要字段变化" fields={changedSummaryFields} />
         <DiffFieldCard title="故事视图字段变化" fields={changedStyleFields} />
       </div>
+      <div className="mt-4 space-y-3">
+        <ObjectDiffGroup title="人物对象变化" section={diff.entities} />
+        <ObjectDiffGroup title="事件对象变化" section={diff.events} />
+        <ObjectDiffGroup title="关系对象变化" section={diff.relations} />
+      </div>
     </Panel>
   );
 }
@@ -540,6 +552,59 @@ function DiffFieldCard({ title, fields }: { title: string; fields: WorkflowDiffS
   );
 }
 
+function ObjectDiffGroup({ title, section }: { title: string; section: WorkflowDiffCollection }) {
+  const hasChanges = section.added.length || section.removed.length || section.changed_items.length;
+  return (
+    <details className="border-4 border-ink bg-canvas p-4 shadow-brutalSoft">
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-black">{title}</p>
+          <span className="brutal-chip">
+            +{section.added.length} / -{section.removed.length} / 改 {section.changed_items.length}
+          </span>
+        </div>
+      </summary>
+      <div className="mt-3 space-y-3">
+        {hasChanges ? (
+          <>
+            <DiffObjectList label="新增" items={section.added} tone="bg-mint" />
+            <DiffObjectList label="移除" items={section.removed} tone="bg-ember" />
+            {section.changed_items.slice(0, 6).map((item) => (
+              <div key={item.key} className="border-2 border-ink bg-white p-3">
+                <p className="text-xs font-black text-muted">变更 / {item.key}</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <pre className="max-h-56 overflow-auto border-2 border-ink bg-canvas p-2 text-xs font-bold leading-relaxed">
+                    {JSON.stringify(item.base, null, 2)}
+                  </pre>
+                  <pre className="max-h-56 overflow-auto border-2 border-ink bg-mint/40 p-2 text-xs font-bold leading-relaxed">
+                    {JSON.stringify(item.candidate, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : <p className="text-sm font-bold text-muted">这个对象集合没有变化。</p>}
+      </div>
+    </details>
+  );
+}
+
+function DiffObjectList({ label, items, tone }: { label: string; items: Array<Record<string, unknown>>; tone: string }) {
+  if (!items.length) return null;
+  return (
+    <div className="border-2 border-ink bg-white p-3">
+      <p className={`inline-block border-2 border-ink px-2 py-1 text-xs font-black ${tone}`}>{label}</p>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        {items.slice(0, 6).map((item, index) => (
+          <pre key={`${label}-${index}`} className="max-h-52 overflow-auto border-2 border-ink bg-canvas p-2 text-xs font-bold leading-relaxed">
+            {JSON.stringify(item, null, 2)}
+          </pre>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups"] }) {
   return (
     <Panel className="p-5" tone="info" intensity="quiet">
@@ -557,7 +622,8 @@ function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-black tracking-[0.14em]">{formatTargetType(group.target_type)}</p>
-                <p className="mt-2 break-words text-lg font-black">{shortId(group.target_id)}</p>
+                <p className="mt-2 break-words text-lg font-black">{group.target_label}</p>
+                <p className="mt-1 break-words text-xs font-bold text-muted">{group.target_subtitle}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className="brutal-chip">证据 {group.evidence_count}</span>
@@ -567,13 +633,27 @@ function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups
             <div className="mt-3 flex flex-wrap gap-2">
               {group.field_names.map((field) => <span key={field} className="brutal-chip">{field}</span>)}
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {group.detail_href ? <Link href={group.detail_href} className="brutal-action text-xs">打开详情</Link> : null}
+              {group.curation_href ? <Link href={group.curation_href} className="brutal-action brutal-action-primary text-xs">进入校正</Link> : null}
+              {group.graph_href ? <Link href={group.graph_href} className="brutal-action brutal-action-info text-xs">图谱定位</Link> : null}
+            </div>
             <div className="mt-3 space-y-2">
               {group.samples.map((sample) => (
                 <div key={sample.id} className="border-2 border-ink bg-white px-3 py-2">
-                  <p className="text-sm font-bold leading-relaxed">{sample.evidence_text}</p>
+                  <p className="text-sm font-bold leading-relaxed">
+                    {sample.context_before ? <span className="text-muted">{sample.context_before}</span> : null}
+                    <mark className="border-2 border-ink bg-gold px-1 font-black">{sample.evidence_text}</mark>
+                    {sample.context_after ? <span className="text-muted">{sample.context_after}</span> : null}
+                  </p>
                   <p className="mt-2 text-xs font-black text-muted">
                     {sample.extractor_name} / {sample.extractor_version} / {sample.field_name ?? "unknown"} / {formatConfidence(sample.confidence_score)}
                   </p>
+                  {sample.evidence_offset_start !== null ? (
+                    <p className="mt-1 text-xs font-bold text-muted">
+                      位置 {sample.evidence_offset_start} - {sample.evidence_offset_end ?? sample.evidence_offset_start}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>

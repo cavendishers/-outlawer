@@ -250,8 +250,8 @@ Responsibilities:
 - trigger async reprocessing
 - preserve extraction history through `extraction_runs`
 - expose extraction run version metadata such as provider, model, prompt, schema, input hash, run kind, and projection status
-- expose note-level analysis workflow evidence groups through `evidence_groups`, including target type/id, field names, evidence count, average confidence, and source snippet samples
-- expose active-run raw-output versus normalized-output comparison through `raw_normalized_diff`
+- expose note-level analysis workflow evidence groups through `evidence_groups`, including target type/id, resolved labels, curation/detail/graph links, field names, evidence count, average confidence, source snippet samples, offsets, and surrounding context
+- expose active-run raw-output versus normalized-output comparison through `raw_normalized_diff`, including collection-level additions, removals, changed items, and changed summary/style fields
 - expose extraction run history, run summaries, and side-by-side diff snapshots
 - create `ready_for_review` draft runs during reprocess when an active projection already exists
 - approve or reject reviewable draft runs explicitly before changing the current projection

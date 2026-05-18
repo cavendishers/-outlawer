@@ -9,6 +9,8 @@ from app.api.serializers import serialize_note
 from app.core.pagination import PageParams, paginate_query
 from app.models.ai_job import AIJob
 from app.models.asset_derivative import AssetDerivative
+from app.models.entity import Entity, Relation
+from app.models.event import Event
 from app.models.extraction import ExtractionEvidence, ProjectionVersion
 from app.domains.replay.service import (
     compare_extraction_payloads,
@@ -181,7 +183,7 @@ def get_note_analysis_workflow(db: Session, *, user_id: str, note_id: str) -> di
         "derivatives": [serialize_analysis_derivative(derivative) for derivative in derivatives],
         "runs": [serialize_analysis_run(run, applied_run_id=applied_run_id) for run in runs],
         "projections": [serialize_analysis_projection(projection) for projection in projections],
-        "evidence_groups": build_evidence_groups(evidence_items),
+        "evidence_groups": build_evidence_groups(db, evidence_items, source_text=get_evidence_context_source(asset, derivatives)),
         "raw_normalized_diff": raw_normalized_diff,
         "replay_actions": [serialize_replay_action(action) for action in replay_actions],
     }
@@ -254,14 +256,26 @@ def serialize_analysis_projection(projection: ProjectionVersion) -> dict[str, An
     }
 
 
-def build_evidence_groups(evidence_items: list[ExtractionEvidence]) -> list[dict[str, Any]]:
+def build_evidence_groups(
+    db: Session,
+    evidence_items: list[ExtractionEvidence],
+    *,
+    source_text: str,
+) -> list[dict[str, Any]]:
+    target_labels = resolve_evidence_target_labels(db, evidence_items)
     groups: dict[tuple[str, str], dict[str, Any]] = {}
     for item in evidence_items:
         key = (item.target_type, item.target_id)
+        target_label = target_labels.get(key) or fallback_target_label(item)
         if key not in groups:
             groups[key] = {
                 "target_type": item.target_type,
                 "target_id": item.target_id,
+                "target_label": target_label,
+                "target_subtitle": target_subtitle_for_evidence(item, target_label),
+                "detail_href": detail_href_for_evidence(item),
+                "curation_href": curation_href_for_evidence(item),
+                "graph_href": graph_href_for_evidence(item),
                 "field_names": [],
                 "evidence_count": 0,
                 "average_confidence": None,
@@ -278,7 +292,7 @@ def build_evidence_groups(evidence_items: list[ExtractionEvidence]) -> list[dict
             group["_confidence_sum"] += item.confidence_score
             group["_confidence_count"] += 1
         if len(group["samples"]) < 3:
-            group["samples"].append(serialize_analysis_evidence(item))
+            group["samples"].append(serialize_analysis_evidence(item, source_text=source_text))
 
     for group in groups.values():
         group["average_confidence"] = (
@@ -291,7 +305,13 @@ def build_evidence_groups(evidence_items: list[ExtractionEvidence]) -> list[dict
     return sorted(groups.values(), key=lambda item: (-item["evidence_count"], item["target_type"], item["target_id"]))
 
 
-def serialize_analysis_evidence(item: ExtractionEvidence) -> dict[str, Any]:
+def serialize_analysis_evidence(item: ExtractionEvidence, *, source_text: str) -> dict[str, Any]:
+    context = build_evidence_context(
+        source_text,
+        start=item.evidence_offset_start,
+        end=item.evidence_offset_end,
+        evidence_text=item.evidence_text,
+    )
     return {
         "id": item.id,
         "target_type": item.target_type,
@@ -303,7 +323,139 @@ def serialize_analysis_evidence(item: ExtractionEvidence) -> dict[str, Any]:
         "extractor_name": item.extractor_name,
         "extractor_version": item.extractor_version,
         "confidence_score": item.confidence_score,
+        "context_before": context["before"],
+        "context_after": context["after"],
         "created_at": serialize_dt(item.created_at),
+    }
+
+
+def resolve_evidence_target_labels(
+    db: Session,
+    evidence_items: list[ExtractionEvidence],
+) -> dict[tuple[str, str], str]:
+    entity_ids = {item.target_id for item in evidence_items if item.target_type == "entity"}
+    event_ids = {item.target_id for item in evidence_items if item.target_type == "event"}
+    relation_source_ids = {item.target_id for item in evidence_items if item.target_type == "relation"}
+    labels: dict[tuple[str, str], str] = {}
+
+    if entity_ids:
+        for entity in db.scalars(select(Entity).where(Entity.id.in_(entity_ids))).all():
+            labels[("entity", entity.id)] = entity.display_name or entity.canonical_name
+
+    if event_ids:
+        for event in db.scalars(select(Event).where(Event.id.in_(event_ids))).all():
+            labels[("event", event.id)] = event.title
+
+    if relation_source_ids:
+        relations = list(db.scalars(select(Relation).where(Relation.source_id.in_(relation_source_ids))).all())
+        related_entity_ids = {
+            relation.source_id
+            for relation in relations
+            if relation.source_type == "entity"
+        } | {
+            relation.target_id
+            for relation in relations
+            if relation.target_type == "entity"
+        }
+        related_event_ids = {
+            relation.source_id
+            for relation in relations
+            if relation.source_type == "event"
+        } | {
+            relation.target_id
+            for relation in relations
+            if relation.target_type == "event"
+        }
+        node_labels: dict[tuple[str, str], str] = {}
+        if related_entity_ids:
+            for entity in db.scalars(select(Entity).where(Entity.id.in_(related_entity_ids))).all():
+                node_labels[("entity", entity.id)] = entity.display_name or entity.canonical_name
+        if related_event_ids:
+            for event in db.scalars(select(Event).where(Event.id.in_(related_event_ids))).all():
+                node_labels[("event", event.id)] = event.title
+        for relation in relations:
+            source_label = node_labels.get((relation.source_type, relation.source_id), relation.source_id)
+            target_label = node_labels.get((relation.target_type, relation.target_id), relation.target_id)
+            labels.setdefault(("relation", relation.source_id), f"{source_label} -{relation.relation_type}-> {target_label}")
+
+    return labels
+
+
+def fallback_target_label(item: ExtractionEvidence) -> str:
+    if item.target_type == "relation":
+        return f"关系：{item.field_name or item.target_id}"
+    return item.target_id
+
+
+def target_subtitle_for_evidence(item: ExtractionEvidence, target_label: str) -> str:
+    return f"{format_target_type(item.target_type)} / {item.field_name or 'unknown'} / {target_label}"
+
+
+def detail_href_for_evidence(item: ExtractionEvidence) -> str | None:
+    if item.target_type == "entity":
+        return f"/story/entity/{item.target_id}"
+    if item.target_type == "event":
+        return f"/events/{item.target_id}"
+    return None
+
+
+def curation_href_for_evidence(item: ExtractionEvidence) -> str | None:
+    if item.target_type == "entity":
+        return f"/curation/entities/{item.target_id}"
+    if item.target_type == "event":
+        return f"/curation/events/{item.target_id}"
+    return None
+
+
+def graph_href_for_evidence(item: ExtractionEvidence) -> str | None:
+    if item.target_type == "entity":
+        return f"/graph?entity_id={item.target_id}"
+    if item.target_type == "event":
+        return f"/graph?event_id={item.target_id}"
+    return "/graph" if item.target_type == "relation" else None
+
+
+def format_target_type(value: str) -> str:
+    if value == "entity":
+        return "人物/实体"
+    if value == "event":
+        return "事件"
+    if value == "relation":
+        return "关系"
+    return value
+
+
+def get_evidence_context_source(asset: RawAsset | None, derivatives: list[AssetDerivative]) -> str:
+    if asset and asset.original_text:
+        return asset.original_text
+    normalized = next((item for item in derivatives if item.derivative_type == "normalized_text"), None)
+    return normalized.content if normalized else ""
+
+
+def build_evidence_context(
+    source_text: str,
+    *,
+    start: int | None,
+    end: int | None,
+    evidence_text: str,
+    radius: int = 80,
+) -> dict[str, str]:
+    if not source_text:
+        return {"before": "", "after": ""}
+    resolved_start = start
+    resolved_end = end
+    if resolved_start is None or resolved_end is None:
+        index = source_text.find(evidence_text) if evidence_text else -1
+        if index >= 0:
+            resolved_start = index
+            resolved_end = index + len(evidence_text)
+    if resolved_start is None or resolved_end is None:
+        return {"before": "", "after": ""}
+    safe_start = max(0, min(resolved_start, len(source_text)))
+    safe_end = max(safe_start, min(resolved_end, len(source_text)))
+    return {
+        "before": source_text[max(0, safe_start - radius):safe_start],
+        "after": source_text[safe_end:min(len(source_text), safe_end + radius)],
     }
 
 

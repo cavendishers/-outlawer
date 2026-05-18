@@ -1307,11 +1307,15 @@ Current slice delivered:
 - `GET /api/v1/notes/{note_id}/analysis-workflow` now returns evidence groups with target type, target id, field names, evidence count, average confidence, and sample source snippets
 - `GET /api/v1/notes/{note_id}/analysis-workflow` now returns an active-run raw-output versus normalized-output diff summary
 - `/notes/[id]/analysis` now shows a readable evidence-chain panel and a raw/normalized diff summary panel
+- evidence groups now resolve display labels for entities, events, and relation-like evidence instead of showing opaque ids only
+- evidence samples now include surrounding source context and offset positions so users can locate the supporting text
+- evidence groups now expose direct actions for opening details, entering curation, and locating the object in the graph workspace where applicable
+- `/notes/[id]/analysis` now includes expandable object-level diff drilldowns for entity, event, and relation additions, removals, and changed items
 
 Remaining work:
 
-- add richer object labels to evidence groups so target ids can be replaced by entity/event/relation display names
-- add a deeper side-by-side object diff drilldown beyond the current summary-level diff panel
+- replace relation-like evidence fallback labels with first-class relation ids once relation evidence stores relation ids instead of source ids
+- add inline correction actions directly inside the analysis page after the curation write contracts are narrow enough for embedded edits
 
 Verification completed for current slice:
 
@@ -1322,6 +1326,7 @@ Verification completed for current slice:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - browser smoke on `/notes/{id}/analysis` -> passed with real analysis workflow data and no horizontal overflow
+- browser smoke on `/notes/{id}/analysis` -> passed with enhanced evidence labels, graph/curation links, and object-level diff sections
 
 Additional Phase 28 status notes:
 

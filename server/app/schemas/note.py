@@ -143,12 +143,19 @@ class AnalysisWorkflowEvidenceSampleResponse(BaseModel):
     extractor_name: str
     extractor_version: str
     confidence_score: float | None = None
+    context_before: str = ""
+    context_after: str = ""
     created_at: str | None = None
 
 
 class AnalysisWorkflowEvidenceGroupResponse(BaseModel):
     target_type: str
     target_id: str
+    target_label: str
+    target_subtitle: str
+    detail_href: str | None = None
+    curation_href: str | None = None
+    graph_href: str | None = None
     field_names: list[str] = Field(default_factory=list)
     evidence_count: int
     average_confidence: float | None = None

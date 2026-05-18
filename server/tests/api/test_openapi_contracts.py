@@ -271,6 +271,16 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     }
     assert set(workflow_step_schema["properties"]) >= {"step_key", "status", "summary", "evidence", "output_refs"}
     assert set(workflow_run_schema["properties"]) >= {"raw_result_json", "normalized_result_json"}
+    evidence_group_schema = _resolve_schema(analysis_workflow_schema["properties"]["evidence_groups"]["items"])
+    evidence_sample_schema = _resolve_schema(evidence_group_schema["properties"]["samples"]["items"])
+    assert set(evidence_group_schema["properties"]) >= {
+        "target_label",
+        "target_subtitle",
+        "detail_href",
+        "curation_href",
+        "graph_href",
+    }
+    assert set(evidence_sample_schema["properties"]) >= {"context_before", "context_after"}
     assert set(projection_result_schema["properties"]) >= {"projection_version_id"}
 
 

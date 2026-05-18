@@ -345,6 +345,15 @@ def main() -> None:
         assert "normalized_result_json" in analysis_workflow["runs"][0]
         assert "raw_normalized_diff" in analysis_workflow
         assert "evidence_groups" in analysis_workflow
+        if analysis_workflow["evidence_groups"]:
+            evidence_group = analysis_workflow["evidence_groups"][0]
+            assert evidence_group["target_label"], evidence_group
+            assert "detail_href" in evidence_group
+            assert "curation_href" in evidence_group
+            assert "graph_href" in evidence_group
+            if evidence_group["samples"]:
+                assert "context_before" in evidence_group["samples"][0]
+                assert "context_after" in evidence_group["samples"][0]
         event_ids, entity_ids = get_note_projection_ids(note_id)
         assert event_ids, event_ids
         assert entity_ids, entity_ids

@@ -7,6 +7,7 @@ from app.core.database import Base
 from app.domains.retrieval.note_query import get_note_analysis_workflow
 from app.models.ai_job import AIJob
 from app.models.asset_derivative import AssetDerivative
+from app.models.entity import Entity
 from app.models.extraction import ExtractionEvidence, ExtractionRun, ProjectionVersion
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
@@ -347,6 +348,7 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
         RawAsset.__table__,
         AssetDerivative.__table__,
         Note.__table__,
+        Entity.__table__,
         ExtractionRun.__table__,
         ProjectionVersion.__table__,
         ExtractionEvidence.__table__,
@@ -440,6 +442,20 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
             )
         )
         db.add(
+            Entity(
+                id="entity-1",
+                user_id="user-1",
+                entity_type="person",
+                canonical_name="张三",
+                display_name="张三",
+                alias_json=[],
+                normalized_name="张三",
+                status="active",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
             ReviewAction(
                 id="action-1",
                 user_id="user-1",
@@ -491,9 +507,15 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
     assert workflow["stats"]["replay_action_count"] == 1
     assert workflow["stats"]["evidence_count"] == 1
     assert workflow["evidence_groups"][0]["target_type"] == "entity"
+    assert workflow["evidence_groups"][0]["target_label"] == "张三"
+    assert workflow["evidence_groups"][0]["detail_href"] == "/story/entity/entity-1"
+    assert workflow["evidence_groups"][0]["curation_href"] == "/curation/entities/entity-1"
+    assert workflow["evidence_groups"][0]["graph_href"] == "/graph?entity_id=entity-1"
     assert workflow["evidence_groups"][0]["evidence_count"] == 1
     assert workflow["evidence_groups"][0]["average_confidence"] == 0.82
     assert workflow["evidence_groups"][0]["samples"][0]["evidence_text"] == "张三参加启动会"
+    assert workflow["evidence_groups"][0]["samples"][0]["context_before"] == "2026-04-18 "
+    assert workflow["evidence_groups"][0]["samples"][0]["context_after"] == "。"
     assert workflow["raw_normalized_diff"]["changed"] is False
     assert [step["step_key"] for step in workflow["steps"]] == [
         "raw_asset",
