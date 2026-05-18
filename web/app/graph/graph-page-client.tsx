@@ -65,6 +65,24 @@ type GraphWorkspaceData = {
     entity_count: number;
     timeline_count: number;
   };
+  filters: GraphWorkspaceFilters;
+};
+
+type GraphWorkspaceAppliedFilters = {
+  node_types: string[];
+  relation_types: string[];
+  start: string | null;
+  end: string | null;
+  min_weight: number;
+  depth: number;
+};
+
+type GraphWorkspaceFilters = {
+  applied: GraphWorkspaceAppliedFilters;
+  available: {
+    node_types: string[];
+    relation_types: string[];
+  };
 };
 
 type GraphNodeDetail = {
@@ -169,6 +187,12 @@ export function GraphPageClient() {
   const eventId = searchParams?.get("event_id") ?? null;
   const entityId = searchParams?.get("entity_id") ?? null;
   const activeNodeIdFromUrl = searchParams?.get("active_node_id") ?? null;
+  const nodeTypesFilter = searchParams?.get("node_types") ?? "";
+  const relationTypesFilter = searchParams?.get("relation_types") ?? "";
+  const startFilter = searchParams?.get("start") ?? "";
+  const endFilter = searchParams?.get("end") ?? "";
+  const minWeightFilter = searchParams?.get("min_weight") ?? "";
+  const depthFilter = searchParams?.get("depth") ?? "";
   const [workspace, setWorkspace] = useState<GraphWorkspaceData | null>(null);
   const [nodeDetail, setNodeDetail] = useState<GraphNodeDetail | null>(null);
   const [nodeDetailLoading, setNodeDetailLoading] = useState(false);
@@ -183,6 +207,12 @@ export function GraphPageClient() {
     const params = new URLSearchParams();
     if (eventId) params.set("event_id", eventId);
     if (entityId) params.set("entity_id", entityId);
+    if (nodeTypesFilter) params.set("node_types", nodeTypesFilter);
+    if (relationTypesFilter) params.set("relation_types", relationTypesFilter);
+    if (startFilter) params.set("start", startFilter);
+    if (endFilter) params.set("end", endFilter);
+    if (minWeightFilter) params.set("min_weight", minWeightFilter);
+    if (depthFilter) params.set("depth", depthFilter);
     return params;
   }
 
@@ -273,7 +303,7 @@ export function GraphPageClient() {
           setError(err instanceof Error ? err.message : "图谱工作台加载失败");
         });
       });
-  }, [entityId, eventId]);
+  }, [depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
 
   const activeNode = useMemo(() => {
     if (!workspace?.nodes.length) return null;
@@ -317,7 +347,7 @@ export function GraphPageClient() {
       .finally(() => {
         setNodeDetailLoading(false);
       });
-  }, [activeNode, entityId, eventId]);
+  }, [activeNode, depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
 
   useEffect(() => {
     if (!activeNode) {
@@ -348,6 +378,38 @@ export function GraphPageClient() {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("active_node_id", nodeId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function handleUpdateFilters(updates: Partial<GraphWorkspaceAppliedFilters>, reset = false) {
+    const params = new URLSearchParams(reset ? "" : (searchParams?.toString() ?? ""));
+    if (eventId) params.set("event_id", eventId);
+    if (entityId) params.set("entity_id", entityId);
+    params.delete("active_node_id");
+
+    const nextFilters: GraphWorkspaceAppliedFilters = {
+      node_types: updates.node_types ?? (reset ? [] : workspace?.filters.applied.node_types ?? []),
+      relation_types: updates.relation_types ?? (reset ? [] : workspace?.filters.applied.relation_types ?? []),
+      start: updates.start ?? (reset ? null : workspace?.filters.applied.start ?? null),
+      end: updates.end ?? (reset ? null : workspace?.filters.applied.end ?? null),
+      min_weight: updates.min_weight ?? (reset ? 0 : workspace?.filters.applied.min_weight ?? 0),
+      depth: updates.depth ?? (reset ? 0 : workspace?.filters.applied.depth ?? 0),
+    };
+
+    if (nextFilters.node_types.length) params.set("node_types", nextFilters.node_types.join(","));
+    else params.delete("node_types");
+    if (nextFilters.relation_types.length) params.set("relation_types", nextFilters.relation_types.join(","));
+    else params.delete("relation_types");
+    if (nextFilters.start) params.set("start", nextFilters.start.slice(0, 10));
+    else params.delete("start");
+    if (nextFilters.end) params.set("end", nextFilters.end.slice(0, 10));
+    else params.delete("end");
+    if (nextFilters.min_weight > 0) params.set("min_weight", String(nextFilters.min_weight));
+    else params.delete("min_weight");
+    if (nextFilters.depth > 0) params.set("depth", String(nextFilters.depth));
+    else params.delete("depth");
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
   async function handleUpsertEventParticipant(eventNodeId: string, payload: GraphParticipantPayload) {
@@ -455,8 +517,10 @@ export function GraphPageClient() {
             edges={workspace.edges}
             timelineFocus={workspace.timeline_focus}
             stats={workspace.stats}
+            filters={workspace.filters}
             activeNodeId={activeNode?.id ?? null}
             onSelectNode={handleSelectNode}
+            onUpdateFilters={handleUpdateFilters}
             nodeDetail={nodeDetail}
             nodeDetailLoading={nodeDetailLoading}
             curationContext={curationContext}

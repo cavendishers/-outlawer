@@ -63,6 +63,25 @@ class GraphWorkspaceStatsResponse(BaseModel):
     timeline_count: int
 
 
+class GraphWorkspaceAppliedFiltersResponse(BaseModel):
+    node_types: list[str] = Field(default_factory=list)
+    relation_types: list[str] = Field(default_factory=list)
+    start: str | None = None
+    end: str | None = None
+    min_weight: float = 0.0
+    depth: int = 0
+
+
+class GraphWorkspaceAvailableFiltersResponse(BaseModel):
+    node_types: list[str] = Field(default_factory=list)
+    relation_types: list[str] = Field(default_factory=list)
+
+
+class GraphWorkspaceFiltersResponse(BaseModel):
+    applied: GraphWorkspaceAppliedFiltersResponse
+    available: GraphWorkspaceAvailableFiltersResponse
+
+
 class GraphWorkspaceConnectedNodeResponse(BaseModel):
     id: str
     node_type: str
@@ -91,3 +110,4 @@ class GraphWorkspaceResponse(BaseModel):
     edges: list[GraphWorkspaceEdgeResponse] = Field(default_factory=list)
     timeline_focus: list[GraphWorkspaceTimelineItemResponse] = Field(default_factory=list)
     stats: GraphWorkspaceStatsResponse
+    filters: GraphWorkspaceFiltersResponse

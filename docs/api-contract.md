@@ -118,8 +118,8 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `POST /api/v1/curation/events/{event_id}/relations` returns `Envelope[CurationRelationItemResponse]`
 - `PATCH /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[CurationRelationItemResponse]`
 - `DELETE /api/v1/curation/events/{event_id}/relations/{relation_id}` returns `Envelope[RelationRemovedResponse]`
-- `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`
-- `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`
+- `GET /api/v1/graph/workspace` returns `Envelope[GraphWorkspaceResponse]`; supported query parameters are `event_id`, `entity_id`, `node_types`, `relation_types`, `start`, `end`, `min_weight`, and `depth`
+- `GET /api/v1/graph/nodes/{node_type}/{node_id}` returns `Envelope[GraphWorkspaceNodeDetailResponse]`; it accepts the same graph scope/filter query parameters as `/graph/workspace`
 - `GET /api/v1/operations/overview` returns `Envelope[OperationsOverviewResponse]`
 - `POST /api/v1/image-generations` returns `Envelope[ImageGenerationCreateResponse]`
 - `GET /api/v1/image-generations` returns `Envelope[PaginatedData[ImageGenerationResponse]]`

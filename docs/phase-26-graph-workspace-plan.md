@@ -259,14 +259,21 @@ Input:
 - `entity_id` optional
 - `note_id` optional
 - `depth` optional
+- `node_types` optional comma-separated values, currently `event` and `entity`
+- `relation_types` optional comma-separated edge types
+- `start` optional ISO date or datetime for event time filtering
+- `end` optional ISO date or datetime for event time filtering
+- `min_weight` optional confidence/edge weight threshold from `0` to `1`
 
 Returns:
 
 - `anchor`
 - `nodes`
 - `edges`
-- `inspector`
-- `available_actions`
+- `timeline_focus`
+- `stats`
+- `filters.applied`
+- `filters.available`
 
 #### `GET /api/v1/graph/nodes/{node_type}/{node_id}`
 
@@ -464,6 +471,24 @@ Status update on `2026-05-17`:
 - delivered as a frontend-only interaction slice in `GraphWorkspaceShell`
 - inline curation remains on the existing event/entity mutation paths
 - mobile fallback stays card-based with no horizontal canvas overflow
+
+### Slice G: Backend-Backed Graph Filtering
+
+Goal:
+
+- keep the shared graph workspace readable as formal data grows by moving structural filters into the graph API contract
+
+Deliverables:
+
+- `/api/v1/graph/workspace` accepts node type, relation type, date range, minimum edge weight, and anchor-depth filters
+- `/api/v1/graph/nodes/{node_type}/{node_id}` accepts the same scope and filter parameters so the inspector matches the visible workspace
+- `GraphWorkspaceResponse.filters` returns both applied filters and available node/relation filter choices
+- `/graph` writes filter state into the URL and renders a compact Chinese control panel above the canvas
+
+Status update on `2026-05-18`:
+
+- delivered with service-level tests covering default unfiltered nodes plus relation, weight, and date filtering
+- no schema migration was required because the slice only changes read composition and API response shape
 
 ## API And Service Implementation Notes
 

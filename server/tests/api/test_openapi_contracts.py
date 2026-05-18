@@ -342,6 +342,7 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "edges",
         "timeline_focus",
         "stats",
+        "filters",
     }
     assert set(graph_node_detail_schema["properties"]) == {
         "node",

@@ -1,10 +1,56 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.domains.retrieval import entity_query, event_query, timeline_query
+
+
+@dataclass(frozen=True)
+class GraphWorkspaceFilters:
+    node_types: set[str]
+    relation_types: set[str]
+    start: datetime | None = None
+    end: datetime | None = None
+    min_weight: float = 0.0
+    depth: int = 0
+
+
+def parse_filter_csv(value: str | None) -> set[str]:
+    if not value:
+        return set()
+    return {item.strip() for item in value.split(",") if item.strip()}
+
+
+def parse_datetime_filter(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def normalize_graph_filters(
+    *,
+    node_types: str | None = None,
+    relation_types: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    min_weight: float | None = None,
+    depth: int | None = None,
+) -> GraphWorkspaceFilters:
+    return GraphWorkspaceFilters(
+        node_types={item for item in parse_filter_csv(node_types) if item in {"event", "entity"}},
+        relation_types=parse_filter_csv(relation_types),
+        start=parse_datetime_filter(start),
+        end=parse_datetime_filter(end),
+        min_weight=max(0.0, min(float(min_weight or 0.0), 1.0)),
+        depth=max(0, min(int(depth or 0), 2)),
+    )
 
 
 def get_graph_workspace(
@@ -13,12 +59,26 @@ def get_graph_workspace(
     user_id: str,
     event_id: str | None = None,
     entity_id: str | None = None,
+    node_types: str | None = None,
+    relation_types: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    min_weight: float | None = None,
+    depth: int | None = None,
 ) -> dict[str, Any]:
+    filters = normalize_graph_filters(
+        node_types=node_types,
+        relation_types=relation_types,
+        start=start,
+        end=end,
+        min_weight=min_weight,
+        depth=depth,
+    )
     if event_id:
-        return build_event_workspace(db, user_id=user_id, event_id=event_id)
+        return apply_workspace_filters(build_event_workspace(db, user_id=user_id, event_id=event_id), filters)
     if entity_id:
-        return build_entity_workspace(db, user_id=user_id, entity_id=entity_id)
-    return build_overview_workspace(db, user_id=user_id)
+        return apply_workspace_filters(build_entity_workspace(db, user_id=user_id, entity_id=entity_id), filters)
+    return apply_workspace_filters(build_overview_workspace(db, user_id=user_id), filters)
 
 
 def get_graph_node_detail(
@@ -29,12 +89,24 @@ def get_graph_node_detail(
     node_id: str,
     event_id: str | None = None,
     entity_id: str | None = None,
+    node_types: str | None = None,
+    relation_types: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    min_weight: float | None = None,
+    depth: int | None = None,
 ) -> dict[str, Any]:
     workspace = get_graph_workspace(
         db,
         user_id=user_id,
         event_id=event_id if event_id else (node_id if node_type == "event" and not entity_id else None),
         entity_id=entity_id if entity_id else (node_id if node_type == "entity" and not event_id else None),
+        node_types=node_types,
+        relation_types=relation_types,
+        start=start,
+        end=end,
+        min_weight=min_weight,
+        depth=depth,
     )
     node = next(
         (
@@ -107,6 +179,156 @@ def get_graph_node_detail(
         "connected_edges": connected_edges,
         "timeline_context": timeline_context,
         "anchor_actions": anchor_actions,
+    }
+
+
+def apply_workspace_filters(workspace: dict[str, Any], filters: GraphWorkspaceFilters) -> dict[str, Any]:
+    original_nodes = workspace.get("nodes", [])
+    original_edges = workspace.get("edges", [])
+    anchor = workspace.get("anchor")
+    anchor_id = anchor.get("id") if anchor else None
+
+    allowed_ids_by_type = {
+        node["id"]
+        for node in original_nodes
+        if should_keep_node_by_type(node, filters) and should_keep_node_by_time(node, filters)
+    }
+    if anchor_id:
+        allowed_ids_by_type.add(anchor_id)
+
+    edges = [
+        edge
+        for edge in original_edges
+        if edge["source_id"] in allowed_ids_by_type
+        and edge["target_id"] in allowed_ids_by_type
+        and edge_matches_filters(edge, filters)
+    ]
+
+    allowed_node_ids = set(allowed_ids_by_type)
+    if filters.depth and anchor_id:
+        allowed_node_ids = expand_by_depth(anchor_id, edges, filters.depth)
+        allowed_node_ids.add(anchor_id)
+    elif filters.relation_types or filters.min_weight > 0 or filters.start or filters.end:
+        allowed_node_ids = {edge["source_id"] for edge in edges} | {edge["target_id"] for edge in edges}
+        if anchor_id:
+            allowed_node_ids.add(anchor_id)
+
+    edges = [
+        edge
+        for edge in edges
+        if edge["source_id"] in allowed_node_ids and edge["target_id"] in allowed_node_ids
+    ]
+    should_trim_to_connected_nodes = bool(
+        filters.depth or filters.relation_types or filters.min_weight > 0 or filters.start or filters.end
+    )
+    connected_node_ids = (
+        {edge["source_id"] for edge in edges} | {edge["target_id"] for edge in edges}
+        if should_trim_to_connected_nodes
+        else set(allowed_node_ids)
+    )
+    if anchor_id:
+        connected_node_ids.add(anchor_id)
+
+    nodes = [
+        node
+        for node in original_nodes
+        if node["id"] in connected_node_ids and (node["id"] == anchor_id or should_keep_node_by_type(node, filters))
+    ]
+    timeline_focus = [
+        item
+        for item in workspace.get("timeline_focus", [])
+        if not item.get("event_id") or item["event_id"] in {node["id"] for node in nodes}
+    ]
+
+    return {
+        **workspace,
+        "nodes": nodes,
+        "edges": edges,
+        "timeline_focus": timeline_focus,
+        "stats": build_stats(nodes, edges, timeline_focus),
+        "filters": serialize_filters(filters, original_nodes, original_edges),
+    }
+
+
+def should_keep_node_by_type(node: dict[str, Any], filters: GraphWorkspaceFilters) -> bool:
+    return not filters.node_types or node["node_type"] in filters.node_types
+
+
+def should_keep_node_by_time(node: dict[str, Any], filters: GraphWorkspaceFilters) -> bool:
+    if node["node_type"] != "event" or (filters.start is None and filters.end is None):
+        return True
+    node_time = parse_datetime_filter(first_iso_meta(node))
+    if node_time is None:
+        return True
+    if filters.start and node_time < filters.start:
+        return False
+    if filters.end and node_time > filters.end:
+        return False
+    return True
+
+
+def first_iso_meta(node: dict[str, Any]) -> str | None:
+    candidates = [node.get("subtitle"), *node.get("meta", [])]
+    for value in candidates:
+        if isinstance(value, str) and len(value) >= 10 and value[:4].isdigit():
+            return value[:10]
+    return None
+
+
+def edge_matches_filters(edge: dict[str, Any], filters: GraphWorkspaceFilters) -> bool:
+    if filters.relation_types and edge["edge_type"] not in filters.relation_types:
+        return False
+    if float(edge.get("weight") or 0.0) < filters.min_weight:
+        return False
+    return True
+
+
+def expand_by_depth(anchor_id: str, edges: list[dict[str, Any]], depth: int) -> set[str]:
+    visible = {anchor_id}
+    frontier = {anchor_id}
+    for _ in range(depth):
+        next_frontier: set[str] = set()
+        for edge in edges:
+            if edge["source_id"] in frontier:
+                next_frontier.add(edge["target_id"])
+            if edge["target_id"] in frontier:
+                next_frontier.add(edge["source_id"])
+        next_frontier -= visible
+        visible |= next_frontier
+        frontier = next_frontier
+        if not frontier:
+            break
+    return visible
+
+
+def build_stats(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], timeline_focus: list[dict[str, Any]]) -> dict[str, int]:
+    return {
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "event_count": sum(1 for node in nodes if node["node_type"] == "event"),
+        "entity_count": sum(1 for node in nodes if node["node_type"] == "entity"),
+        "timeline_count": len(timeline_focus),
+    }
+
+
+def serialize_filters(
+    filters: GraphWorkspaceFilters,
+    original_nodes: list[dict[str, Any]],
+    original_edges: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "applied": {
+            "node_types": sorted(filters.node_types),
+            "relation_types": sorted(filters.relation_types),
+            "start": filters.start.isoformat() if filters.start else None,
+            "end": filters.end.isoformat() if filters.end else None,
+            "min_weight": filters.min_weight,
+            "depth": filters.depth,
+        },
+        "available": {
+            "node_types": sorted({node["node_type"] for node in original_nodes}),
+            "relation_types": sorted({edge["edge_type"] for edge in original_edges}),
+        },
     }
 
 

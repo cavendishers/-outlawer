@@ -14,6 +14,12 @@ def get_graph_workspace(
     db: DbSession,
     event_id: str | None = None,
     entity_id: str | None = None,
+    node_types: str | None = None,
+    relation_types: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    min_weight: float | None = None,
+    depth: int | None = None,
     user=Depends(get_current_user),
 ) -> dict:
     try:
@@ -23,6 +29,12 @@ def get_graph_workspace(
                 user_id=user.id,
                 event_id=event_id,
                 entity_id=entity_id,
+                node_types=node_types,
+                relation_types=relation_types,
+                start=start,
+                end=end,
+                min_weight=min_weight,
+                depth=depth,
             )
         )
     except ValueError as exc:
@@ -36,6 +48,12 @@ def get_graph_node_detail(
     db: DbSession,
     event_id: str | None = None,
     entity_id: str | None = None,
+    node_types: str | None = None,
+    relation_types: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    min_weight: float | None = None,
+    depth: int | None = None,
     user=Depends(get_current_user),
 ) -> dict:
     try:
@@ -47,6 +65,12 @@ def get_graph_node_detail(
                 node_id=node_id,
                 event_id=event_id,
                 entity_id=entity_id,
+                node_types=node_types,
+                relation_types=relation_types,
+                start=start,
+                end=end,
+                min_weight=min_weight,
+                depth=depth,
             )
         )
     except ValueError as exc:

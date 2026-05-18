@@ -1128,6 +1128,7 @@ Current slice delivered:
 - timeline backbone rail can now select visible event nodes directly inside the shared workspace instead of always leaving for detail pages
 - shared graph workspace now has skeleton loading states, a dedicated empty state, stronger active-node emphasis, and clearer inline validation feedback
 - shared graph workspace now lets visible edges be focused directly, with an edge spotlight rail and quick pivot actions to either endpoint
+- shared graph workspace now supports backend-backed graph filters for node type, relation type, date range, minimum edge weight, and anchor depth, with filter state preserved in the URL
 
 Remaining work:
 
@@ -1141,6 +1142,7 @@ Recommended next slices:
 - Slice D: timeline backbone fused into the shared workspace
 - Slice E: mobile, loading, and UX hardening
 - Slice F: broader canvas-native graph editing, if graph depth becomes the next priority again
+- Slice G: backend-backed graph filtering and focus controls
 
 Phase 26 documents to update manually as work proceeds:
 
@@ -1174,6 +1176,12 @@ Slice A follow-up verification:
 - `cd web && npx tsc --noEmit` -> passed after edge spotlight graph iteration
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after edge spotlight graph iteration
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after edge spotlight graph iteration
+- `python3 -m compileall server/app` -> passed after backend-backed graph filters
+- `cd web && npx tsc --noEmit` -> passed after backend-backed graph filters
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_graph_service.py` -> passed after backend-backed graph filters
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'` -> passed after backend-backed graph filters
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed after backend-backed graph filters
+- browser smoke for `/graph?node_types=event&depth=1&min_weight=0.5` -> passed with filter URL state and no horizontal overflow
 
 ## Phase 27: Operations Console Deepening
 

@@ -51,6 +51,23 @@ type TimelineFocusItem = {
   kind: string;
 };
 
+type GraphWorkspaceAppliedFilters = {
+  node_types: string[];
+  relation_types: string[];
+  start: string | null;
+  end: string | null;
+  min_weight: number;
+  depth: number;
+};
+
+type GraphWorkspaceFilters = {
+  applied: GraphWorkspaceAppliedFilters;
+  available: {
+    node_types: string[];
+    relation_types: string[];
+  };
+};
+
 type GraphConnectedNode = {
   id: string;
   node_type: string;
@@ -151,8 +168,10 @@ type GraphWorkspaceShellProps = {
     entity_count: number;
     timeline_count: number;
   };
+  filters: GraphWorkspaceFilters;
   activeNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
+  onUpdateFilters: (updates: Partial<GraphWorkspaceAppliedFilters>, reset?: boolean) => void;
   nodeDetail: GraphNodeDetail | null;
   nodeDetailLoading?: boolean;
   curationContext: GraphNodeCurationContext | null;
@@ -212,6 +231,19 @@ const ENTITY_RELATION_TYPE_OPTIONS = [
   "mentions",
 ];
 
+const NODE_TYPE_LABELS: Record<string, string> = {
+  event: "事件",
+  entity: "人物",
+};
+
+function dateInputValue(value: string | null): string {
+  return value ? value.slice(0, 10) : "";
+}
+
+function toggleListValue(values: string[], value: string): string[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
 function defaultRelatedTypeForNode(activeNode: GraphNode, nodes: GraphNode[]): "event" | "entity" {
   const candidateTypes = nodes
     .filter((node) => node.id !== activeNode.id)
@@ -222,6 +254,136 @@ function defaultRelatedTypeForNode(activeNode: GraphNode, nodes: GraphNode[]): "
   return candidateTypes[0] ?? "event";
 }
 
+type GraphFilterPanelProps = {
+  filters: GraphWorkspaceFilters;
+  hasBackendFilters: boolean;
+  onUpdateFilters: (updates: Partial<GraphWorkspaceAppliedFilters>, reset?: boolean) => void;
+};
+
+function GraphFilterPanel({ filters, hasBackendFilters, onUpdateFilters }: GraphFilterPanelProps) {
+  const nodeTypeOptions = filters.available.node_types.length ? filters.available.node_types : ["event", "entity"];
+  const relationTypeOptions = filters.available.relation_types;
+
+  return (
+    <div className="mb-5 border-4 border-ink bg-white p-4 shadow-brutalSoft">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="section-kicker">图谱过滤</p>
+          <p className="mt-2 text-sm font-bold leading-relaxed text-muted">
+            用结构条件缩小工作台范围。过滤会写入地址栏，方便回看同一张图。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onUpdateFilters({}, true)}
+          disabled={!hasBackendFilters}
+          className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          重置
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_1.2fr_0.8fr_0.8fr_1.2fr]">
+        <div>
+          <p className="text-xs font-black tracking-[0.14em]">节点类型</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {nodeTypeOptions.map((nodeType) => {
+              const active = filters.applied.node_types.includes(nodeType);
+              return (
+                <button
+                  key={nodeType}
+                  type="button"
+                  onClick={() => onUpdateFilters({ node_types: toggleListValue(filters.applied.node_types, nodeType) })}
+                  className={`border-2 border-ink px-3 py-2 text-xs font-black shadow-brutalTiny ${
+                    active ? "bg-neon" : "bg-canvas"
+                  }`}
+                >
+                  {NODE_TYPE_LABELS[nodeType] ?? nodeType}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-black tracking-[0.14em]">关系类型</p>
+          <div className="mt-2 flex max-h-24 flex-wrap gap-2 overflow-y-auto pr-1">
+            {relationTypeOptions.length ? (
+              relationTypeOptions.map((relationType) => {
+                const active = filters.applied.relation_types.includes(relationType);
+                return (
+                  <button
+                    key={relationType}
+                    type="button"
+                    onClick={() =>
+                      onUpdateFilters({ relation_types: toggleListValue(filters.applied.relation_types, relationType) })
+                    }
+                    className={`border-2 border-ink px-3 py-2 text-xs font-black shadow-brutalTiny ${
+                      active ? "bg-neon" : "bg-canvas"
+                    }`}
+                  >
+                    {relationType}
+                  </button>
+                );
+              })
+            ) : (
+              <span className="brutal-chip">暂无关系</span>
+            )}
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="text-xs font-black tracking-[0.14em]">最小权重</span>
+          <select
+            value={String(filters.applied.min_weight)}
+            onChange={(event) => onUpdateFilters({ min_weight: Number(event.target.value) })}
+            className="mt-2 w-full border-4 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny"
+          >
+            {[0, 0.5, 0.7, 0.9].map((weight) => (
+              <option key={weight} value={weight}>
+                {weight === 0 ? "不限" : `≥ ${weight.toFixed(1)}`}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-black tracking-[0.14em]">跳数</span>
+          <select
+            value={String(filters.applied.depth)}
+            onChange={(event) => onUpdateFilters({ depth: Number(event.target.value) })}
+            className="mt-2 w-full border-4 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny"
+          >
+            <option value="0">不限</option>
+            <option value="1">1 跳</option>
+            <option value="2">2 跳</option>
+          </select>
+        </label>
+
+        <div>
+          <p className="text-xs font-black tracking-[0.14em]">时间范围</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <input
+              type="date"
+              value={dateInputValue(filters.applied.start)}
+              onChange={(event) => onUpdateFilters({ start: event.target.value || null })}
+              className="min-w-0 border-4 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny"
+              aria-label="开始时间"
+            />
+            <input
+              type="date"
+              value={dateInputValue(filters.applied.end)}
+              onChange={(event) => onUpdateFilters({ end: event.target.value || null })}
+              className="min-w-0 border-4 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny"
+              aria-label="结束时间"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function GraphWorkspaceShell({
   title,
   description,
@@ -230,8 +392,10 @@ export function GraphWorkspaceShell({
   edges,
   timelineFocus,
   stats,
+  filters,
   activeNodeId,
   onSelectNode,
+  onUpdateFilters,
   nodeDetail,
   nodeDetailLoading = false,
   curationContext,
@@ -250,6 +414,24 @@ export function GraphWorkspaceShell({
   const [selectedEdgeKey, setSelectedEdgeKey] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [focusNeighborhoodOnly, setFocusNeighborhoodOnly] = useState(false);
+  const appliedFilterChips = [
+    filters.applied.node_types.length
+      ? `节点：${filters.applied.node_types.map((item) => NODE_TYPE_LABELS[item] ?? item).join("、")}`
+      : "节点：全部",
+    filters.applied.relation_types.length ? `关系：${filters.applied.relation_types.join("、")}` : "关系：全部",
+    filters.applied.min_weight > 0 ? `权重 ≥ ${filters.applied.min_weight.toFixed(1)}` : "权重：全部",
+    filters.applied.depth > 0 ? `跳数：${filters.applied.depth}` : "跳数：不限",
+    filters.applied.start || filters.applied.end
+      ? `时间：${dateInputValue(filters.applied.start) || "不限"} 至 ${dateInputValue(filters.applied.end) || "不限"}`
+      : "时间：不限",
+  ];
+  const hasBackendFilters =
+    filters.applied.node_types.length > 0 ||
+    filters.applied.relation_types.length > 0 ||
+    Boolean(filters.applied.start) ||
+    Boolean(filters.applied.end) ||
+    filters.applied.min_weight > 0 ||
+    filters.applied.depth > 0;
 
   const allPositionedNodes = useMemo<PositionedNode[]>(() => {
     const anchorNodes = nodes.filter((node) => node.is_anchor);
@@ -380,6 +562,7 @@ export function GraphWorkspaceShell({
     focusNeighborhoodOnly ? "焦点邻域" : "全局可见",
             normalizedSearchQuery ? `搜索：${searchQuery.trim()}` : "未搜索",
   ];
+  const canvasStatusSummary = [...appliedFilterChips, ...filterSummary].join(" · ");
   const effectiveTimelineContext = nodeDetail?.timeline_context?.length ? nodeDetail.timeline_context : timelineFocus;
   const backboneTimeline = effectiveTimelineContext.length ? effectiveTimelineContext : timelineFocus;
   const effectiveConnectedNodes = nodeDetail?.connected_nodes ?? [];
@@ -396,24 +579,32 @@ export function GraphWorkspaceShell({
 
   if (!nodes.length) {
     return (
-      <Panel className="workbench-header" tone="quiet">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <h1 className="workbench-title">图谱工作台</h1>
-            <p className="workbench-lede">
-              当前没有足够的事件或人物节点形成图谱。先补充档案、人物或事件，再回到这里编辑关系。
-            </p>
+      <div className="space-y-4">
+        <Panel className="workbench-header" tone="quiet">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <h1 className="workbench-title">图谱工作台</h1>
+              <p className="workbench-lede">
+                当前没有足够的事件或人物节点形成图谱。先补充档案、人物或事件，再回到这里编辑关系。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {hasBackendFilters ? (
+                <button type="button" onClick={() => onUpdateFilters({}, true)} className="tool-action bg-neon">
+                  清空过滤
+                </button>
+              ) : null}
+              <Link href="/library" className="tool-action bg-canvas">
+                返回档案库
+              </Link>
+              <Link href="/timeline" className="tool-action bg-neon">
+                打开时间线
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/library" className="tool-action bg-canvas">
-              返回档案库
-            </Link>
-            <Link href="/timeline" className="tool-action bg-neon">
-              打开时间线
-            </Link>
-          </div>
-        </div>
-      </Panel>
+        </Panel>
+        <GraphFilterPanel filters={filters} onUpdateFilters={onUpdateFilters} hasBackendFilters={hasBackendFilters} />
+      </div>
     );
   }
 
@@ -438,6 +629,7 @@ export function GraphWorkspaceShell({
 
       <section className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
         <Panel className="p-6 md:p-8" tone="quiet" intensity="quiet">
+          <GraphFilterPanel filters={filters} onUpdateFilters={onUpdateFilters} hasBackendFilters={hasBackendFilters} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="section-kicker">共享画布</p>
             <div className="flex flex-wrap gap-2">
@@ -481,6 +673,11 @@ export function GraphWorkspaceShell({
             </button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            {appliedFilterChips.map((item) => (
+              <span key={item} className={hasBackendFilters ? "brutal-chip bg-neon" : "brutal-chip"}>
+                {item}
+              </span>
+            ))}
             {filterSummary.map((item) => (
               <span key={item} className="brutal-chip">
                 {item}
@@ -521,7 +718,7 @@ export function GraphWorkspaceShell({
               <p className="mt-1 text-sm font-black leading-tight">
                 {positionedNodes.length} 节点 / {visibleEdges.length} 连线 / 密度 {(visibleDensity * 100).toFixed(0)}%
               </p>
-              <p className="mt-1 break-words text-xs font-bold text-muted">{filterSummary.join(" · ")}</p>
+              <p className="mt-1 break-words text-xs font-bold text-muted">{canvasStatusSummary}</p>
             </div>
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <rect x="0" y="0" width="100" height="100" fill="#fffdf5" />

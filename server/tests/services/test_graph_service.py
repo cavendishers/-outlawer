@@ -3,6 +3,7 @@ from app.domains.retrieval.graph_query import (
     build_graph_overview_network,
     build_related_event_suggestions,
 )
+from app.domains.retrieval.graph_workspace import apply_workspace_filters, normalize_graph_filters
 
 
 def test_build_related_event_suggestions_prioritizes_shared_people_and_similarity() -> None:
@@ -123,3 +124,59 @@ def test_build_graph_overview_network_deduplicates_edges_and_reports_stats() -> 
     assert len(overview["nodes"]) == 3
     assert overview["edges"][0]["edge_type"] == "participates_in"
     assert overview["edges"][1]["edge_type"] == "relates_to"
+
+
+def test_graph_workspace_filters_keep_unconnected_nodes_without_active_graph_filters() -> None:
+    workspace = {
+        "scope": "overview",
+        "title": "测试图谱",
+        "description": "测试",
+        "anchor": None,
+        "nodes": [
+            {"id": "evt-1", "node_type": "event", "label": "事件一", "subtitle": "2026-04-18", "meta": []},
+            {"id": "ent-1", "node_type": "entity", "label": "人物一", "subtitle": "person", "meta": []},
+            {"id": "evt-2", "node_type": "event", "label": "孤立事件", "subtitle": "2026-04-19", "meta": []},
+        ],
+        "edges": [{"source_id": "evt-1", "target_id": "ent-1", "edge_type": "participates_in", "label": "参与", "weight": 0.8}],
+        "timeline_focus": [{"id": "evt-1", "event_id": "evt-1", "title": "事件一"}],
+        "stats": {},
+    }
+
+    filtered = apply_workspace_filters(workspace, normalize_graph_filters())
+
+    assert {node["id"] for node in filtered["nodes"]} == {"evt-1", "ent-1", "evt-2"}
+    assert filtered["filters"]["applied"]["node_types"] == []
+
+
+def test_graph_workspace_filters_apply_relation_weight_and_time_window() -> None:
+    workspace = {
+        "scope": "overview",
+        "title": "测试图谱",
+        "description": "测试",
+        "anchor": None,
+        "nodes": [
+            {"id": "evt-1", "node_type": "event", "label": "保留事件", "subtitle": "2026-04-18", "meta": []},
+            {"id": "ent-1", "node_type": "entity", "label": "保留人物", "subtitle": "person", "meta": []},
+            {"id": "evt-2", "node_type": "event", "label": "过早事件", "subtitle": "2026-04-01", "meta": []},
+            {"id": "ent-2", "node_type": "entity", "label": "低权重人物", "subtitle": "person", "meta": []},
+        ],
+        "edges": [
+            {"source_id": "evt-1", "target_id": "ent-1", "edge_type": "participates_in", "label": "参与", "weight": 0.8},
+            {"source_id": "evt-1", "target_id": "ent-2", "edge_type": "participates_in", "label": "弱关联", "weight": 0.3},
+            {"source_id": "evt-2", "target_id": "ent-1", "edge_type": "participates_in", "label": "过早", "weight": 0.9},
+        ],
+        "timeline_focus": [
+            {"id": "evt-1", "event_id": "evt-1", "title": "保留事件"},
+            {"id": "evt-2", "event_id": "evt-2", "title": "过早事件"},
+        ],
+        "stats": {},
+    }
+
+    filtered = apply_workspace_filters(
+        workspace,
+        normalize_graph_filters(relation_types="participates_in", start="2026-04-10", min_weight=0.7),
+    )
+
+    assert {node["id"] for node in filtered["nodes"]} == {"evt-1", "ent-1"}
+    assert [edge["label"] for edge in filtered["edges"]] == ["参与"]
+    assert [item["event_id"] for item in filtered["timeline_focus"]] == ["evt-1"]
