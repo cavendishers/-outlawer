@@ -107,55 +107,40 @@ export default function EntityStoryPage() {
   return (
     <AuthGate>
       <main className="space-y-6">
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Panel className="p-6 md:p-8" tone="quiet">
-            <p className="page-kicker">Entity Story</p>
-            <h1 className="page-title mt-3">
-              {story?.title ?? entity?.display_name ?? "人物档案载入中"}
-            </h1>
-            <p className="page-lede">
-              {entity?.description ?? "该角色的设定注释尚未补齐，先从故事视图读取它的气场。"}
-            </p>
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap gap-2">
+                <span className="workbench-stamp bg-aqua">{entity?.entity_type ?? "人物"}</span>
+                <span className="workbench-stamp bg-gold">事件 {entity?.timeline_fragments.length ?? 0}</span>
+                {entity?.confidence_score ? (
+                  <span className="workbench-stamp bg-canvas">置信度 {Math.round(entity.confidence_score * 100)}%</span>
+                ) : null}
+              </div>
+              <h1 className="workbench-title mt-3">{entity?.display_name ?? "人物档案载入中"}</h1>
+              <p className="workbench-lede">
+                {entity?.description ?? "人物资料还不完整。可以先沿时间线查看出场事件，再进入校对台补充身份、别名和关系。"}
+              </p>
+            </div>
             {entity ? (
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href={`/curation/entities/${entity.id}`} className="brutal-action brutal-action-primary text-lg">
-                  进入校对台
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/curation/entities/${entity.id}`} className="tool-action bg-neon">
+                  校对人物
                 </Link>
-                <Link href={`/review/entities/${entity.id}`} className="brutal-action brutal-action-info text-lg">
-                  查看审核页
-                </Link>
-                <Link href={`/graph?entity_id=${entity.id}`} className="brutal-action brutal-action-secondary text-lg">
-                  打开图谱工作台
+                <Link href={`/graph?entity_id=${entity.id}`} className="tool-action bg-canvas">
+                  图谱视图
                 </Link>
                 <button
-                  className="brutal-action brutal-action-primary text-lg disabled:opacity-60"
+                  className="tool-action bg-canvas disabled:opacity-60"
                   type="button"
                   onClick={createCharacterCard}
                   disabled={cardCreating}
                 >
-                  {cardCreating ? "生成中..." : "生成人物卡"}
+                  {cardCreating ? "生成中..." : "人物卡"}
                 </button>
               </div>
             ) : null}
-          </Panel>
-
-          <Panel className="p-6" tone="info" intensity="quiet">
-            <p className="section-kicker">身份卡</p>
-            <p className="mt-3 text-4xl font-black">{entity?.display_name ?? "..."}</p>
-            <p className="mt-2 text-base font-semibold text-muted">{entity?.canonical_name}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {entity?.entity_type ? (
-                <span className="brutal-chip">
-                  {entity.entity_type}
-                </span>
-              ) : null}
-              {entity?.confidence_score ? (
-                <span className="brutal-chip">
-                  {Math.round(entity.confidence_score * 100)}%
-                </span>
-              ) : null}
-            </div>
-          </Panel>
+          </div>
         </section>
 
         {error ? (
@@ -164,7 +149,7 @@ export default function EntityStoryPage() {
           </Panel>
         ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <Panel className="p-6" tone="story" intensity="quiet">
             <p className="section-kicker">中二风档案</p>
             <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-relaxed text-muted">
@@ -189,16 +174,16 @@ export default function EntityStoryPage() {
               )}
             </div>
             {entity?.first_seen_at ? (
-              <p className="mt-5 text-sm font-black uppercase tracking-[0.16em]">
-                first seen {entity.first_seen_at}
+              <p className="mt-5 text-sm font-black tracking-[0.12em]">
+                首次出现：{entity.first_seen_at.slice(0, 10)}
               </p>
             ) : null}
             {entity?.last_seen_at ? (
-              <p className="mt-2 text-sm font-black uppercase tracking-[0.16em]">
-                last seen {entity.last_seen_at}
+              <p className="mt-2 text-sm font-black tracking-[0.12em]">
+                最近出现：{entity.last_seen_at.slice(0, 10)}
               </p>
             ) : null}
-            <p className="mt-5 text-4xl font-black">{entity?.timeline_fragments.length ?? 0}</p>
+            <p className="mt-5 text-3xl font-black">{entity?.timeline_fragments.length ?? 0} 个事件片段</p>
             <p className="body-copy mt-2">
               当前角色已经被挂接到 {entity?.timeline_fragments.length ?? 0} 个事件节点，可沿时间轴继续回溯。
             </p>

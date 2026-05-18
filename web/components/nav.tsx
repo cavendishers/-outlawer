@@ -10,22 +10,22 @@ const primaryItems = [
 ];
 
 const knowledgeItems = [
-  { href: "/library", label: "档案" },
-  { href: "/people", label: "人物" },
-  { href: "/events", label: "事件" },
-  { href: "/timeline", label: "图谱" },
+  { href: "/library", label: "档案", match: ["/library", "/notes", "/story/note"] },
+  { href: "/people", label: "人物", match: ["/people", "/story/entity", "/character-cards"] },
+  { href: "/events", label: "事件", match: ["/events"] },
+  { href: "/timeline", label: "时间线", match: ["/timeline"] },
 ];
 
 const secondaryItems = [
-  { href: "/review", label: "审核" },
-  { href: "/operations", label: "运维" },
-  { href: "/graph", label: "工作台" },
+  { href: "/graph", label: "图谱工作台", match: ["/graph"] },
+  { href: "/review", label: "审核", match: ["/review"] },
+  { href: "/operations", label: "运维", match: ["/operations"] },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
-  const knowledgeActive = knowledgeItems.some((item) => item.href === pathname);
-  const secondaryActive = secondaryItems.some((item) => item.href === pathname);
+  const knowledgeActive = knowledgeItems.some((item) => isActivePath(pathname, item));
+  const secondaryActive = secondaryItems.some((item) => isActivePath(pathname, item));
 
   return (
     <nav className="flex flex-wrap items-start gap-3 text-sm font-bold uppercase tracking-[0.16em]">
@@ -34,7 +34,7 @@ export function Navigation() {
           key={item.href}
           href={item.href}
           className={`nav-pill ${
-            pathname === item.href ? "nav-pill-active" : ""
+            isActivePath(pathname, item) ? "nav-pill-active" : ""
           }`}
         >
           {item.label}
@@ -49,7 +49,7 @@ export function Navigation() {
 type NavMenuProps = {
   active: boolean;
   align?: "left" | "right";
-  items: Array<{ href: string; label: string }>;
+  items: NavItem[];
   label: string;
   pathname: string;
 };
@@ -74,7 +74,7 @@ function NavMenu({ active, align = "left", items, label, pathname }: NavMenuProp
             key={item.href}
             href={item.href}
             className={`block border-2 border-ink px-3 py-2 text-sm font-black shadow-brutalTiny ${
-              pathname === item.href ? "bg-neon" : "bg-canvas"
+              isActivePath(pathname, item) ? "bg-neon" : "bg-canvas"
             }`}
           >
             {item.label}
@@ -83,4 +83,15 @@ function NavMenu({ active, align = "left", items, label, pathname }: NavMenuProp
       </div>
     </details>
   );
+}
+
+type NavItem = {
+  href: string;
+  label: string;
+  match?: string[];
+};
+
+function isActivePath(pathname: string, item: NavItem): boolean {
+  const candidates = item.match ?? [item.href];
+  return candidates.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }

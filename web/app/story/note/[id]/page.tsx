@@ -52,40 +52,25 @@ export default function NoteStoryPage() {
   return (
     <AuthGate>
       <main className="space-y-6">
-        <Panel className="p-6 md:p-8" tone="quiet">
-          <p className="page-kicker">Story View</p>
-          <h1 className="page-title mt-3">
-            {story?.title ?? note?.title ?? "风格化卷宗载入中"}
-          </h1>
-          <p className="page-lede max-w-4xl">
-            {note?.summary ?? "系统正在把结构化知识翻译成更戏剧化的展示文本。"}
-          </p>
-        </Panel>
-
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Panel className="p-5" tone="info" intensity="quiet">
-            <p className="section-kicker">原始卷宗</p>
+        <section className="workbench-header">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap gap-2">
+                <span className="workbench-stamp bg-peach">风格化阅读</span>
+                <span className="workbench-stamp bg-gold">{note?.primary_time?.slice(0, 10) ?? "待校时"}</span>
+                <span className="workbench-stamp bg-canvas">{note?.category ?? "未分类"}</span>
+              </div>
+              <h1 className="workbench-title mt-3">{story?.title ?? note?.title ?? "风格化卷宗载入中"}</h1>
+              <p className="workbench-lede max-w-4xl">
+                {note?.summary ?? "系统正在把结构化知识翻译成更戏剧化的展示文本。"}
+              </p>
+            </div>
             {note?.id ? (
-              <Link
-                href={`/notes/${note.id}`}
-                className="brutal-action brutal-action-secondary mt-4 text-lg"
-              >
+              <Link href={`/notes/${note.id}`} className="tool-action bg-canvas">
                 返回标准视图
               </Link>
-            ) : (
-              <p className="mt-4 text-base font-bold">标准视图载入中。</p>
-            )}
-          </Panel>
-
-          <Panel className="p-5" tone="time" intensity="quiet">
-            <p className="section-kicker">时间锚点</p>
-            <p className="mt-3 text-2xl font-black">{note?.primary_time?.slice(0, 10) ?? "待校准"}</p>
-          </Panel>
-
-          <Panel className="p-5" tone="quiet" intensity="quiet">
-            <p className="section-kicker">卷宗分类</p>
-            <p className="mt-3 text-2xl font-black">{note?.category ?? "未分类"}</p>
-          </Panel>
+            ) : null}
+          </div>
         </section>
 
         {error ? (
@@ -108,17 +93,23 @@ export default function NoteStoryPage() {
           </div>
         </Panel>
 
-        <Panel className="p-6" tone="info" intensity="quiet">
-          <p className="section-kicker">标准摘要</p>
-          <p className="body-copy mt-4">{note?.summary ?? "暂无摘要"}</p>
-        </Panel>
-
-        <Panel className="p-6" tone="quiet" intensity="quiet">
-          <p className="section-kicker">原始文本摘录</p>
-          <p className="body-copy mt-4 whitespace-pre-wrap">
-            {note?.canonical_text ?? "暂无标准文本。"}
-          </p>
-        </Panel>
+        <details className="border-4 border-ink bg-bone p-5 shadow-brutalSoft">
+          <summary className="cursor-pointer text-sm font-black tracking-[0.12em]">
+            展开标准摘要与原始文本
+          </summary>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+            <Panel className="p-5" tone="info" intensity="quiet">
+              <p className="section-kicker">标准摘要</p>
+              <p className="body-copy mt-4">{note?.summary ?? "暂无摘要"}</p>
+            </Panel>
+            <Panel className="p-5" tone="quiet" intensity="quiet">
+              <p className="section-kicker">原始文本摘录</p>
+              <p className="body-copy mt-4 whitespace-pre-wrap">
+                {note?.canonical_text ?? "暂无标准文本。"}
+              </p>
+            </Panel>
+          </div>
+        </details>
       </main>
     </AuthGate>
   );
