@@ -66,6 +66,80 @@ class ExtractionRunResponse(BaseModel):
     summary: ExtractionRunSummaryResponse
 
 
+class AnalysisWorkflowAssetResponse(BaseModel):
+    id: str
+    asset_type: str
+    title: str
+    status: str
+    mime_type: str | None = None
+    file_size: int | None = None
+    original_text_preview: str | None = None
+    created_at: str | None = None
+
+
+class AnalysisWorkflowDerivativeResponse(BaseModel):
+    id: str
+    derivative_type: str
+    version: str
+    content_preview: str
+    meta_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class AnalysisWorkflowJobResponse(BaseModel):
+    id: str
+    job_type: str
+    status: str
+    target_type: str
+    target_id: str
+    error_message: str | None = None
+    retry_count: int
+    payload_json: dict[str, Any] = Field(default_factory=dict)
+    result_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = None
+    finished_at: str | None = None
+
+
+class AnalysisWorkflowRunResponse(ExtractionRunResponse):
+    raw_result_json: dict[str, Any] = Field(default_factory=dict)
+    normalized_result_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class AnalysisWorkflowProjectionResponse(BaseModel):
+    id: str
+    extraction_run_id: str
+    source_asset_id: str | None = None
+    previous_projection_id: str | None = None
+    action_type: str
+    summary_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class AnalysisWorkflowStepResponse(BaseModel):
+    step_key: str
+    title: str
+    status: str
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration_ms: int | None = None
+    model_name: str | None = None
+    provider_name: str | None = None
+    summary: str
+    evidence: list[str] = Field(default_factory=list)
+    output_refs: list[str] = Field(default_factory=list)
+
+
+class AnalysisWorkflowStatsResponse(BaseModel):
+    job_count: int
+    derivative_count: int
+    run_count: int
+    projection_count: int
+    replay_action_count: int
+    evidence_count: int
+
+
 class ReplayActionResponse(BaseModel):
     id: str
     action_type: str
@@ -83,6 +157,21 @@ class ReplayActionResponse(BaseModel):
     prompt_version: str | None = None
     schema_version: str | None = None
     note: str | None = None
+
+
+class AnalysisWorkflowResponse(BaseModel):
+    note: NoteResponse
+    asset: AnalysisWorkflowAssetResponse | None = None
+    active_run_id: str | None = None
+    latest_run_id: str | None = None
+    active_projection_id: str | None = None
+    stats: AnalysisWorkflowStatsResponse
+    steps: list[AnalysisWorkflowStepResponse] = Field(default_factory=list)
+    jobs: list[AnalysisWorkflowJobResponse] = Field(default_factory=list)
+    derivatives: list[AnalysisWorkflowDerivativeResponse] = Field(default_factory=list)
+    runs: list[AnalysisWorkflowRunResponse] = Field(default_factory=list)
+    projections: list[AnalysisWorkflowProjectionResponse] = Field(default_factory=list)
+    replay_actions: list[ReplayActionResponse] = Field(default_factory=list)
 
 
 class ProjectionResultResponse(BaseModel):

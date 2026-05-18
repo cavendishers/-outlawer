@@ -56,15 +56,17 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 ## Recommended Next Stage
 
-The next stage should be:
+The next stage should continue two product-depth tracks:
 
-- **Phase 26: Graph Workspace And Canvas Editing**
+- **Phase 29: Analysis Workflow Traceability**
+- **Phase 26 follow-up: Graph Workspace And Canvas Editing**
 
 This is the best next step because the architecture seams are now cleaner, which means the biggest remaining gap is product depth rather than route structure:
 
-- graph correction is available but still feels like back-office forms
+- users need to understand why AI extracted or missed people, events, and relations
+- graph correction is available but still needs stronger explanation and navigation support
 - event-to-event association browsing is stronger than before, but not yet a true workspace
-- the new query services give us a better foundation for richer graph UI without tangling route handlers again
+- the new query services give us a better foundation for richer workflow and graph UI without tangling route handlers again
 
 ## Phase 26 Scope
 
@@ -78,6 +80,7 @@ Detailed implementation plan:
 
 Current implementation progress:
 
+- Phase 29 has started with `/api/v1/notes/{note_id}/analysis-workflow` and `/notes/{id}/analysis`, giving each note a traceable chain across raw assets, derivatives, jobs, extraction runs, projection versions, and replay audit actions
 - Slice A is now in place with a shared `/graph` route, a unified graph workspace shell, and a dedicated `/api/v1/graph/workspace` read endpoint for event, entity, and overview anchors
 - Slice B is now in place with a node-detail endpoint, URL-synced node focus, connected-node inspection, and timeline-context navigation inside the shared graph workspace
 - Slice C is now in place with inline participant editing for event nodes plus inline relation add/update/remove for event and entity nodes inside the shared graph workspace
@@ -87,7 +90,8 @@ Current implementation progress:
 
 ## Priority-ordered Next Work
 
-1. continue toward broader canvas-native graph editing when the graph workflow becomes the highest leverage gap again
-2. keep deepening operations dashboards where queue analytics, asset actions, or admin workflows are still thin
-3. plan multi-user and permissions model
-4. design plugin and external importer seams
+1. add single-step rerun actions on the analysis workflow page
+2. add relationship explanation and path discovery on the graph workspace
+3. keep deepening operations dashboards where queue analytics, asset actions, or admin workflows are still thin
+4. plan multi-user and permissions model
+5. design plugin and external importer seams

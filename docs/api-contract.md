@@ -83,6 +83,7 @@ The following read and replay surfaces now publish explicit response schemas thr
 - `POST /api/v1/notes` returns `Envelope[NoteCreateResponse]`
 - `GET /api/v1/notes` returns `Envelope[PaginatedData[NoteResponse]]`
 - `GET /api/v1/notes/{note_id}` returns `Envelope[NoteResponse]`
+- `GET /api/v1/notes/{note_id}/analysis-workflow` returns `Envelope[AnalysisWorkflowResponse]`
 - `GET /api/v1/notes/{note_id}/extraction-runs` returns `Envelope[CollectionData[ExtractionRunResponse]]`
 - `GET /api/v1/notes/{note_id}/extraction-runs/{run_id}` returns `Envelope[ExtractionRunResponse]`
 - `GET /api/v1/notes/{note_id}/extraction-runs/compare` returns `Envelope[ExtractionRunCompareResponse]`
@@ -229,6 +230,7 @@ Responsibilities:
 - `POST /api/v1/notes`
 - `GET /api/v1/notes`
 - `GET /api/v1/notes/{note_id}`
+- `GET /api/v1/notes/{note_id}/analysis-workflow`
 - `GET /api/v1/notes/{note_id}/extraction-runs`
 - `GET /api/v1/notes/{note_id}/extraction-runs/{run_id}`
 - `GET /api/v1/notes/{note_id}/extraction-runs/compare?base_run_id=...&candidate_run_id=...`
@@ -242,6 +244,7 @@ Responsibilities:
 
 - create knowledge entries from assets
 - read note summaries and canonical text
+- expose the full read-only analysis chain for a note: raw asset, derivatives, jobs, extraction runs, projection versions, and replay audit actions
 - trigger async reprocessing
 - preserve extraction history through `extraction_runs`
 - expose extraction run version metadata such as provider, model, prompt, schema, input hash, run kind, and projection status

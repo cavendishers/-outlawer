@@ -1273,6 +1273,40 @@ Verification note:
 - `/inbox`, `/tools`, `/login`, `error`, and `not-found` were brought into the same workbench visual system so low-frequency entry pages no longer use large decorative hero blocks
 - `/notes/[id]` now exposes the AI analysis loop directly: active projection, provider/model metadata, run status, structured result counts, foldable run JSON, diff snapshot, replay audit, and reprocess/review/operations shortcuts
 - Phase 26 Slice F added canvas-native polish to `/graph`: node search, focus-neighborhood filtering, visible graph density/status, and mobile-safe empty-filter states
+
+## Phase 29: Analysis Workflow Traceability
+
+Status: `IN_PROGRESS`
+
+Goal:
+
+- make every note's AI analysis process inspectable from raw source through model output, projection, and governance audit
+
+Current slice delivered:
+
+- `GET /api/v1/notes/{note_id}/analysis-workflow` returns a note-scoped analysis workflow read model
+- the workflow read model includes raw asset metadata, asset derivatives, note jobs, extraction runs with raw and normalized JSON, projection versions, replay actions, and computed pipeline steps
+- `/notes/[id]/analysis` now presents the pipeline as a dedicated workbench page instead of burying analysis details inside the note detail page
+- `/notes/[id]` now links directly to the analysis process page
+- full API e2e now asserts the workflow endpoint after initial processing and after reprocess creates additional runs
+
+Remaining work:
+
+- add single-step rerun actions for extraction, projection, and story rendering
+- add clearer evidence counts per extracted entity, event, and relation
+- add side-by-side raw-output versus normalized-output diffing on the analysis page
+
+Verification completed for current slice:
+
+- `python3 -m compileall server/app`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python -m pytest tests/api/test_openapi_contracts.py tests/services/test_extraction_run_service.py`
+- `cd web && npx tsc --noEmit`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
+- browser smoke on `/notes/{id}/analysis` -> passed with real analysis workflow data and no horizontal overflow
+
+Additional Phase 28 status notes:
+
 - `/notes/[id]` header now uses the compact workbench pattern instead of the older large `Panel` hero, keeping detail pages aligned with the post-`/events` density rules
 - the full API e2e script now creates uniquely marked temporary records and cleans up created assets, notes, jobs, projections, entities, events, derivatives, embeddings, review logs, and MinIO objects in `finally`, preventing test records from leaking into formal data
 - product experience convergence slice: homepage became a post-login workbench with three primary paths (`导入`、`搜索`、`图谱工作台`), global nav active states now cover nested detail/story pages, event detail moved to compact conclusion + next-action layout, note story pages prioritize reading with source/debug content collapsed, and entity story pages foreground identity, event count, confidence, curation, graph, and character-card actions

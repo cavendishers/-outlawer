@@ -211,6 +211,7 @@ def test_core_read_endpoints_publish_explicit_response_models() -> None:
 
 def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     run_list_schema = _response_data_schema("/api/v1/notes/{note_id}/extraction-runs", "get")
+    analysis_workflow_schema = _response_data_schema("/api/v1/notes/{note_id}/analysis-workflow", "get")
     run_compare_schema = _response_data_schema("/api/v1/notes/{note_id}/extraction-runs/compare", "get")
     replay_actions_schema = _response_data_schema("/api/v1/notes/{note_id}/replay-actions", "get")
     apply_schema = _response_data_schema("/api/v1/notes/{note_id}/extraction-runs/{run_id}/apply", "post")
@@ -219,6 +220,20 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
     reprocess_schema = _response_data_schema("/api/v1/notes/{note_id}/reprocess", "post")
 
     assert set(run_list_schema["properties"]) == {"items", "total"}
+    assert set(analysis_workflow_schema["properties"]) == {
+        "note",
+        "asset",
+        "active_run_id",
+        "latest_run_id",
+        "active_projection_id",
+        "stats",
+        "steps",
+        "jobs",
+        "derivatives",
+        "runs",
+        "projections",
+        "replay_actions",
+    }
     assert set(run_compare_schema["properties"]) == {"note_id", "base_run", "candidate_run", "diff"}
     assert set(replay_actions_schema["properties"]) == {"items", "total"}
     assert set(apply_schema["properties"]) == {"note", "applied_run", "projection_result", "replay_actions"}
@@ -228,6 +243,8 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
 
     run_item_schema = _resolve_schema(run_list_schema["properties"]["items"]["items"])
     replay_action_item_schema = _resolve_schema(replay_actions_schema["properties"]["items"]["items"])
+    workflow_step_schema = _resolve_schema(analysis_workflow_schema["properties"]["steps"]["items"])
+    workflow_run_schema = _resolve_schema(analysis_workflow_schema["properties"]["runs"]["items"])
     projection_result_schema = _resolve_schema(apply_schema["properties"]["projection_result"])
 
     assert set(run_item_schema["properties"]) >= {
@@ -248,6 +265,8 @@ def test_note_processing_endpoints_publish_explicit_response_models() -> None:
         "prompt_version",
         "schema_version",
     }
+    assert set(workflow_step_schema["properties"]) >= {"step_key", "status", "summary", "evidence", "output_refs"}
+    assert set(workflow_run_schema["properties"]) >= {"raw_result_json", "normalized_result_json"}
     assert set(projection_result_schema["properties"]) >= {"projection_version_id"}
 
 

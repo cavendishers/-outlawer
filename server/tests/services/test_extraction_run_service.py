@@ -1,7 +1,17 @@
 from datetime import UTC, datetime, timedelta
 
-from app.models.extraction import ExtractionRun
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.core.database import Base
+from app.domains.retrieval.note_query import get_note_analysis_workflow
+from app.models.ai_job import AIJob
+from app.models.asset_derivative import AssetDerivative
+from app.models.extraction import ExtractionEvidence, ExtractionRun, ProjectionVersion
+from app.models.note import Note
+from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
+from app.models.user import User
 from app.domains.replay.service import (
     RUN_STATUS_READY_FOR_REVIEW,
     RUN_STATUS_REJECTED,
@@ -327,3 +337,143 @@ def test_serialize_replay_action_includes_projection_version_metadata() -> None:
     assert serialized["model_name"] == "google/gemma-4-31b-it:free"
     assert serialized["prompt_version"] == "text-openrouter-v1"
     assert serialized["schema_version"] == "ai-extraction-format-v1"
+
+
+def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    tables = [
+        User.__table__,
+        RawAsset.__table__,
+        AssetDerivative.__table__,
+        Note.__table__,
+        ExtractionRun.__table__,
+        ProjectionVersion.__table__,
+        ExtractionEvidence.__table__,
+        AIJob.__table__,
+        ReviewAction.__table__,
+    ]
+    Base.metadata.create_all(engine, tables=tables)
+    Session = sessionmaker(bind=engine)
+    now = datetime.now(UTC)
+    payload = {
+        "summary": {"title": "启动会", "category": "meeting"},
+        "entities": [{"name": "张三"}],
+        "events": [{"title": "启动会"}],
+        "relations": [{"relation_type": "participates_in"}],
+        "similarity_hints": [],
+    }
+
+    with Session() as db:
+        db.add(User(id="user-1", username="admin", password_hash="hash", display_name="Admin"))
+        db.add(
+            RawAsset(
+                id="asset-1",
+                user_id="user-1",
+                asset_type="text",
+                title="启动会原文",
+                original_text="2026-04-18 张三参加启动会。",
+                status="uploaded",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            AssetDerivative(
+                id="derivative-1",
+                asset_id="asset-1",
+                derivative_type="normalized_text",
+                content="2026-04-18 张三参加启动会。",
+                meta_json={"parser": "text"},
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            Note(
+                id="note-1",
+                user_id="user-1",
+                asset_id="asset-1",
+                title="启动会",
+                status="ready",
+                active_projection_id=None,
+                canonical_text="2026-04-18 张三参加启动会。",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            AIJob(
+                id="job-1",
+                user_id="user-1",
+                job_type="knowledge_pipeline",
+                target_type="note",
+                target_id="note-1",
+                status="completed",
+                payload_json={"asset_id": "asset-1"},
+                result_json={"run_id": "run-1"},
+                created_at=now,
+                updated_at=now,
+                finished_at=now,
+            )
+        )
+        db.add(
+            ExtractionRun(
+                id="run-1",
+                user_id="user-1",
+                note_id="note-1",
+                source_asset_id="asset-1",
+                raw_result_json=payload,
+                normalized_result_json=payload,
+                status="applied",
+                extractor_name="deepseek",
+                extractor_version="v1",
+                provider_name="deepseek",
+                model_name="deepseek-v4-pro",
+                prompt_version="text-llm-v1",
+                schema_version="ai-extraction-format-v1",
+                input_hash="hash-1",
+                projection_status="applied",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            ReviewAction(
+                id="action-1",
+                user_id="user-1",
+                target_type="note",
+                target_id="note-1",
+                action_type="auto_apply_extraction_run",
+                status_after="applied",
+                payload_json={
+                    "run_id": "run-1",
+                    "extractor_name": "deepseek",
+                    "extractor_version": "v1",
+                    "provider_name": "deepseek",
+                    "model_name": "deepseek-v4-pro",
+                    "schema_version": "ai-extraction-format-v1",
+                    "note": "自动应用。",
+                },
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.commit()
+
+        workflow = get_note_analysis_workflow(db, user_id="user-1", note_id="note-1")
+
+    assert workflow["note"]["id"] == "note-1"
+    assert workflow["asset"]["id"] == "asset-1"
+    assert workflow["stats"]["job_count"] == 1
+    assert workflow["stats"]["derivative_count"] == 1
+    assert workflow["stats"]["run_count"] == 1
+    assert workflow["stats"]["replay_action_count"] == 1
+    assert [step["step_key"] for step in workflow["steps"]] == [
+        "raw_asset",
+        "text_preparation",
+        "knowledge_extraction",
+        "projection",
+        "review_governance",
+    ]
+    assert workflow["runs"][0]["raw_result_json"]["summary"]["title"] == "启动会"
+    assert workflow["steps"][2]["model_name"] == "deepseek-v4-pro"

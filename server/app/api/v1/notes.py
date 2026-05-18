@@ -11,6 +11,7 @@ from app.schemas.common import CollectionData, Envelope, PaginatedData
 from app.schemas.note import (
     ExtractionRunCompareResponse,
     ExtractionRunResponse,
+    AnalysisWorkflowResponse,
     NoteCreateRequest,
     NoteCreateResponse,
     NoteExtractionRunApplyResponse,
@@ -104,6 +105,14 @@ def list_note_extraction_runs(note_id: str, db: DbSession, user=Depends(get_curr
         return ok(note_query.list_note_extraction_run_items(db, user_id=user.id, note_id=note_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+
+@router.get("/{note_id}/analysis-workflow", response_model=Envelope[AnalysisWorkflowResponse])
+def get_note_analysis_workflow(note_id: str, db: DbSession, user=Depends(get_current_user)) -> dict:
+    try:
+        return ok(note_query.get_note_analysis_workflow(db, user_id=user.id, note_id=note_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found") from exc
 
 
 @router.get("/{note_id}/extraction-runs/compare", response_model=Envelope[ExtractionRunCompareResponse])

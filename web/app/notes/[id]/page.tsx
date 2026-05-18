@@ -304,6 +304,9 @@ export default function NotePage() {
                 <Link href={`/story/note/${noteId}`} className="tool-action bg-neon">
                   中二风视图
                 </Link>
+                <Link href={`/notes/${noteId}/analysis`} className="tool-action bg-aqua">
+                  分析过程
+                </Link>
                 <Link href="/review" className="tool-action bg-canvas">
                   审核队列
                 </Link>
@@ -621,6 +624,9 @@ export default function NotePage() {
               className="brutal-action brutal-action-primary text-lg"
             >
               查看中二风版本
+            </Link>
+            <Link href={`/notes/${noteId}/analysis`} className="brutal-action brutal-action-info text-lg">
+              查看分析过程
             </Link>
             <Link href="/operations" className="brutal-action brutal-action-secondary text-lg">
               跳转运维台

@@ -159,3 +159,9 @@ The next implementation slice should continue blueprint Phase C while preserving
 - keep shrinking legacy compatibility shims as concrete domain implementations take over
 - choose the next backend seam from the remaining tiny foundational helpers only if they materially improve boundaries; otherwise shift focus to product and data-shape evolution
 - keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI
+
+## Analysis Workflow
+
+- `DONE`: note analysis now has a dedicated read model and page. `GET /api/v1/notes/{note_id}/analysis-workflow` stitches together the raw asset, asset derivatives, AI jobs, extraction runs, projection versions, and replay audit actions for one note.
+- `DONE`: `/notes/{id}/analysis` exposes the trace as a workbench page with pipeline steps, model/provider metadata, raw model output, normalized result JSON, source material, derived text, task records, projection history, and audit notes.
+- `NEXT`: single-step rerun should build on this workflow surface, starting with re-running extraction or projection without re-uploading the source asset.

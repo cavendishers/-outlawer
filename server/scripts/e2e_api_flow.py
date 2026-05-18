@@ -337,6 +337,12 @@ def main() -> None:
 
         note = assert_ok(client.get(f"{args.base_url}/notes/{note_id}", headers=headers))
         assert note["status"] == "ready"
+        analysis_workflow = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/analysis-workflow", headers=headers))
+        assert analysis_workflow["note"]["id"] == note_id
+        assert analysis_workflow["steps"], analysis_workflow
+        assert analysis_workflow["runs"], analysis_workflow
+        assert "raw_result_json" in analysis_workflow["runs"][0]
+        assert "normalized_result_json" in analysis_workflow["runs"][0]
         event_ids, entity_ids = get_note_projection_ids(note_id)
         assert event_ids, event_ids
         assert entity_ids, entity_ids
@@ -492,6 +498,9 @@ def main() -> None:
 
         extraction_runs = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/extraction-runs", headers=headers))
         assert extraction_runs["total"] >= 2, extraction_runs
+        analysis_workflow_after_reprocess = assert_ok(client.get(f"{args.base_url}/notes/{note_id}/analysis-workflow", headers=headers))
+        assert analysis_workflow_after_reprocess["stats"]["run_count"] >= 2
+        assert analysis_workflow_after_reprocess["stats"]["job_count"] >= 2
         applied_runs = [item for item in extraction_runs["items"] if item["is_applied"]]
         review_runs = [item for item in extraction_runs["items"] if item["status"] == "ready_for_review"]
         assert len(applied_runs) == 1, extraction_runs
