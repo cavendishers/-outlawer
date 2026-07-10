@@ -15,6 +15,13 @@ class GraphViewpointCreateRequest(BaseModel):
     layout_json: dict[str, Any] = Field(default_factory=dict)
 
 
+class GraphViewpointUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+
+
 class GraphViewpointResponse(BaseModel):
     id: str
     name: str
@@ -27,3 +34,8 @@ class GraphViewpointResponse(BaseModel):
     href: str
     created_at: str | None = None
     updated_at: str | None = None
+
+
+class GraphViewpointDeleteResponse(BaseModel):
+    id: str
+    status: str

@@ -156,6 +156,10 @@ class AnalysisWorkflowEvidenceGroupResponse(BaseModel):
     detail_href: str | None = None
     curation_href: str | None = None
     graph_href: str | None = None
+    relation_id: str | None = None
+    relation_type: str | None = None
+    relation_owner_type: str | None = None
+    relation_owner_id: str | None = None
     field_names: list[str] = Field(default_factory=list)
     evidence_count: int
     average_confidence: float | None = None

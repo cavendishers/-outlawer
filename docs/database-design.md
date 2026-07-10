@@ -259,6 +259,30 @@ Recommended first-pass `relation_type` values:
 - `source_of`
 - `located_in`
 
+### graph_viewpoints
+
+Stores reusable graph workspace anchors, filters, focus state, and layout hints. Viewpoints are user-owned convenience records and never replace canonical entities, events, participants, or relations.
+
+### graph_conflict_dispositions
+
+```text
+id
+user_id
+conflict_id
+disposition
+note
+snapshot_json
+created_at
+updated_at
+```
+
+Notes:
+
+- one current disposition is stored per user and deterministic conflict id
+- supported dispositions are `open`, `keep`, and `snooze`
+- `keep` and `snooze` resolve the governance prompt without mutating the underlying knowledge record
+- every change also writes a `review_actions` audit event
+
 ### note_entities
 
 ```text
@@ -439,6 +463,7 @@ Notes:
 - critical for debugging, replay, and reprocessing
 - `parent_run_id` expresses run lineage inside one note
 - `projection_status` expresses whether the run is currently active, superseded, pending review, rejected, or never applied
+- `extraction_evidence.target_id` stores the persisted `relations.id` when `target_type = relation`; legacy rows that can be matched unambiguously are backfilled by migration `20260711_01`, while ambiguous rows remain available through the compatibility resolver.
 
 ### projection_versions
 

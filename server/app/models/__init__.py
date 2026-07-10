@@ -5,6 +5,7 @@ from app.models.embedding import Embedding
 from app.models.entity import Entity, EntityAlias, EventEntity, NoteEntity, NoteEvent, Relation
 from app.models.event import Event, TimelineItem
 from app.models.extraction import ExtractionEvidence, ExtractionRun, MergeCandidate, ProjectionVersion
+from app.models.graph_conflict import GraphConflictDisposition
 from app.models.graph_viewpoint import GraphViewpoint
 from app.models.image_generation import ImageGeneration
 from app.models.note import Note, NoteChunk
@@ -28,6 +29,7 @@ __all__ = [
     "ExtractionRun",
     "ImageGeneration",
     "GraphViewpoint",
+    "GraphConflictDisposition",
     "MergeCandidate",
     "Note",
     "NoteChunk",

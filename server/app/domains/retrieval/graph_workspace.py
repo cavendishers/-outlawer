@@ -8,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domains.retrieval import entity_query, event_query, timeline_query
+from app.domains.governance.graph_conflicts import apply_graph_conflict_dispositions
+from app.models.entity import Relation
 from app.models.review import ReviewAction
 
 
@@ -77,10 +79,13 @@ def get_graph_workspace(
         depth=depth,
     )
     if event_id:
-        return finalize_workspace(db, apply_workspace_filters(build_event_workspace(db, user_id=user_id, event_id=event_id), filters), user_id=user_id)
-    if entity_id:
-        return finalize_workspace(db, apply_workspace_filters(build_entity_workspace(db, user_id=user_id, entity_id=entity_id), filters), user_id=user_id)
-    return finalize_workspace(db, apply_workspace_filters(build_overview_workspace(db, user_id=user_id), filters), user_id=user_id)
+        workspace = build_event_workspace(db, user_id=user_id, event_id=event_id)
+    elif entity_id:
+        workspace = build_entity_workspace(db, user_id=user_id, entity_id=entity_id)
+    else:
+        workspace = build_overview_workspace(db, user_id=user_id)
+    workspace = attach_canonical_relation_edges(db, workspace, user_id=user_id)
+    return finalize_workspace(db, apply_workspace_filters(workspace, filters), user_id=user_id)
 
 
 def get_graph_node_detail(
@@ -726,6 +731,7 @@ def workspace_payload(
     edges: list[dict[str, Any]],
     timeline_focus: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    edges = [normalize_workspace_edge(edge) for edge in edges]
     conflicts = build_workspace_conflicts(nodes, edges)
     return {
         "scope": scope,
@@ -749,14 +755,103 @@ def workspace_payload(
     }
 
 
+def normalize_workspace_edge(edge: dict[str, Any]) -> dict[str, Any]:
+    relation_id = edge.get("relation_id")
+    fact_type = edge.get("fact_type") or ("relation" if relation_id else "inferred")
+    edge_id = edge.get("id") or (
+        f"relation:{relation_id}"
+        if relation_id
+        else f"{fact_type}:{edge['source_id']}:{edge['target_id']}:{edge['edge_type']}:{edge.get('label') or ''}"
+    )
+    return {
+        **edge,
+        "id": edge_id,
+        "relation_id": relation_id,
+        "fact_type": fact_type,
+        "source_type": edge.get("source_type"),
+        "target_type": edge.get("target_type"),
+        "evidence_count": int(edge.get("evidence_count") or 0),
+        "is_editable": bool(edge.get("is_editable") and relation_id),
+    }
+
+
+def attach_canonical_relation_edges(
+    db: Session,
+    workspace: dict[str, Any],
+    *,
+    user_id: str,
+) -> dict[str, Any]:
+    node_keys = {(node["node_type"], node["id"]) for node in workspace.get("nodes", [])}
+    node_ids = {node_id for _, node_id in node_keys}
+    if not node_ids:
+        return workspace
+
+    rows = db.scalars(
+        select(Relation)
+        .where(
+            Relation.user_id == user_id,
+            Relation.source_type.in_(["event", "entity"]),
+            Relation.target_type.in_(["event", "entity"]),
+            Relation.source_id.in_(node_ids),
+            Relation.target_id.in_(node_ids),
+        )
+        .order_by(Relation.created_at.asc())
+    ).all()
+    edges = list(workspace.get("edges", []))
+    existing_relation_ids = {edge.get("relation_id") for edge in edges if edge.get("relation_id")}
+    for relation in rows:
+        if relation.id in existing_relation_ids:
+            continue
+        if (relation.source_type, relation.source_id) not in node_keys or (relation.target_type, relation.target_id) not in node_keys:
+            continue
+        owner_type, owner_id = relation_owner(relation.source_type, relation.source_id, relation.target_type, relation.target_id)
+        edges.append(
+            normalize_workspace_edge(
+                {
+                    "id": f"relation:{relation.id}",
+                    "relation_id": relation.id,
+                    "fact_type": "relation",
+                    "source_id": relation.source_id,
+                    "target_id": relation.target_id,
+                    "source_type": relation.source_type,
+                    "target_type": relation.target_type,
+                    "edge_type": relation.relation_type,
+                    "label": relation.relation_type,
+                    "weight": round(float(relation.confidence_score or 0.72), 2),
+                    "evidence_count": relation.evidence_count,
+                    "is_editable": owner_type is not None and owner_id is not None,
+                }
+            )
+        )
+    return {**workspace, "edges": edges}
+
+
+def relation_owner(
+    source_type: str | None,
+    source_id: str,
+    target_type: str | None,
+    target_id: str,
+) -> tuple[str | None, str | None]:
+    if source_type in {"event", "entity"}:
+        return source_type, source_id
+    if target_type in {"event", "entity"}:
+        return target_type, target_id
+    return None, None
+
+
 def finalize_workspace(db: Session, workspace: dict[str, Any], *, user_id: str) -> dict[str, Any]:
-    conflicts = build_workspace_conflicts(workspace.get("nodes", []), workspace.get("edges", []))
+    conflicts = apply_graph_conflict_dispositions(
+        db,
+        user_id=user_id,
+        conflicts=build_workspace_conflicts(workspace.get("nodes", []), workspace.get("edges", [])),
+    )
+    active_conflicts = [item for item in conflicts if item["is_active"]]
     return {
         **workspace,
         "conflicts": conflicts,
         "stats": {
             **workspace.get("stats", {}),
-            "conflict_count": len(conflicts),
+            "conflict_count": len(active_conflicts),
             "low_confidence_edge_count": sum(1 for edge in workspace.get("edges", []) if float(edge.get("weight") or 0) < 0.55),
             "orphan_node_count": len(find_orphan_node_ids(workspace.get("nodes", []), workspace.get("edges", []))),
         },
@@ -774,6 +869,7 @@ def build_workspace_conflicts(nodes: list[dict[str, Any]], edges: list[dict[str,
         target_id = edge["target_id"]
         weight = float(edge.get("weight") or 0)
         if weight < 0.55:
+            actions = conflict_actions_for_edges([edge], label="删除低置信关系")
             conflicts.append(
                 {
                     "id": f"low-confidence-{source_id}-{target_id}-{edge['edge_type']}",
@@ -784,6 +880,7 @@ def build_workspace_conflicts(nodes: list[dict[str, Any]], edges: list[dict[str,
                     "node_ids": [source_id, target_id],
                     "edge_label": edge.get("label"),
                     "href": graph_href_for_node(source_id, node_by_id),
+                    "actions": actions,
                 }
             )
         pair_key = (source_id, target_id, edge["edge_type"])
@@ -791,17 +888,24 @@ def build_workspace_conflicts(nodes: list[dict[str, Any]], edges: list[dict[str,
 
     for (source_id, target_id, edge_type), pair_edges in edge_pairs.items():
         labels = {edge.get("label") for edge in pair_edges if edge.get("label")}
-        if len(labels) > 1:
+        relation_ids = {edge.get("relation_id") for edge in pair_edges if edge.get("relation_id")}
+        if len(labels) > 1 or len(relation_ids) > 1:
+            conflict_type = "relation_label_conflict" if len(labels) > 1 else "duplicate_relation"
             conflicts.append(
                 {
                     "id": f"relation-label-conflict-{source_id}-{target_id}-{edge_type}",
                     "severity": "high",
-                    "conflict_type": "relation_label_conflict",
-                    "title": "关系标签冲突",
-                    "summary": f"同一对节点存在多个 `{edge_type}` 标签：{' / '.join(sorted(labels))}",
+                    "conflict_type": conflict_type,
+                    "title": "关系标签冲突" if len(labels) > 1 else "重复关系",
+                    "summary": (
+                        f"同一对节点存在多个 `{edge_type}` 标签：{' / '.join(sorted(labels))}"
+                        if len(labels) > 1
+                        else f"同一对节点存在 {len(relation_ids)} 条重复的 `{edge_type}` 关系。"
+                    ),
                     "node_ids": [source_id, target_id],
                     "edge_label": edge_type,
                     "href": graph_href_for_node(source_id, node_by_id),
+                    "actions": conflict_actions_for_edges(pair_edges[1:], label="删除重复关系"),
                 }
             )
 
@@ -817,9 +921,36 @@ def build_workspace_conflicts(nodes: list[dict[str, Any]], edges: list[dict[str,
                 "node_ids": [node_id],
                 "edge_label": None,
                 "href": graph_href_for_node(node_id, node_by_id),
+                "actions": [],
             }
         )
     return conflicts[:12]
+
+
+def conflict_actions_for_edges(edges: list[dict[str, Any]], *, label: str) -> list[dict[str, str]]:
+    actions: list[dict[str, str]] = []
+    for edge in edges:
+        relation_id = edge.get("relation_id")
+        if not relation_id or not edge.get("is_editable"):
+            continue
+        owner_type, owner_id = relation_owner(
+            edge.get("source_type"),
+            edge["source_id"],
+            edge.get("target_type"),
+            edge["target_id"],
+        )
+        if owner_type is None or owner_id is None:
+            continue
+        actions.append(
+            {
+                "label": label,
+                "action_type": "remove_relation",
+                "relation_id": relation_id,
+                "owner_type": owner_type,
+                "owner_id": owner_id,
+            }
+        )
+    return actions
 
 
 def find_orphan_node_ids(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> set[str]:
@@ -853,6 +984,7 @@ def list_graph_actions(db: Session, *, user_id: str, limit: int = 8) -> list[dic
                     "upsert_relation",
                     "update_relation",
                     "remove_relation",
+                    "set_conflict_disposition",
                 ]
             ),
         )
@@ -868,10 +1000,55 @@ def list_graph_actions(db: Session, *, user_id: str, limit: int = 8) -> list[dic
             "status_before": row.status_before,
             "status_after": row.status_after,
             "created_at": row.created_at.isoformat() if row.created_at else None,
-            "summary": f"{row.target_type} {row.target_id} 执行了 {row.action_type}",
+            "summary": graph_action_summary(row),
+            "diff_summary": graph_action_diff_summary(row),
         }
         for row in rows
     ]
+
+
+def graph_action_summary(row: ReviewAction) -> str:
+    payload = row.payload_json if isinstance(row.payload_json, dict) else {}
+    before = payload.get("before") or payload.get("previous")
+    after = payload.get("after") or payload.get("next")
+    if row.target_type == "relation":
+        shape = after or before or {}
+        relation_type = shape.get("relation_type") or row.status_after or row.status_before or "relation"
+        return f"关系 {row.target_id} 执行了 {row.action_type}：{relation_type}"
+    if row.target_type == "graph_conflict":
+        snapshot = payload.get("snapshot") if isinstance(payload.get("snapshot"), dict) else {}
+        title = snapshot.get("title") or payload.get("conflict_id") or row.target_id
+        return f"冲突“{title}”处置为 {row.status_after or 'open'}"
+    return f"{row.target_type} {row.target_id} 执行了 {row.action_type}"
+
+
+def graph_action_diff_summary(row: ReviewAction) -> str | None:
+    payload = row.payload_json if isinstance(row.payload_json, dict) else {}
+    if row.target_type == "graph_conflict":
+        note = payload.get("note")
+        transition = f"{row.status_before or 'open'} → {row.status_after or 'open'}"
+        return f"{transition}；备注：{note}" if note else transition
+    before = payload.get("before") or payload.get("previous")
+    after = payload.get("after") or payload.get("next")
+    if not isinstance(before, dict) and not isinstance(after, dict):
+        return None
+    if before is None and isinstance(after, dict):
+        return f"新增：{relation_shape_label(after)}"
+    if after is None and isinstance(before, dict):
+        return f"删除：{relation_shape_label(before)}"
+    if isinstance(before, dict) and isinstance(after, dict):
+        changed = [key for key in ("source_type", "source_id", "relation_type", "target_type", "target_id") if before.get(key) != after.get(key)]
+        if changed:
+            return f"{relation_shape_label(before)} → {relation_shape_label(after)}；变更字段：{'、'.join(changed)}"
+    return None
+
+
+def relation_shape_label(shape: dict[str, Any]) -> str:
+    return (
+        f"{shape.get('source_type', '?')}:{shape.get('source_id', '?')} "
+        f"-[{shape.get('relation_type', '?')}]-> "
+        f"{shape.get('target_type', '?')}:{shape.get('target_id', '?')}"
+    )
 
 
 def build_timeline_context_for_node(

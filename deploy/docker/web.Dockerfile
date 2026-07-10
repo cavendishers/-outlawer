@@ -1,13 +1,15 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY web/package.json ./
-RUN npm install
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
+ENV NEXT_DIST_DIR=.next
 COPY --from=deps /app/node_modules ./node_modules
 COPY web ./
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
 WORKDIR /app

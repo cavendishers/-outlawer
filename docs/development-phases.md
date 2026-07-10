@@ -16,7 +16,7 @@ Status values to use:
 
 ## Latest Verification
 
-Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py).
+Verified on `2026-04-21` in Docker using [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_api_flow.py).
 
 - `python3 -m compileall server/app` -> passed
 - `python3 server/scripts/e2e_api_flow.py --phase phase1` -> passed
@@ -1235,7 +1235,7 @@ Verification completed for current slice:
 
 ## Phase 28: UI System Consolidation
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Goal:
 
@@ -1286,7 +1286,7 @@ Verification note:
 
 ## Phase 29: Analysis Workflow Traceability
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Goal:
 
@@ -1314,8 +1314,16 @@ Current slice delivered:
 
 Remaining work:
 
-- replace relation-like evidence fallback labels with first-class relation ids once relation evidence stores relation ids instead of source ids
-- add inline correction actions directly inside the analysis page after the curation write contracts are narrow enough for embedded edits
+- continue expanding inline correction only when a new object type has an equally narrow write contract
+
+Relation identity slice delivered on `2026-07-11`:
+
+- new relation evidence targets the persisted `relations.id` instead of the source object id
+- a deterministic Alembic data migration rewrites unambiguous legacy relation evidence
+- evidence labels resolve first-class relation ids while preserving a legacy source-id fallback
+- the analysis evidence panel can update relation types or delete relations through existing curation endpoints
+- Python 3.12 service/API regression -> `88 passed`
+- frontend typecheck and production build -> passed
 
 Verification completed for current slice:
 
@@ -1330,7 +1338,7 @@ Verification completed for current slice:
 
 ## Phase 30: Graph Governance Workbench
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Goal:
 
@@ -1346,12 +1354,26 @@ Current slice delivered:
 - `/graph` now supports inline node field correction for event/entity title, summary/description, type, and status, in addition to the existing participant and relation editing
 - `/graph` now shows conflict hints, quality counters, and recent graph-governance actions in the node inspector rail
 - `/operations` now shows graph quality metrics and recent graph-governance actions alongside job/review/asset operations signals
+- saved graph viewpoints can be renamed and deleted through explicit PATCH/DELETE contracts and inline workspace controls
+- graph conflicts can be acknowledged as retained, postponed, or reopened through persisted user-scoped dispositions without mutating canonical relations
+- conflict disposition changes are written to the graph governance audit stream
+- `/api/v1/graph/path` discovers event/entity paths across canonical relations and event participation, returning a per-hop explanation
+- `/graph` exposes path target/depth controls and renders relationship direction, evidence count, and confidence for every hop
 
 Remaining work:
 
-- add delete/rename support for saved viewpoints if they become noisy
-- add relation-level conflict resolution buttons once relation ids are present in graph edge read models
-- add richer graph operation diff summaries instead of generic action labels
+- broader drag/connect freeform canvas editing remains optional and should only start when real product use justifies the added interaction complexity
+
+Relation governance slice delivered on `2026-07-11`:
+
+- graph edge responses expose stable edge ids, optional `relation_id`, fact type, typed endpoints, evidence counts, and editability
+- canonical relation edges are composed into visible graph neighborhoods without creating a second graph truth store
+- low-confidence and duplicate-relation conflicts expose direct resolution actions in the workspace
+- relation create/update/delete audit actions keep before/after snapshots and render readable diff summaries
+- selected canonical edges can be deleted directly from the edge spotlight panel
+- clean PostgreSQL migration chain -> `20260711_02 (head)`
+- production web image build/start smoke -> HTTP `200`
+- production dependency audit -> `0 vulnerabilities`
 
 Verification completed for current slice:
 
@@ -1362,9 +1384,42 @@ Verification completed for current slice:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240`
 - browser smoke on `/graph` and `/operations` -> passed with saved-viewpoint, graph-quality, and no-horizontal-overflow checks
+- Python 3.12 service/API regression -> `91 passed`
+- review, event-curation, and entity-curation e2e flows -> passed
+- authenticated browser smoke -> passed for viewpoint create/rename/delete, explained path discovery, analysis workflow, and operations data
 
 Additional Phase 28 status notes:
 
 - `/notes/[id]` header now uses the compact workbench pattern instead of the older large `Panel` hero, keeping detail pages aligned with the post-`/events` density rules
 - the full API e2e script now creates uniquely marked temporary records and cleans up created assets, notes, jobs, projections, entities, events, derivatives, embeddings, review logs, and MinIO objects in `finally`, preventing test records from leaking into formal data
 - product experience convergence follow-up: `/` returned to the stronger Outlawer brand entrance, while the tutorial/workflow explanation moved to `/guide`; global nav exposes `教程` under `更多`, and nested detail/story pages keep the active-state and compact workbench hierarchy improvements
+
+## Phase 31: Manual Knowledge Authoring Loop
+
+Status: `TODO`
+
+Goal:
+
+- let users create missing canonical knowledge directly while preserving source separation, provenance, narrow write contracts, and governance audit history
+
+Planned first slice:
+
+- explicit manual-create request/response contracts for entities and events
+- graph-context create-and-connect flow for the active event/entity
+- optional attachment of note/raw-asset evidence using manual provenance metadata
+- audit actions for manual object creation, connection, and evidence attachment
+- direct routing from the new object into curation, graph, timeline, and detail views
+
+Completion criteria:
+
+- a user can create an entity or event without running extraction
+- a user can create a missing node from `/graph` and connect it to the current node in one workflow
+- manual evidence never overwrites raw assets or derived text
+- manually created knowledge appears in existing search, timeline, people/event, and graph read models
+- OpenAPI contracts, service tests, full API e2e, and authenticated browser smoke pass
+
+Deferred tracks:
+
+- extraction accuracy benchmarking and semantic embedding replacement
+- formal CI/release automation and deeper operations analytics
+- collaboration/permissions, plugin integrations, and mobile-first capture

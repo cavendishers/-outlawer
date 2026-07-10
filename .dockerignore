@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.codex-artifacts
+**/.env
+**/.env.*
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+web/node_modules
+web/.next
+web/.next-dev
+web/.next-build
+server/*.egg-info
+

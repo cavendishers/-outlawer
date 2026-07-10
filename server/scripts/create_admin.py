@@ -8,8 +8,15 @@ from app.models.user import User
 
 def main() -> None:
     settings = get_settings()
-    username = "admin"
-    password = "admin123456"
+    username = settings.bootstrap_admin_username
+    password = settings.bootstrap_admin_password
+    if not username or not password:
+        if settings.environment.lower() == "production":
+            raise RuntimeError("Bootstrap admin credentials are required in production")
+        print("Bootstrap admin is not configured; skipping admin creation.")
+        return
+    if settings.environment.lower() == "production" and len(password) < 12:
+        raise RuntimeError("Bootstrap admin password must contain at least 12 characters in production")
 
     db = SessionLocal()
     try:
@@ -19,7 +26,7 @@ def main() -> None:
         user = User(
             username=username,
             password_hash=hash_password(password),
-            display_name="Outlawer Admin",
+            display_name=settings.bootstrap_admin_display_name,
             status="active",
         )
         db.add(user)

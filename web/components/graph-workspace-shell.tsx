@@ -35,11 +35,18 @@ type GraphNode = {
 };
 
 type GraphEdge = {
+  id: string;
+  relation_id: string | null;
+  fact_type: string;
   source_id: string;
   target_id: string;
+  source_type: string | null;
+  target_type: string | null;
   edge_type: string;
   label: string;
   weight: number;
+  evidence_count: number;
+  is_editable: boolean;
 };
 
 type TimelineFocusItem = {
@@ -175,6 +182,16 @@ type GraphConflict = {
   node_ids: string[];
   edge_label: string | null;
   href: string;
+  disposition: "open" | "keep" | "snooze";
+  disposition_note: string | null;
+  is_active: boolean;
+  actions: Array<{
+    label: string;
+    action_type: string;
+    relation_id: string;
+    owner_type: "event" | "entity";
+    owner_id: string;
+  }>;
 };
 
 type GraphActionLog = {
@@ -186,6 +203,7 @@ type GraphActionLog = {
   status_after: string | null;
   created_at: string | null;
   summary: string;
+  diff_summary: string | null;
 };
 
 type GraphViewpoint = {
@@ -200,6 +218,29 @@ type GraphViewpoint = {
   href: string;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type GraphPath = {
+  found: boolean;
+  max_depth: number;
+  total_hops: number;
+  source: { id: string; node_type: string; label: string; href: string };
+  target: { id: string; node_type: string; label: string; href: string };
+  nodes: Array<{ id: string; node_type: string; label: string; href: string }>;
+  edges: Array<{
+    source_type: string;
+    source_id: string;
+    target_type: string;
+    target_id: string;
+    label: string;
+    fact_type: string;
+    relation_id: string | null;
+    evidence_count: number;
+    confidence: number | null;
+    traversal_direction: string;
+    explanation: string;
+  }>;
+  explanation: string;
 };
 
 type GraphWorkspaceShellProps = {
@@ -225,10 +266,13 @@ type GraphWorkspaceShellProps = {
   viewpoints: GraphViewpoint[];
   viewpointName: string;
   viewpointBusy: boolean;
+  viewpointActionBusyKey: string;
   viewpointMessage: string;
   activeNodeId: string | null;
   onViewpointNameChange: (value: string) => void;
   onSaveViewpoint: () => Promise<void>;
+  onRenameViewpoint: (viewpointId: string, name: string) => Promise<void>;
+  onDeleteViewpoint: (viewpointId: string) => Promise<void>;
   onDismissViewpointMessage: () => void;
   onSelectNode: (nodeId: string) => void;
   onUpdateFilters: (updates: Partial<GraphWorkspaceAppliedFilters>, reset?: boolean) => void;
@@ -251,6 +295,15 @@ type GraphWorkspaceShellProps = {
   ) => Promise<void>;
   onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
   onUpdateNode: (nodeType: "event" | "entity", nodeId: string, payload: GraphNodeUpdatePayload) => Promise<void>;
+  onSetConflictDisposition: (
+    conflict: GraphConflict,
+    disposition: "open" | "keep" | "snooze",
+    note?: string
+  ) => Promise<void>;
+  graphPath: GraphPath | null;
+  graphPathBusy: boolean;
+  graphPathError: string;
+  onFindPath: (source: GraphNode, target: GraphNode, maxDepth: number) => Promise<void>;
 };
 
 type PositionedNode = GraphNode & {
@@ -262,7 +315,7 @@ type PositionedNode = GraphNode & {
 type GraphWorkspaceViewMode = "all" | "events" | "people" | "timeline";
 
 function edgeKey(edge: GraphEdge): string {
-  return `${edge.source_id}-${edge.target_id}-${edge.edge_type}-${edge.label}`;
+  return edge.id;
 }
 
 function toneForNode(node: GraphNode): PositionedNode["tone"] {
@@ -461,9 +514,12 @@ type GraphViewpointRailProps = {
   viewpoints: GraphViewpoint[];
   viewpointName: string;
   viewpointBusy: boolean;
+  viewpointActionBusyKey: string;
   viewpointMessage: string;
   onViewpointNameChange: (value: string) => void;
   onSaveViewpoint: () => Promise<void>;
+  onRenameViewpoint: (viewpointId: string, name: string) => Promise<void>;
+  onDeleteViewpoint: (viewpointId: string) => Promise<void>;
   onDismissViewpointMessage: () => void;
 };
 
@@ -471,9 +527,12 @@ function GraphViewpointRail({
   viewpoints,
   viewpointName,
   viewpointBusy,
+  viewpointActionBusyKey,
   viewpointMessage,
   onViewpointNameChange,
   onSaveViewpoint,
+  onRenameViewpoint,
+  onDeleteViewpoint,
   onDismissViewpointMessage,
 }: GraphViewpointRailProps) {
   return (
@@ -514,20 +573,93 @@ function GraphViewpointRail({
       <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
         {viewpoints.length ? (
           viewpoints.slice(0, 8).map((viewpoint) => (
-            <Link
+            <GraphViewpointCard
               key={viewpoint.id}
-              href={viewpoint.href}
-              className="min-w-56 border-4 border-ink bg-canvas px-4 py-3 shadow-brutalTiny transition-transform hover:-translate-y-1"
-            >
-              <p className="text-[11px] font-black uppercase tracking-[0.14em]">{viewpoint.scope}</p>
-              <p className="mt-2 line-clamp-2 text-base font-black leading-tight">{viewpoint.name}</p>
-              <p className="mt-2 text-xs font-bold text-muted">{formatGraphDate(viewpoint.updated_at)}</p>
-            </Link>
+              viewpoint={viewpoint}
+              busyKey={viewpointActionBusyKey}
+              onRename={onRenameViewpoint}
+              onDelete={onDeleteViewpoint}
+            />
           ))
         ) : (
           <div className="surface-inset min-w-full border-4 border-dashed border-ink p-4 text-sm font-bold">
             暂时没有保存过的视角。先用过滤器收窄范围，再保存成常用工作入口。
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GraphViewpointCard({
+  viewpoint,
+  busyKey,
+  onRename,
+  onDelete,
+}: {
+  viewpoint: GraphViewpoint;
+  busyKey: string;
+  onRename: (viewpointId: string, name: string) => Promise<void>;
+  onDelete: (viewpointId: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(viewpoint.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const renameBusy = busyKey === `viewpoint-rename-${viewpoint.id}`;
+  const deleteBusy = busyKey === `viewpoint-delete-${viewpoint.id}`;
+  return (
+    <div data-testid={`viewpoint-card-${viewpoint.id}`} className="min-w-64 border-4 border-ink bg-canvas px-4 py-3 shadow-brutalTiny">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-black uppercase tracking-[0.14em]">{viewpoint.scope}</p>
+        <span className="text-xs font-bold text-muted">{formatGraphDate(viewpoint.updated_at)}</span>
+      </div>
+      <input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        aria-label={`重命名视角 ${viewpoint.name}`}
+        className="mt-3 w-full border-2 border-ink bg-white px-2 py-2 text-sm font-black"
+      />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link href={viewpoint.href} className="brutal-action brutal-action-secondary text-xs">
+          打开
+        </Link>
+        <button
+          type="button"
+          onClick={() => void onRename(viewpoint.id, name)}
+          disabled={Boolean(busyKey) || !name.trim() || name.trim() === viewpoint.name}
+          className="brutal-action brutal-action-primary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {renameBusy ? "保存中..." : "重命名"}
+        </button>
+        {confirmDelete ? (
+          <>
+            <button
+              data-testid={`confirm-delete-viewpoint-${viewpoint.id}`}
+              type="button"
+              onClick={() => void onDelete(viewpoint.id)}
+              disabled={Boolean(busyKey)}
+              className="brutal-action brutal-action-primary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deleteBusy ? "删除中..." : "确认删除"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              disabled={Boolean(busyKey)}
+              className="brutal-action brutal-action-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              取消
+            </button>
+          </>
+        ) : (
+          <button
+            data-testid={`delete-viewpoint-${viewpoint.id}`}
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            disabled={Boolean(busyKey)}
+            className="brutal-action brutal-action-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            删除
+          </button>
         )}
       </div>
     </div>
@@ -548,10 +680,13 @@ export function GraphWorkspaceShell({
   viewpoints,
   viewpointName,
   viewpointBusy,
+  viewpointActionBusyKey,
   viewpointMessage,
   activeNodeId,
   onViewpointNameChange,
   onSaveViewpoint,
+  onRenameViewpoint,
+  onDeleteViewpoint,
   onDismissViewpointMessage,
   onSelectNode,
   onUpdateFilters,
@@ -569,6 +704,11 @@ export function GraphWorkspaceShell({
   onUpsertRelation,
   onRemoveRelation,
   onUpdateNode,
+  onSetConflictDisposition,
+  graphPath,
+  graphPathBusy,
+  graphPathError,
+  onFindPath,
 }: GraphWorkspaceShellProps) {
   const [viewMode, setViewMode] = useState<GraphWorkspaceViewMode>("all");
   const [selectedEdgeKey, setSelectedEdgeKey] = useState("");
@@ -708,6 +848,13 @@ export function GraphWorkspaceShell({
   const selectedEdge = visibleEdges.find((edge) => edgeKey(edge) === selectedEdgeKey) ?? null;
   const selectedEdgeSource = selectedEdge ? nodeMap.get(selectedEdge.source_id) ?? null : null;
   const selectedEdgeTarget = selectedEdge ? nodeMap.get(selectedEdge.target_id) ?? null : null;
+  const selectedEdgeOwner: { type: "event" | "entity"; id: string } | null = selectedEdge
+    ? selectedEdge.source_type === "event" || selectedEdge.source_type === "entity"
+      ? { type: selectedEdge.source_type, id: selectedEdge.source_id }
+      : selectedEdge.target_type === "event" || selectedEdge.target_type === "entity"
+        ? { type: selectedEdge.target_type, id: selectedEdge.target_id }
+        : null
+    : null;
   const relatedEdges = activeNode
     ? visibleEdges.filter((edge) => edge.source_id === activeNode.id || edge.target_id === activeNode.id)
     : [];
@@ -796,9 +943,12 @@ export function GraphWorkspaceShell({
             viewpoints={viewpoints}
             viewpointName={viewpointName}
             viewpointBusy={viewpointBusy}
+            viewpointActionBusyKey={viewpointActionBusyKey}
             viewpointMessage={viewpointMessage}
             onViewpointNameChange={onViewpointNameChange}
             onSaveViewpoint={onSaveViewpoint}
+            onRenameViewpoint={onRenameViewpoint}
+            onDeleteViewpoint={onDeleteViewpoint}
             onDismissViewpointMessage={onDismissViewpointMessage}
           />
           <GraphFilterPanel filters={filters} onUpdateFilters={onUpdateFilters} hasBackendFilters={hasBackendFilters} />
@@ -984,6 +1134,11 @@ export function GraphWorkspaceShell({
                   {selectedEdgeSource.label} → {selectedEdgeTarget.label}
                 </p>
                 <p className="mt-2 text-sm font-bold leading-relaxed">{selectedEdge.label}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="brutal-chip">{selectedEdge.fact_type}</span>
+                  {selectedEdge.relation_id ? <span className="brutal-chip">ID {selectedEdge.relation_id.slice(0, 8)}</span> : null}
+                  {selectedEdge.evidence_count ? <span className="brutal-chip">证据 {selectedEdge.evidence_count}</span> : null}
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => onSelectNode(selectedEdgeSource.id)} className="brutal-action brutal-action-secondary">
                     聚焦源节点
@@ -994,6 +1149,20 @@ export function GraphWorkspaceShell({
                   <button type="button" onClick={() => setSelectedEdgeKey("")} className="brutal-action brutal-action-secondary">
                     清除连线焦点
                   </button>
+                  {selectedEdge.relation_id && selectedEdge.is_editable && selectedEdgeOwner ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`确认删除关系 ${selectedEdge.label} 吗？`)) {
+                          void onRemoveRelation(selectedEdgeOwner.type, selectedEdgeOwner.id, selectedEdge.relation_id as string);
+                        }
+                      }}
+                      disabled={mutationBusyKey === `relation-remove-${selectedEdge.relation_id}`}
+                      className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {mutationBusyKey === `relation-remove-${selectedEdge.relation_id}` ? "删除中..." : "删除此关系"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -1167,7 +1336,23 @@ export function GraphWorkspaceShell({
                 onRemoveRelation={onRemoveRelation}
                 onUpdateNode={onUpdateNode}
               />
-              <GraphGovernanceRail conflicts={conflicts} recentActions={recentActions} stats={stats} />
+              <GraphGovernanceRail
+                conflicts={conflicts}
+                recentActions={recentActions}
+                stats={stats}
+                mutationBusyKey={mutationBusyKey}
+                onRemoveRelation={onRemoveRelation}
+                onSetConflictDisposition={onSetConflictDisposition}
+              />
+              <GraphPathDiscoveryRail
+                key={activeNode.id}
+                activeNode={activeNode}
+                nodes={nodes}
+                path={graphPath}
+                busy={graphPathBusy}
+                error={graphPathError}
+                onFindPath={onFindPath}
+              />
             </>
           ) : (
             <p className="mt-4 text-base font-bold">当前没有可用节点。</p>
@@ -1288,9 +1473,25 @@ type GraphGovernanceRailProps = {
     low_confidence_edge_count: number;
     orphan_node_count: number;
   };
+  mutationBusyKey: string;
+  onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
+  onSetConflictDisposition: (
+    conflict: GraphConflict,
+    disposition: "open" | "keep" | "snooze",
+    note?: string
+  ) => Promise<void>;
 };
 
-function GraphGovernanceRail({ conflicts, recentActions, stats }: GraphGovernanceRailProps) {
+function GraphGovernanceRail({
+  conflicts,
+  recentActions,
+  stats,
+  mutationBusyKey,
+  onRemoveRelation,
+  onSetConflictDisposition,
+}: GraphGovernanceRailProps) {
+  const activeConflicts = conflicts.filter((conflict) => conflict.is_active);
+  const resolvedConflicts = conflicts.filter((conflict) => !conflict.is_active);
   return (
     <div className="mt-8 space-y-4 border-t-4 border-ink pt-6">
       <div>
@@ -1315,30 +1516,37 @@ function GraphGovernanceRail({ conflicts, recentActions, stats }: GraphGovernanc
       </div>
       <div className="space-y-3">
         <p className="text-xs font-black uppercase tracking-[0.16em]">关系冲突提示</p>
-        {conflicts.length ? (
-          conflicts.map((conflict) => (
-            <Link
+        {activeConflicts.length ? (
+          activeConflicts.map((conflict) => (
+            <GraphConflictCard
               key={conflict.id}
-              href={conflict.href}
-              className={`block border-4 border-ink px-4 py-4 shadow-brutalSoft transition-transform hover:-translate-y-1 ${
-                conflict.severity === "high" ? "bg-ember" : conflict.severity === "medium" ? "bg-gold" : "bg-canvas"
-              }`}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em]">
-                  {conflict.severity} / {conflict.conflict_type}
-                </p>
-                {conflict.edge_label ? <span className="brutal-chip">{conflict.edge_label}</span> : null}
-              </div>
-              <p className="mt-2 text-base font-black leading-tight">{conflict.title}</p>
-              <p className="mt-2 text-sm font-bold leading-relaxed">{conflict.summary}</p>
-            </Link>
+              conflict={conflict}
+              mutationBusyKey={mutationBusyKey}
+              onRemoveRelation={onRemoveRelation}
+              onSetDisposition={onSetConflictDisposition}
+            />
           ))
         ) : (
           <div className="surface-inset border-4 border-dashed border-ink p-4 text-sm font-bold">
             当前视图没有检测到明显关系冲突。
           </div>
         )}
+        {resolvedConflicts.length ? (
+          <details className="border-4 border-ink bg-bone p-4 shadow-brutalTiny">
+            <summary className="cursor-pointer text-sm font-black">已处置提示 {resolvedConflicts.length} 条</summary>
+            <div className="mt-4 space-y-3">
+              {resolvedConflicts.map((conflict) => (
+                <GraphConflictCard
+                  key={conflict.id}
+                  conflict={conflict}
+                  mutationBusyKey={mutationBusyKey}
+                  onRemoveRelation={onRemoveRelation}
+                  onSetDisposition={onSetConflictDisposition}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
       </div>
       <div className="space-y-3">
         <p className="text-xs font-black uppercase tracking-[0.16em]">最近图谱操作</p>
@@ -1352,6 +1560,11 @@ function GraphGovernanceRail({ conflicts, recentActions, stats }: GraphGovernanc
                 <span className="brutal-chip">{formatGraphDate(action.created_at)}</span>
               </div>
               <p className="mt-2 text-sm font-bold leading-relaxed">{action.summary}</p>
+              {action.diff_summary ? (
+                <p className="mt-2 border-l-4 border-ink pl-3 text-xs font-bold leading-relaxed text-muted">
+                  {action.diff_summary}
+                </p>
+              ) : null}
             </div>
           ))
         ) : (
@@ -1360,6 +1573,186 @@ function GraphGovernanceRail({ conflicts, recentActions, stats }: GraphGovernanc
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function GraphConflictCard({
+  conflict,
+  mutationBusyKey,
+  onRemoveRelation,
+  onSetDisposition,
+}: {
+  conflict: GraphConflict;
+  mutationBusyKey: string;
+  onRemoveRelation: (nodeType: "event" | "entity", nodeId: string, relationId: string) => Promise<void>;
+  onSetDisposition: (
+    conflict: GraphConflict,
+    disposition: "open" | "keep" | "snooze",
+    note?: string
+  ) => Promise<void>;
+}) {
+  const [note, setNote] = useState(conflict.disposition_note ?? "");
+  const dispositionBusy = mutationBusyKey === `conflict-disposition-${conflict.id}`;
+  return (
+    <div
+      className={`border-4 border-ink px-4 py-4 shadow-brutalSoft ${
+        conflict.is_active
+          ? conflict.severity === "high"
+            ? "bg-ember"
+            : conflict.severity === "medium"
+              ? "bg-gold"
+              : "bg-canvas"
+          : "bg-mint"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-black uppercase tracking-[0.14em]">
+          {conflict.severity} / {conflict.conflict_type}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {conflict.edge_label ? <span className="brutal-chip">{conflict.edge_label}</span> : null}
+          {!conflict.is_active ? <span className="brutal-chip">{conflict.disposition}</span> : null}
+        </div>
+      </div>
+      <p className="mt-2 text-base font-black leading-tight">{conflict.title}</p>
+      <p className="mt-2 text-sm font-bold leading-relaxed">{conflict.summary}</p>
+      <input
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+        placeholder="处置备注（可选）"
+        className="mt-3 w-full border-2 border-ink bg-white px-3 py-2 text-sm font-bold"
+      />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link href={conflict.href} className="brutal-action brutal-action-secondary">
+          定位冲突
+        </Link>
+        {conflict.is_active ? (
+          <>
+            <button
+              type="button"
+              onClick={() => void onSetDisposition(conflict, "keep", note)}
+              disabled={Boolean(mutationBusyKey)}
+              className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {dispositionBusy ? "处理中..." : "确认保留"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void onSetDisposition(conflict, "snooze", note)}
+              disabled={Boolean(mutationBusyKey)}
+              className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              稍后处理
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void onSetDisposition(conflict, "open", note)}
+            disabled={Boolean(mutationBusyKey)}
+            className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {dispositionBusy ? "处理中..." : "重新打开"}
+          </button>
+        )}
+        {conflict.is_active
+          ? conflict.actions.map((action) => (
+              <button
+                key={`${conflict.id}-${action.relation_id}`}
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`确认执行“${action.label}”吗？`)) {
+                    void onRemoveRelation(action.owner_type, action.owner_id, action.relation_id);
+                  }
+                }}
+                disabled={Boolean(mutationBusyKey)}
+                className="brutal-action brutal-action-secondary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {mutationBusyKey === `relation-remove-${action.relation_id}` ? "处理中..." : action.label}
+              </button>
+            ))
+          : null}
+      </div>
+    </div>
+  );
+}
+
+function GraphPathDiscoveryRail({
+  activeNode,
+  nodes,
+  path,
+  busy,
+  error,
+  onFindPath,
+}: {
+  activeNode: GraphNode;
+  nodes: GraphNode[];
+  path: GraphPath | null;
+  busy: boolean;
+  error: string;
+  onFindPath: (source: GraphNode, target: GraphNode, maxDepth: number) => Promise<void>;
+}) {
+  const candidates = nodes.filter((node) => node.id !== activeNode.id);
+  const [targetId, setTargetId] = useState(candidates[0]?.id ?? "");
+  const [maxDepth, setMaxDepth] = useState(4);
+  const target = candidates.find((node) => node.id === targetId) ?? null;
+  return (
+    <div className="mt-8 border-t-4 border-ink pt-6">
+      <p className="text-xs font-black uppercase tracking-[0.16em]">Path Discovery</p>
+      <p className="mt-2 text-base font-bold leading-relaxed">
+        从当前节点出发，查找人物与事件之间最短的可解释路径，关系方向和证据会逐跳保留。
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <select
+          value={targetId}
+          onChange={(event) => setTargetId(event.target.value)}
+          aria-label="路径目标节点"
+          className="border-4 border-ink bg-canvas px-3 py-2 text-sm font-black"
+        >
+          {candidates.map((node) => (
+            <option key={`${node.node_type}-${node.id}`} value={node.id}>
+              {node.label}（{NODE_TYPE_LABELS[node.node_type] ?? node.node_type}）
+            </option>
+          ))}
+        </select>
+        <select
+          value={String(maxDepth)}
+          onChange={(event) => setMaxDepth(Number(event.target.value))}
+          aria-label="路径最大跳数"
+          className="border-4 border-ink bg-canvas px-3 py-2 text-sm font-black"
+        >
+          {[2, 3, 4, 5, 6].map((depth) => (
+            <option key={depth} value={depth}>{depth} 跳</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => {
+            if (target) void onFindPath(activeNode, target, maxDepth);
+          }}
+          disabled={busy || !target}
+          className="brutal-action brutal-action-primary disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busy ? "查找中..." : "查找路径"}
+        </button>
+      </div>
+      {error ? <p className="mt-3 border-4 border-ink bg-ember p-3 text-sm font-bold">{error}</p> : null}
+      {path ? (
+        <div className="mt-4 border-4 border-ink bg-bone p-4 shadow-brutalTiny">
+          <p className="text-sm font-black">{path.explanation}</p>
+          {path.edges.length ? (
+            <div className="mt-3 space-y-2">
+              {path.edges.map((edge, index) => (
+                <div key={`${edge.source_id}-${edge.target_id}-${index}`} className="border-l-4 border-ink bg-white px-3 py-2">
+                  <p className="text-xs font-black">第 {index + 1} 跳 · {edge.fact_type} · {edge.label}</p>
+                  <p className="mt-1 text-sm font-bold leading-relaxed">{edge.explanation}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

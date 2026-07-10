@@ -14,16 +14,16 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `25` are implemented and verified; Phase `26` slices A-E and Phase `27` are also implemented and verified, while broader graph canvas editing remains open.
+- Phase `0` through Phase `30` are implemented and verified. Phase `30` includes first-class relation evidence, saved-view management, non-destructive conflict dispositions, and explained path discovery; broader freeform canvas editing remains optional. Phase `31` manual knowledge authoring is the next planned goal.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.
 - Frontend production build verification must override to `NODE_ENV=production`, for example `docker compose -f deploy/compose/docker-compose.dev.yml exec -T web sh -lc 'NODE_ENV=production npm run build'`.
-- Use [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_api_flow.py) as the baseline API e2e verification flow.
-- Use [`server/scripts/e2e_review_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_review_flow.py) for entity/event review workflow verification.
-- Use [`server/scripts/e2e_curation_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_curation_flow.py) for event curation workflow verification.
-- Use [`server/scripts/e2e_entity_curation_flow.py`](/Users/hongan/Documents/fxxk/server/scripts/e2e_entity_curation_flow.py) for entity curation workflow verification.
-- Use [`docs/operations.md`](/Users/hongan/Documents/fxxk/docs/operations.md) for backup, restore, migration reset, and release smoke steps.
+- Use [`server/scripts/e2e_api_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_api_flow.py) as the baseline API e2e verification flow.
+- Use [`server/scripts/e2e_review_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_review_flow.py) for entity/event review workflow verification.
+- Use [`server/scripts/e2e_curation_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_curation_flow.py) for event curation workflow verification.
+- Use [`server/scripts/e2e_entity_curation_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_entity_curation_flow.py) for entity curation workflow verification.
+- Use [`docs/operations.md`](/Users/hongan/Documents/outlaywer/docs/operations.md) for backup, restore, migration reset, and release smoke steps.
 
 ## Repository Structure
 

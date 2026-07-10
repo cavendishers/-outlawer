@@ -11,6 +11,12 @@ Current verified local stack:
 - api: `http://localhost:8000/api/v1`
 - nginx: `http://localhost:8088`
 - browser-facing web requests should use same-origin `/api/v1`, which the Next.js web container rewrites to the backend API service
+- production Compose intentionally fails configuration when `POSTGRES_PASSWORD`, `DATABASE_URL`, MinIO root/access credentials, `SECRET_KEY`, or bootstrap-admin credentials are missing
+- Alembic reads the same environment-driven `DATABASE_URL` as the application, so migration jobs support non-default production credentials
+- production bootstrap admin passwords must contain at least 12 characters; fixed built-in production credentials are not supported
+- Docker builds use the repository `.dockerignore` so local `.env`, dependency caches, build outputs, git history, and `.codex-artifacts` are never sent in the build context
+- API and worker images install required Debian packages without recommended extras, retaining curl, ffmpeg, and Tesseract while avoiding unrelated desktop/runtime packages
+- start production configuration from `deploy/env/prod.env.example`, copy it to the repository-root `.env`, and replace every placeholder before running Compose
 
 ## Containers
 

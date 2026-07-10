@@ -2,11 +2,68 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import DbSession, get_current_user
 from app.core.responses import ok
-from app.domains.retrieval import graph_workspace
+from app.domains.retrieval import graph_paths, graph_workspace
+from app.domains.governance import graph_conflicts
 from app.schemas.common import Envelope
-from app.schemas.graph import GraphWorkspaceNodeDetailResponse, GraphWorkspaceResponse
+from app.schemas.graph import (
+    GraphConflictDispositionRequest,
+    GraphConflictDispositionResponse,
+    GraphPathResponse,
+    GraphWorkspaceNodeDetailResponse,
+    GraphWorkspaceResponse,
+)
 
 router = APIRouter()
+
+
+@router.get("/path", response_model=Envelope[GraphPathResponse])
+def get_graph_path(
+    source_type: str,
+    source_id: str,
+    target_type: str,
+    target_id: str,
+    db: DbSession,
+    max_depth: int = 4,
+    user=Depends(get_current_user),
+) -> dict:
+    try:
+        return ok(
+            graph_paths.find_graph_path(
+                db,
+                user_id=user.id,
+                source_type=source_type,
+                source_id=source_id,
+                target_type=target_type,
+                target_id=target_id,
+                max_depth=max_depth,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post(
+    "/conflicts/{conflict_id}/disposition",
+    response_model=Envelope[GraphConflictDispositionResponse],
+)
+def set_graph_conflict_disposition(
+    conflict_id: str,
+    payload: GraphConflictDispositionRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    try:
+        return ok(
+            graph_conflicts.set_graph_conflict_disposition(
+                db,
+                user_id=user.id,
+                conflict_id=conflict_id,
+                payload=payload.model_dump(mode="json"),
+            )
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/workspace", response_model=Envelope[GraphWorkspaceResponse])

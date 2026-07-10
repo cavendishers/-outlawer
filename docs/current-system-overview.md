@@ -1,6 +1,6 @@
 # Current System Overview
 
-Last updated: `2026-04-21`
+Last updated: `2026-07-11`
 
 ## Purpose
 
@@ -139,12 +139,13 @@ sequenceDiagram
 - `DONE`: Phase 26 now also lets visible graph edges be focused as first-class interaction targets, with edge spotlight cards and quick node pivot actions inside the shared workspace.
 - `DONE`: Phase 26 Slice G now adds backend-backed graph filters for node type, relation type, date range, edge weight, and anchor depth, with `/graph` preserving filter state in the URL.
 - `DONE`: Phase 30 graph governance adds saved graph viewpoints, inline node field correction, conflict hints, graph operation history, and operations-console graph quality metrics.
+- `DONE`: Graph viewpoints can be renamed or deleted, conflicts can be retained/postponed/reopened without destructive writes, and event/entity path discovery returns per-hop relationship explanations.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
 
-1. `MEDIUM`: Domain packaging is close to complete. Extraction, replay, projection, retrieval, governance, operations, and knowledge now have real `app.domains.*` implementations, and the remaining items are mostly very small foundational helpers rather than large horizontal service modules.
-2. `MEDIUM`: Graph workspace and canvas-style editing are still incomplete. Shared exploration, inline governance, timeline-backbone fusion, and UX hardening are now in place, but broader canvas-native editing is still missing.
+1. `DONE`: Domain packaging is complete for the current modular-monolith boundary. Remaining `app.services.*` files are compatibility exports rather than active horizontal implementations.
+2. `LOW`: Broader freeform canvas editing remains optional. Shared exploration, inline governance, path discovery, non-destructive conflict dispositions, timeline-backbone fusion, and UX hardening are already in place.
 3. `MEDIUM`: Back-office operations depth is still incomplete. The console now has backlog and activity signals, but raw asset management actions, queue latency analytics, and broader admin workflows are still thin.
 4. `LOW`: Collaboration and permissions. Current implementation is single-user/workspace oriented.
 5. `LOW`: Plugin and integration system for external importers and third-party sync.
@@ -152,14 +153,13 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next implementation slice should continue blueprint Phase C while preserving the new versioning model. The expected scope is:
+The next major implementation direction should complete the manual knowledge-authoring loop:
 
-- move more replay/apply logic out of `extraction_run_service.py` into dedicated replay or projection domain modules
-- keep reorganizing backend modules toward domain-first packaging without breaking the current `/api/v1` surface
-- preserve the projection-version pointer model while splitting extraction, replay, projection, and read concerns further
-- keep shrinking legacy compatibility shims as concrete domain implementations take over
-- choose the next backend seam from the remaining tiny foundational helpers only if they materially improve boundaries; otherwise shift focus to product and data-shape evolution
-- keep `/api/v1/graph/*`, `/api/v1/operations/*`, and replay-related response schemas explicit in OpenAPI
+- create entities and events explicitly instead of requiring every canonical object to originate from extraction
+- create a missing node from graph context and connect it to the current event/entity in the same workflow
+- attach manual evidence to an existing note or raw asset while preserving the raw/derived/canonical separation
+- audit manual creation and evidence attachment with the same narrow contracts used by curation
+- defer extraction benchmarking, formal CI/release automation, and deeper operations analytics until those become active priorities
 
 ## Analysis Workflow
 
@@ -171,4 +171,4 @@ The next implementation slice should continue blueprint Phase C while preserving
 - `DONE`: `/notes/{id}/analysis` now includes an active-run raw-output versus normalized-output diff summary so users can see where system normalization changed model output before projection.
 - `DONE`: evidence groups now resolve readable object labels, show source context around evidence snippets, and link directly into detail, curation, or graph views where applicable.
 - `DONE`: `/notes/{id}/analysis` now includes expandable object-level diff drilldowns for entity, event, and relation additions, removals, and changed items.
-- `NEXT`: move from linked curation to safe inline correction once write contracts are narrow enough for embedded edits.
+- `DONE`: relation evidence with a first-class relation id supports safe inline relation-type updates and deletion from the analysis page through the existing narrow curation contracts.

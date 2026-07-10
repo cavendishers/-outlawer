@@ -8,8 +8,7 @@ ENV PYTHONPATH=/app
 
 ARG INSTALL_DEV=false
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \
     tesseract-ocr \

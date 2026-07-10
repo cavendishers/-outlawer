@@ -164,6 +164,10 @@ type WorkflowData = {
     detail_href: string | null;
     curation_href: string | null;
     graph_href: string | null;
+    relation_id: string | null;
+    relation_type: string | null;
+    relation_owner_type: "event" | "entity" | null;
+    relation_owner_id: string | null;
     field_names: string[];
     evidence_count: number;
     average_confidence: number | null;
@@ -248,6 +252,36 @@ export default function NoteAnalysisPage() {
     } catch (err) {
       setNotice("");
       setError(err instanceof Error ? err.message : "工作流操作失败");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function mutateEvidenceRelation(
+    group: WorkflowData["evidence_groups"][number],
+    action: "update" | "remove",
+    relationType?: string
+  ) {
+    if (!params?.id || !group.relation_id || !group.relation_owner_type || !group.relation_owner_id) return;
+    const ownerSegment = group.relation_owner_type === "event" ? "events" : "entities";
+    const busyKey = `evidence-relation-${action}-${group.relation_id}`;
+    setBusyAction(busyKey);
+    try {
+      await apiFetch(
+        `/curation/${ownerSegment}/${group.relation_owner_id}/relations/${group.relation_id}`,
+        action === "remove"
+          ? { method: "DELETE" }
+          : {
+              method: "PATCH",
+              body: JSON.stringify({ relation_type: relationType }),
+            }
+      );
+      setNotice(action === "remove" ? "关系已从证据链中删除，审计快照已保留。" : "关系类型已更新，分析工作流已刷新。");
+      await loadWorkflow(params.id);
+      setError("");
+    } catch (err) {
+      setNotice("");
+      setError(err instanceof Error ? err.message : "关系校正失败");
     } finally {
       setBusyAction("");
     }
@@ -455,7 +489,7 @@ export default function NoteAnalysisPage() {
 
             <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
               <DiffSummaryPanel diff={workflow.raw_normalized_diff} />
-              <EvidenceGroupsPanel groups={workflow.evidence_groups} />
+              <EvidenceGroupsPanel groups={workflow.evidence_groups} busyAction={busyAction} onMutateRelation={mutateEvidenceRelation} />
             </section>
           </>
         ) : !error ? (
@@ -605,7 +639,19 @@ function DiffObjectList({ label, items, tone }: { label: string; items: Array<Re
   );
 }
 
-function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups"] }) {
+function EvidenceGroupsPanel({
+  groups,
+  busyAction,
+  onMutateRelation,
+}: {
+  groups: WorkflowData["evidence_groups"];
+  busyAction: string;
+  onMutateRelation: (
+    group: WorkflowData["evidence_groups"][number],
+    action: "update" | "remove",
+    relationType?: string
+  ) => Promise<void>;
+}) {
   return (
     <Panel className="p-5" tone="info" intensity="quiet">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -638,6 +684,13 @@ function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups
               {group.curation_href ? <Link href={group.curation_href} className="brutal-action brutal-action-primary text-xs">进入校正</Link> : null}
               {group.graph_href ? <Link href={group.graph_href} className="brutal-action brutal-action-info text-xs">图谱定位</Link> : null}
             </div>
+            {group.target_type === "relation" && group.relation_id ? (
+              <RelationEvidenceActions
+                group={group}
+                busyAction={busyAction}
+                onMutateRelation={onMutateRelation}
+              />
+            ) : null}
             <div className="mt-3 space-y-2">
               {group.samples.map((sample) => (
                 <div key={sample.id} className="border-2 border-ink bg-white px-3 py-2">
@@ -661,6 +714,57 @@ function EvidenceGroupsPanel({ groups }: { groups: WorkflowData["evidence_groups
         )) : <p className="empty-state">暂无抽取证据。后续投影或重新抽取后会在这里显示来源片段。</p>}
       </div>
     </Panel>
+  );
+}
+
+function RelationEvidenceActions({
+  group,
+  busyAction,
+  onMutateRelation,
+}: {
+  group: WorkflowData["evidence_groups"][number];
+  busyAction: string;
+  onMutateRelation: (
+    group: WorkflowData["evidence_groups"][number],
+    action: "update" | "remove",
+    relationType?: string
+  ) => Promise<void>;
+}) {
+  const [relationType, setRelationType] = useState(group.relation_type ?? group.field_names[0] ?? "related_to");
+  const updateKey = `evidence-relation-update-${group.relation_id}`;
+  const removeKey = `evidence-relation-remove-${group.relation_id}`;
+  return (
+    <div className="mt-3 border-4 border-ink bg-bone p-3 shadow-brutalTiny">
+      <p className="text-xs font-black uppercase tracking-[0.14em]">关系内联校正</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          value={relationType}
+          onChange={(event) => setRelationType(event.target.value)}
+          className="min-w-0 flex-1 border-4 border-ink bg-white px-3 py-2 text-sm font-bold"
+          placeholder="关系类型"
+        />
+        <button
+          type="button"
+          onClick={() => void onMutateRelation(group, "update", relationType.trim())}
+          disabled={Boolean(busyAction) || !relationType.trim()}
+          className="brutal-action brutal-action-primary text-xs disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busyAction === updateKey ? "更新中..." : "更新关系类型"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`确认删除关系“${group.target_label}”吗？`)) {
+              void onMutateRelation(group, "remove");
+            }
+          }}
+          disabled={Boolean(busyAction)}
+          className="brutal-action brutal-action-secondary text-xs disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busyAction === removeKey ? "删除中..." : "删除关系"}
+        </button>
+      </div>
+    </div>
   );
 }
 

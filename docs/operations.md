@@ -89,6 +89,7 @@ For product-level triage, open `/operations` in the web app. The operations cons
 - failed and active jobs
 - reviewable extraction drafts
 - pending entity/event merge candidates
+- graph-governance activity now includes relation before/after diff summaries, and graph conflicts can expose direct canonical-relation removal actions when a real `relation_id` is available
 - recent review and curation actions
 - routing links into note detail, review, and curation pages
 

@@ -10,12 +10,12 @@ It is intended to answer one question clearly:
 
 ## Current Snapshot
 
-Current status as of `2026-04-21`:
+Current status as of `2026-07-11`:
 
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
-- Architecture V2 domain packaging has started, but is still mid-migration
-- the remaining work is mostly in product depth, graph operations, AI quality, and back-office tooling
+- Architecture V2 domain packaging is complete for the current modular-monolith boundary
+- the next product-depth gap is manual knowledge authoring; later work includes topic/case collections, curated outputs, optional graph-canvas expansion, AI quality, and back-office tooling
 
 ## Status Legend
 
@@ -42,7 +42,7 @@ Current status as of `2026-04-21`:
 | Event-driven browsing | `DONE` | event detail and related events are available |
 | Chunibyo-style display | `DONE` | note and entity story views available |
 | Search across keywords/entity/event/similarity | `DONE` | unified search page is live |
-| Graph-like browsing experience | `PARTIAL` | multiple graph views exist, but editing and governance are missing |
+| Graph-like browsing experience | `PARTIAL` | shared exploration, inline editing, conflict governance, saved viewpoints, and path discovery exist; broader freeform canvas editing remains open |
 
 ## High Priority
 
@@ -82,8 +82,8 @@ Status:
 
 Why it matters:
 
-- the current graph is mostly generated and displayed
-- without manual editing, the graph cannot become a reliable long-term knowledge base
+- the graph is now editable and governed, so remaining work should improve exploration without creating a second truth store
+- broader canvas interaction should remain subordinate to canonical curation and audit rules
 
 Delivered in the first slice:
 
@@ -141,16 +141,21 @@ Delivered in the eighth slice:
 - graph workspace now exposes an edge spotlight rail with quick pivot actions to either endpoint
 - broader graph exploration has started moving from node-only inspection toward graph-native relation inspection
 
+Delivered in the governance slices:
+
+- saved viewpoints preserve graph anchors, filters, and focus state
+- saved viewpoints can be renamed and deleted when they become noisy
+- canonical relations expose first-class ids, evidence counts, and direct conflict resolution actions
+- conflicts can be acknowledged as retained, postponed, or reopened without deleting canonical knowledge
+- event/entity path discovery returns the shortest visible knowledge path with per-hop relationship explanations
+
 Still missing:
 
 - broader graph canvas editing
-- deeper operations dashboards beyond the current backlog and routing signals
 
 Suggested deliverables:
 
-- broader graph canvas editing
-- saved viewpoints or stronger graph-neighborhood editing primitives
-- richer operator analytics around queue latency, asset actions, and admin workflows
+- broader freeform canvas editing only if product use proves it necessary
 
 Acceptance target:
 
@@ -396,29 +401,27 @@ Resolved:
 
 Status:
 
-- `TODO`
+- `DONE`
 
-Problem:
+Resolved:
 
-- merge candidates can be generated and listed, but not yet operationally resolved
+- merge candidates can be accepted or rejected from review queues and entity/event review pages
+- accepted merges rewrite dependent graph references and retain an audit trail
 
 ## Recommended Delivery Order
 
-If the goal is product value rather than pure architecture cleanup, the best next order is:
+The previous delivery order has now completed its graph-governance, API-contract, read-model, and domain-packaging slices. Deferred tracks remain:
 
-1. graph editing and knowledge curation
-2. multimodal quality upgrade
-3. back-office operations surface
-4. API schema completion and read-side service cleanup
-5. collaboration and permissions
-6. mobile experience
-7. domain packaging and internal modularization
+1. multimodal quality upgrade when extraction accuracy becomes a priority
+2. back-office operations depth when formal release operations begin
+3. collaboration and permissions when shared workspaces become a product requirement
+4. plugin integrations and mobile capture after the core single-user workflow is validated
 
 ### 7. Domain Packaging And Internal Modularization
 
 Status:
 
-- `PARTIAL`
+- `DONE`
 
 Why it matters:
 
@@ -511,11 +514,11 @@ Delivered in the thirteenth slice:
 - updated retrieval, governance, and projection modules to depend on the knowledge domain paths directly
 - reduced the old entity-alias and embedding service modules to compatibility exports while the migration continues
 
-Still missing:
+Current boundary:
 
-- projection module packaging
-- remaining helper service ownership cleanup
-- further breakup of oversized legacy services
+- projection and the main extraction, retrieval, governance, operations, replay, and knowledge helpers are domain-owned
+- remaining `app.services.*` modules are compatibility exports and are not a blocker for product work
+- further breakup should be demand-driven rather than a standalone migration phase
 
 Acceptance target:
 
@@ -523,13 +526,12 @@ Acceptance target:
 
 ## Recommendation
 
-If we want the next phase to make the product feel materially more complete, the best next target is:
+The graph-governance target is now delivered through the current product-depth slices:
 
-- `Graph Editing And Knowledge Curation`
+- inline graph editing, first-class relation governance, saved-view management, non-destructive conflict dispositions, and path explanations
 
 Reason:
 
-- replay/versioning safety is now in place, so the next product multiplier is stronger graph correction depth
-- it directly improves long-term graph quality after extraction
-- it gives operators more leverage than another internal-only refactor
-- it pairs naturally with the graph views that already exist
+- broader freeform canvas editing remains optional rather than the automatic next phase
+- the next selected goal is `Phase 31: Manual Knowledge Authoring Loop`
+- users should be able to create a missing event/person, connect it from graph context, and attach manual evidence without requiring another extraction run

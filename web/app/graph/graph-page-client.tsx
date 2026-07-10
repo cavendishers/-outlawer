@@ -44,11 +44,18 @@ type GraphWorkspaceData = {
     };
   }>;
   edges: Array<{
+    id: string;
+    relation_id: string | null;
+    fact_type: string;
     source_id: string;
     target_id: string;
+    source_type: string | null;
+    target_type: string | null;
     edge_type: string;
     label: string;
     weight: number;
+    evidence_count: number;
+    is_editable: boolean;
   }>;
   timeline_focus: Array<{
     id: string;
@@ -103,11 +110,18 @@ type GraphNodeDetail = {
     is_anchor: boolean;
   }>;
   connected_edges: Array<{
+    id: string;
+    relation_id: string | null;
+    fact_type: string;
     source_id: string;
     target_id: string;
+    source_type: string | null;
+    target_type: string | null;
     edge_type: string;
     label: string;
     weight: number;
+    evidence_count: number;
+    is_editable: boolean;
   }>;
   timeline_context: GraphWorkspaceData["timeline_focus"];
   anchor_actions: Array<{
@@ -206,6 +220,16 @@ type GraphConflict = {
   node_ids: string[];
   edge_label: string | null;
   href: string;
+  disposition: "open" | "keep" | "snooze";
+  disposition_note: string | null;
+  is_active: boolean;
+  actions: Array<{
+    label: string;
+    action_type: string;
+    relation_id: string;
+    owner_type: "event" | "entity";
+    owner_id: string;
+  }>;
 };
 
 type GraphActionLog = {
@@ -217,6 +241,7 @@ type GraphActionLog = {
   status_after: string | null;
   created_at: string | null;
   summary: string;
+  diff_summary: string | null;
 };
 
 type GraphViewpoint = {
@@ -231,6 +256,29 @@ type GraphViewpoint = {
   href: string;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type GraphPath = {
+  found: boolean;
+  max_depth: number;
+  total_hops: number;
+  source: { id: string; node_type: string; label: string; href: string };
+  target: { id: string; node_type: string; label: string; href: string };
+  nodes: Array<{ id: string; node_type: string; label: string; href: string }>;
+  edges: Array<{
+    source_type: string;
+    source_id: string;
+    target_type: string;
+    target_id: string;
+    label: string;
+    fact_type: string;
+    relation_id: string | null;
+    evidence_count: number;
+    confidence: number | null;
+    traversal_direction: string;
+    explanation: string;
+  }>;
+  explanation: string;
 };
 
 export function GraphPageClient() {
@@ -257,7 +305,11 @@ export function GraphPageClient() {
   const [viewpoints, setViewpoints] = useState<GraphViewpoint[]>([]);
   const [viewpointName, setViewpointName] = useState("");
   const [viewpointBusy, setViewpointBusy] = useState(false);
+  const [viewpointActionBusyKey, setViewpointActionBusyKey] = useState("");
   const [viewpointMessage, setViewpointMessage] = useState("");
+  const [graphPath, setGraphPath] = useState<GraphPath | null>(null);
+  const [graphPathBusy, setGraphPathBusy] = useState(false);
+  const [graphPathError, setGraphPathError] = useState("");
   const [error, setError] = useState("");
 
   function buildScopeParams() {
@@ -438,6 +490,8 @@ export function GraphPageClient() {
   }, [activeNode]);
 
   function handleSelectNode(nodeId: string) {
+    setGraphPath(null);
+    setGraphPathError("");
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("active_node_id", nodeId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -634,6 +688,99 @@ export function GraphPageClient() {
     }
   }
 
+  async function handleRenameViewpoint(viewpointId: string, name: string) {
+    const cleanedName = name.trim();
+    if (!cleanedName) return;
+    setViewpointActionBusyKey(`viewpoint-rename-${viewpointId}`);
+    try {
+      const updated = await apiFetch<GraphViewpoint>(`/graph-viewpoints/${viewpointId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: cleanedName }),
+      });
+      startTransition(() => {
+        setViewpoints((current) => current.map((item) => (item.id === viewpointId ? updated : item)));
+        setViewpointMessage("保存视角已重命名。");
+      });
+    } catch (err) {
+      setViewpointMessage(err instanceof Error ? err.message : "重命名保存视角失败");
+    } finally {
+      setViewpointActionBusyKey("");
+    }
+  }
+
+  async function handleDeleteViewpoint(viewpointId: string) {
+    setViewpointActionBusyKey(`viewpoint-delete-${viewpointId}`);
+    try {
+      await apiFetch(`/graph-viewpoints/${viewpointId}`, { method: "DELETE" });
+      startTransition(() => {
+        setViewpoints((current) => current.filter((item) => item.id !== viewpointId));
+        setViewpointMessage("保存视角已删除。");
+      });
+    } catch (err) {
+      setViewpointMessage(err instanceof Error ? err.message : "删除保存视角失败");
+    } finally {
+      setViewpointActionBusyKey("");
+    }
+  }
+
+  async function handleSetConflictDisposition(
+    conflict: GraphConflict,
+    disposition: "open" | "keep" | "snooze",
+    note?: string
+  ) {
+    setMutationBusyKey(`conflict-disposition-${conflict.id}`);
+    try {
+      await apiFetch(`/graph/conflicts/${encodeURIComponent(conflict.id)}/disposition`, {
+        method: "POST",
+        body: JSON.stringify({
+          disposition,
+          note: note?.trim() || null,
+          conflict_type: conflict.conflict_type,
+          title: conflict.title,
+          summary: conflict.summary,
+          node_ids: conflict.node_ids,
+          edge_label: conflict.edge_label,
+        }),
+      });
+      const refreshed = await fetchWorkspaceData();
+      startTransition(() => {
+        setWorkspace(refreshed);
+        setMutationMessage(
+          disposition === "keep" ? "冲突已确认保留，不会修改原关系。" : disposition === "snooze" ? "冲突已稍后处理。" : "冲突已重新打开。"
+        );
+        setMutationError("");
+      });
+    } catch (err) {
+      setMutationError(err instanceof Error ? err.message : "冲突处置失败");
+    } finally {
+      setMutationBusyKey("");
+    }
+  }
+
+  async function handleFindPath(
+    source: GraphWorkspaceData["nodes"][number],
+    target: GraphWorkspaceData["nodes"][number],
+    maxDepth: number
+  ) {
+    const params = new URLSearchParams({
+      source_type: source.node_type,
+      source_id: source.id,
+      target_type: target.node_type,
+      target_id: target.id,
+      max_depth: String(maxDepth),
+    });
+    setGraphPathBusy(true);
+    setGraphPathError("");
+    try {
+      setGraphPath(await apiFetch<GraphPath>(`/graph/path?${params.toString()}`));
+    } catch (err) {
+      setGraphPath(null);
+      setGraphPathError(err instanceof Error ? err.message : "关系路径发现失败");
+    } finally {
+      setGraphPathBusy(false);
+    }
+  }
+
   return (
     <AuthGate>
       <main className="space-y-6">
@@ -658,10 +805,13 @@ export function GraphPageClient() {
             viewpoints={viewpoints}
             viewpointName={viewpointName}
             viewpointBusy={viewpointBusy}
+            viewpointActionBusyKey={viewpointActionBusyKey}
             viewpointMessage={viewpointMessage}
             activeNodeId={activeNode?.id ?? null}
             onViewpointNameChange={setViewpointName}
             onSaveViewpoint={handleSaveViewpoint}
+            onRenameViewpoint={handleRenameViewpoint}
+            onDeleteViewpoint={handleDeleteViewpoint}
             onDismissViewpointMessage={() => setViewpointMessage("")}
             onSelectNode={handleSelectNode}
             onUpdateFilters={handleUpdateFilters}
@@ -679,6 +829,11 @@ export function GraphPageClient() {
             onUpsertRelation={handleUpsertRelation}
             onRemoveRelation={handleRemoveRelation}
             onUpdateNode={handleUpdateNode}
+            onSetConflictDisposition={handleSetConflictDisposition}
+            graphPath={graphPath}
+            graphPathBusy={graphPathBusy}
+            graphPathError={graphPathError}
+            onFindPath={handleFindPath}
           />
         ) : (
           <GraphPageLoadingPanel />

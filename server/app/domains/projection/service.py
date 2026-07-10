@@ -377,19 +377,19 @@ def persist_extraction_projection(
         source_id = resolve_relation_object_id(source_ref, object_id_map, note.id)
         target_id = resolve_relation_object_id(target_ref, object_id_map, note.id)
         if source_id and target_id:
-            db.add(
-                Relation(
-                    user_id=note.user_id,
-                    source_type=source_ref["type"],
-                    source_id=source_id,
-                    relation_type=relation_type,
-                    target_type=target_ref["type"],
-                    target_id=target_id,
-                    evidence_count=max(1, len(relation_payload.get("evidence", []))),
-                    confidence_score=relation_payload.get("confidence"),
-                    meta_json={"source": "llm_relation"},
-                )
+            relation = Relation(
+                user_id=note.user_id,
+                source_type=source_ref["type"],
+                source_id=source_id,
+                relation_type=relation_type,
+                target_type=target_ref["type"],
+                target_id=target_id,
+                evidence_count=max(1, len(relation_payload.get("evidence", []))),
+                confidence_score=relation_payload.get("confidence"),
+                meta_json={"source": "llm_relation"},
             )
+            db.add(relation)
+            db.flush()
             if relation_payload.get("evidence"):
                 evidence = relation_payload["evidence"][0]
                 db.add(
@@ -398,7 +398,7 @@ def persist_extraction_projection(
                         source_note_id=note.id,
                         source_asset_id=asset.id,
                         target_type="relation",
-                        target_id=source_id,
+                        target_id=relation.id,
                         field_name=relation_type,
                         evidence_text=evidence.get("text") or relation_type,
                         evidence_offset_start=evidence.get("start"),

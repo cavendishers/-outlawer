@@ -5,7 +5,12 @@ from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401
 from app.core.database import Base
-from app.domains.governance.curation import upsert_event_participant
+from app.domains.governance.curation import (
+    remove_event_relation,
+    update_event_relation,
+    upsert_event_participant,
+    upsert_event_relation,
+)
 from app.models.entity import Entity, EntityAlias, EventEntity, NoteEntity, Relation
 from app.models.event import Event
 from app.models.review import ReviewAction
@@ -185,3 +190,54 @@ def test_upsert_event_participant_uses_human_default_role_text() -> None:
     story = db.scalar(select(StyleView).where(StyleView.target_type == "entity", StyleView.target_id == entity.id))
     assert story is not None
     assert story.title == "红烧鱼 / 参与者"
+
+
+def test_relation_curation_audit_keeps_before_and_after_snapshots() -> None:
+    db = make_db()
+    user, event = seed_event(db)
+    entity = Entity(
+        id="entity-relation-peer",
+        user_id=user.id,
+        entity_type="person",
+        canonical_name="关系对象",
+        display_name="关系对象",
+        alias_json=[],
+        normalized_name="关系对象",
+        status="active",
+    )
+    db.add(entity)
+    db.commit()
+
+    created = upsert_event_relation(
+        db,
+        user_id=user.id,
+        event_id=event.id,
+        direction="outgoing",
+        related_type="entity",
+        related_id=entity.id,
+        relation_type="supports",
+    )
+    relation_id = created["id"]
+    updated = update_event_relation(
+        db,
+        user_id=user.id,
+        event_id=event.id,
+        relation_id=relation_id,
+        payload={"relation_type": "blocks"},
+    )
+    assert updated["relation_type"] == "blocks"
+    remove_event_relation(db, user_id=user.id, event_id=event.id, relation_id=relation_id)
+
+    actions = db.scalars(
+        select(ReviewAction)
+        .where(ReviewAction.target_type == "relation", ReviewAction.target_id == relation_id)
+        .order_by(ReviewAction.created_at.asc())
+    ).all()
+
+    assert [action.action_type for action in actions] == ["add_relation", "update_relation", "remove_relation"]
+    assert actions[0].payload_json["before"] is None
+    assert actions[0].payload_json["after"]["relation_type"] == "supports"
+    assert actions[1].payload_json["before"]["relation_type"] == "supports"
+    assert actions[1].payload_json["after"]["relation_type"] == "blocks"
+    assert actions[2].payload_json["before"]["relation_type"] == "blocks"
+    assert actions[2].payload_json["after"] is None

@@ -24,8 +24,8 @@ project/
   docs/
 ```
 
-Detailed design documents live in [`docs/current-system-overview.md`](/Users/hongan/Documents/fxxk/docs/current-system-overview.md), [`docs/architecture.md`](/Users/hongan/Documents/fxxk/docs/architecture.md), [`docs/architecture-review.md`](/Users/hongan/Documents/fxxk/docs/architecture-review.md), [`docs/architecture-v2-blueprint.md`](/Users/hongan/Documents/fxxk/docs/architecture-v2-blueprint.md), [`docs/remaining-features-roadmap.md`](/Users/hongan/Documents/fxxk/docs/remaining-features-roadmap.md), [`docs/project-retrospective-and-next-stage.md`](/Users/hongan/Documents/fxxk/docs/project-retrospective-and-next-stage.md), [`docs/phase-11-review-workflow-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-11-review-workflow-plan.md), [`docs/phase-12-event-curation-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-12-event-curation-plan.md), [`docs/phase-26-graph-workspace-plan.md`](/Users/hongan/Documents/fxxk/docs/phase-26-graph-workspace-plan.md), [`docs/api-contract.md`](/Users/hongan/Documents/fxxk/docs/api-contract.md), [`docs/database-design.md`](/Users/hongan/Documents/fxxk/docs/database-design.md), [`docs/ai-extraction-format.md`](/Users/hongan/Documents/fxxk/docs/ai-extraction-format.md), [`docs/deployment.md`](/Users/hongan/Documents/fxxk/docs/deployment.md), [`docs/migration-guide.md`](/Users/hongan/Documents/fxxk/docs/migration-guide.md), [`docs/mvp-plan.md`](/Users/hongan/Documents/fxxk/docs/mvp-plan.md), [`docs/development-phases.md`](/Users/hongan/Documents/fxxk/docs/development-phases.md), and [`docs/documentation-workflow.md`](/Users/hongan/Documents/fxxk/docs/documentation-workflow.md).
-Operational runbooks live in [`docs/operations.md`](/Users/hongan/Documents/fxxk/docs/operations.md).
+Detailed design documents live in [`docs/current-system-overview.md`](/Users/hongan/Documents/outlaywer/docs/current-system-overview.md), [`docs/architecture.md`](/Users/hongan/Documents/outlaywer/docs/architecture.md), [`docs/architecture-review.md`](/Users/hongan/Documents/outlaywer/docs/architecture-review.md), [`docs/architecture-v2-blueprint.md`](/Users/hongan/Documents/outlaywer/docs/architecture-v2-blueprint.md), [`docs/remaining-features-roadmap.md`](/Users/hongan/Documents/outlaywer/docs/remaining-features-roadmap.md), [`docs/project-retrospective-and-next-stage.md`](/Users/hongan/Documents/outlaywer/docs/project-retrospective-and-next-stage.md), [`docs/phase-11-review-workflow-plan.md`](/Users/hongan/Documents/outlaywer/docs/phase-11-review-workflow-plan.md), [`docs/phase-12-event-curation-plan.md`](/Users/hongan/Documents/outlaywer/docs/phase-12-event-curation-plan.md), [`docs/phase-26-graph-workspace-plan.md`](/Users/hongan/Documents/outlaywer/docs/phase-26-graph-workspace-plan.md), [`docs/api-contract.md`](/Users/hongan/Documents/outlaywer/docs/api-contract.md), [`docs/database-design.md`](/Users/hongan/Documents/outlaywer/docs/database-design.md), [`docs/ai-extraction-format.md`](/Users/hongan/Documents/outlaywer/docs/ai-extraction-format.md), [`docs/deployment.md`](/Users/hongan/Documents/outlaywer/docs/deployment.md), [`docs/migration-guide.md`](/Users/hongan/Documents/outlaywer/docs/migration-guide.md), [`docs/mvp-plan.md`](/Users/hongan/Documents/outlaywer/docs/mvp-plan.md), [`docs/development-phases.md`](/Users/hongan/Documents/outlaywer/docs/development-phases.md), and [`docs/documentation-workflow.md`](/Users/hongan/Documents/outlaywer/docs/documentation-workflow.md).
+Operational runbooks live in [`docs/operations.md`](/Users/hongan/Documents/outlaywer/docs/operations.md).
 
 ## Product Summary
 
@@ -38,7 +38,7 @@ For multimodal assets, the worker now sends image, audio, and video files to Ali
 - Phase `0` through Phase `25` are implemented and verified in Docker.
 - Architecture V2 blueprint `Phase A: Source-of-truth cleanup` is now implemented and verified in Docker.
 - Architecture V2 blueprint `Phase B: Extraction/projection versioning` is now implemented and verified in Docker.
-- Architecture V2 blueprint `Phase C: Domain packaging` is now in progress; the first thirteen slices introduced `app.domains.extraction`, `app.domains.replay`, `app.domains.projection`, `app.domains.retrieval`, `app.domains.governance`, `app.domains.operations`, and `app.domains.knowledge`, moved extraction metadata, asset-text preparation, local media parsing, OpenRouter extraction helpers, extraction payload orchestration, canonical alias/vector ownership, projection persistence, graph/search/operations read-side composition, worker pipeline, replay diff logic, replay service behavior, merge review, and curation behavior behind those seams, and kept compatibility shims for legacy imports.
+- Architecture V2 blueprint `Phase C: Domain packaging` is implemented; extraction, replay, projection, retrieval, governance, operations, knowledge, character-card, and image-generation behavior now live behind domain packages, while one-line compatibility shims preserve older imports.
 - Architecture hardening completed for core API contracts, pagination metadata, shared serialization, job dispatch boundaries, and pipeline service separation.
 - Auth is bearer-token based.
 - Uploads are API-proxied into MinIO, and raw reads return original text or a presigned `raw_url`.
@@ -71,6 +71,11 @@ For multimodal assets, the worker now sends image, audio, and video files to Ali
 - 图谱工作台现在加入了时间主干 rail 和 `全部 / 事件 / 人物 / 时间主干` 视图切换，人物时间线与事件网络可以在同一工作区里来回切换。
 - 图谱工作台现已补齐骨架屏、空状态、移动端焦点强调和内联校验提示，日常浏览与轻量治理的可用性明显更稳定。
 - 图谱工作台现在支持连线聚焦，边也能作为一等交互对象被查看和快速切换两端节点，图谱感比单纯节点列表更强。
+- 图谱边现在会区分推断连线与可治理的 canonical relation；真实关系边带有 `relation_id`、端点类型、证据数和可编辑状态，低置信/重复关系可以从工作台冲突提示中直接删除。
+- 保存视角现在支持重命名和删除；图谱冲突也可以确认保留、稍后处理或重新打开，不再要求通过删除关系才能清空治理提示。
+- 图谱工作台支持事件/人物之间的最短路径发现，并逐跳解释参与关系、关系方向、证据数和置信度。
+- relation extraction evidence 现在指向真实关系记录，历史无歧义证据通过 Alembic 数据迁移回填；分析工作流可直接更新关系类型或删除关系，并保留 before/after 审计快照。
+- 生产前端镜像统一在容器内输出标准 `.next` 目录，Docker 构建上下文排除本地缓存与环境文件，生产 Compose 对数据库、MinIO、JWT 和 bootstrap admin 凭据执行缺失即失败校验。
 
 ## Quick Start
 
@@ -156,6 +161,20 @@ Verified on `2026-04-21`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py`
 - frontend route smoke against `http://127.0.0.1:3000` and `http://localhost:3000` for home, auth, library, people, events, timeline, graph, tools, search, review, operations, inbox, and sample detail/curation routes
 
+## Latest Release Verification
+
+Release-hardening and relation-governance verification completed on `2026-07-11`:
+
+- `python -m pytest tests/services tests/api` -> `91 passed` in a Python 3.12 container
+- clean PostgreSQL migration -> `20260711_02 (head)`
+- `cd web && npx tsc --noEmit` -> passed
+- `cd web && NODE_ENV=production npm run build` -> passed with Next.js `15.5.18`
+- `cd web && npm audit --omit=dev` -> `0 vulnerabilities`
+- production web Docker image build and runtime HTTP smoke -> `200`
+- production Compose rejects missing required credentials and validates with explicit credentials
+- full API, review, event-curation, and entity-curation e2e flows -> passed
+- authenticated browser smoke -> passed for analysis workflow, graph governance, explained paths, saved-view lifecycle, and operations
+
 ## Database Migration Rules
 
 - Every schema change requires a committed Alembic migration file.
@@ -213,6 +232,6 @@ Verified on `2026-04-21`:
 
 ## Documentation Tracking
 
-- Use [`docs/development-phases.md`](/Users/hongan/Documents/fxxk/docs/development-phases.md) as the delivery checklist.
-- Use [`docs/documentation-workflow.md`](/Users/hongan/Documents/fxxk/docs/documentation-workflow.md) for the manual documentation update rule.
+- Use [`docs/development-phases.md`](/Users/hongan/Documents/outlaywer/docs/development-phases.md) as the delivery checklist.
+- Use [`docs/documentation-workflow.md`](/Users/hongan/Documents/outlaywer/docs/documentation-workflow.md) for the manual documentation update rule.
 - When a phase is completed, manually update the phase status and the related documents listed in that phase.

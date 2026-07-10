@@ -142,6 +142,16 @@ The following read and replay surfaces now publish explicit response schemas thr
 Verification rules:
 
 - `server/tests/api/test_openapi_contracts.py` should assert that these endpoints keep a component-backed response schema in `200` responses.
+
+Graph workspace edges distinguish inferred navigation from canonical governance facts. Canonical relation edges publish:
+
+- stable `id`
+- nullable `relation_id`
+- `fact_type`
+- typed source and target endpoints
+- evidence count and editability
+
+Conflict items may include explicit relation-resolution actions. Recent graph actions include a readable `diff_summary` derived from the persisted before/after audit payload.
 - paginated read models should continue using `data.items` as the primary collection field, with metadata in the same envelope.
 
 ## Pagination Parameters
@@ -302,6 +312,25 @@ Responsibilities:
 - global timeline view
 - date-range filtering
 - return projection-friendly paginated timeline items
+
+### Graph Workspace
+
+- `GET /api/v1/graph/workspace`
+- `GET /api/v1/graph/nodes/{node_type}/{node_id}`
+- `GET /api/v1/graph/path`
+- `POST /api/v1/graph/conflicts/{conflict_id}/disposition`
+- `GET /api/v1/graph-viewpoints`
+- `POST /api/v1/graph-viewpoints`
+- `PATCH /api/v1/graph-viewpoints/{viewpoint_id}`
+- `DELETE /api/v1/graph-viewpoints/{viewpoint_id}`
+
+Responsibilities:
+
+- compose event, entity, relation, and timeline neighborhoods without creating a second graph truth store
+- expose canonical relation ids, evidence counts, conflict hints, and recent governance actions
+- discover the shortest event/entity path and explain every traversed relation or participation hop
+- acknowledge a conflict as retained or postponed, and reopen it later without deleting canonical knowledge
+- save, rename, open, and delete reusable graph viewpoints
 
 ### Search
 

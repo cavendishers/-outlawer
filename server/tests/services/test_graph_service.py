@@ -1,3 +1,7 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.core.database import Base
 from app.domains.retrieval.graph_query import (
     build_entity_timeline_fragments,
     build_graph_overview_network,
@@ -5,9 +9,27 @@ from app.domains.retrieval.graph_query import (
 )
 from app.domains.retrieval.graph_workspace import (
     apply_workspace_filters,
+    attach_canonical_relation_edges,
     build_workspace_conflicts,
+    graph_action_diff_summary,
     normalize_graph_filters,
 )
+from app.domains.governance.graph_conflicts import (
+    apply_graph_conflict_dispositions,
+    set_graph_conflict_disposition,
+)
+from app.domains.retrieval.graph_paths import find_graph_path
+from app.domains.retrieval.graph_viewpoints import (
+    create_graph_viewpoint,
+    delete_graph_viewpoint,
+    update_graph_viewpoint,
+)
+from app.models.entity import Entity, EventEntity, Relation
+from app.models.event import Event
+from app.models.graph_conflict import GraphConflictDisposition
+from app.models.graph_viewpoint import GraphViewpoint
+from app.models.review import ReviewAction
+from app.models.user import User
 
 
 def test_build_related_event_suggestions_prioritizes_shared_people_and_similarity() -> None:
@@ -205,3 +227,266 @@ def test_graph_workspace_conflicts_flag_low_confidence_label_conflict_and_orphan
         "orphan_node",
     }
     assert any(item["node_ids"] == ["ent-2"] for item in conflicts)
+
+
+def test_graph_workspace_conflicts_offer_relation_id_resolution_actions() -> None:
+    nodes = [
+        {"id": "evt-1", "node_type": "event", "label": "事件一", "subtitle": "event", "meta": []},
+        {"id": "ent-1", "node_type": "entity", "label": "人物一", "subtitle": "person", "meta": []},
+    ]
+    edges = [
+        {
+            "id": "relation:rel-1",
+            "relation_id": "rel-1",
+            "fact_type": "relation",
+            "source_id": "evt-1",
+            "target_id": "ent-1",
+            "source_type": "event",
+            "target_type": "entity",
+            "edge_type": "supports",
+            "label": "supports",
+            "weight": 0.3,
+            "evidence_count": 1,
+            "is_editable": True,
+        }
+    ]
+
+    conflicts = build_workspace_conflicts(nodes, edges)
+
+    low_confidence = next(item for item in conflicts if item["conflict_type"] == "low_confidence_edge")
+    assert low_confidence["actions"] == [
+        {
+            "label": "删除低置信关系",
+            "action_type": "remove_relation",
+            "relation_id": "rel-1",
+            "owner_type": "event",
+            "owner_id": "evt-1",
+        }
+    ]
+
+
+def test_graph_action_diff_summary_describes_relation_shape_changes() -> None:
+    action = ReviewAction(
+        target_type="relation",
+        target_id="rel-1",
+        action_type="update_relation",
+        payload_json={
+            "before": {
+                "source_type": "event",
+                "source_id": "evt-1",
+                "relation_type": "supports",
+                "target_type": "entity",
+                "target_id": "ent-1",
+            },
+            "after": {
+                "source_type": "event",
+                "source_id": "evt-1",
+                "relation_type": "blocks",
+                "target_type": "entity",
+                "target_id": "ent-1",
+            },
+        },
+    )
+
+    summary = graph_action_diff_summary(action)
+
+    assert summary is not None
+    assert "supports" in summary
+    assert "blocks" in summary
+    assert "relation_type" in summary
+
+
+def test_attach_canonical_relation_edges_exposes_first_class_relation_id() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[User.__table__, Event.__table__, Entity.__table__, Relation.__table__],
+    )
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        db.add(User(id="user-graph", username="graph", password_hash="hash", display_name="Graph"))
+        db.add(Event(id="event-graph", user_id="user-graph", title="事件", status="active", time_precision="day"))
+        db.add(
+            Entity(
+                id="entity-graph",
+                user_id="user-graph",
+                entity_type="person",
+                canonical_name="人物",
+                display_name="人物",
+                alias_json=[],
+                normalized_name="人物",
+                status="active",
+            )
+        )
+        db.add(
+            Relation(
+                id="relation-graph",
+                user_id="user-graph",
+                source_type="event",
+                source_id="event-graph",
+                relation_type="supports",
+                target_type="entity",
+                target_id="entity-graph",
+                evidence_count=2,
+                confidence_score=0.42,
+                meta_json={"source": "llm_relation"},
+            )
+        )
+        db.commit()
+        workspace = {
+            "nodes": [
+                {"id": "event-graph", "node_type": "event"},
+                {"id": "entity-graph", "node_type": "entity"},
+            ],
+            "edges": [],
+        }
+
+        enriched = attach_canonical_relation_edges(db, workspace, user_id="user-graph")
+
+    assert enriched["edges"] == [
+        {
+            "id": "relation:relation-graph",
+            "relation_id": "relation-graph",
+            "fact_type": "relation",
+            "source_id": "event-graph",
+            "target_id": "entity-graph",
+            "source_type": "event",
+            "target_type": "entity",
+            "edge_type": "supports",
+            "label": "supports",
+            "weight": 0.42,
+            "evidence_count": 2,
+            "is_editable": True,
+        }
+    ]
+
+
+def test_graph_viewpoints_can_be_renamed_and_deleted_by_owner() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine, tables=[User.__table__, GraphViewpoint.__table__])
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        db.add(User(id="user-view", username="view", password_hash="hash", display_name="View"))
+        db.commit()
+        created = create_graph_viewpoint(
+            db,
+            user_id="user-view",
+            payload={"name": "旧视角", "scope": "overview"},
+        )
+
+        updated = update_graph_viewpoint(
+            db,
+            user_id="user-view",
+            viewpoint_id=created["id"],
+            payload={"name": "新视角"},
+        )
+        deleted = delete_graph_viewpoint(db, user_id="user-view", viewpoint_id=created["id"])
+
+    assert updated["name"] == "新视角"
+    assert deleted == {"id": created["id"], "status": "deleted"}
+
+
+def test_graph_conflict_disposition_retains_data_and_marks_conflict_inactive() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[User.__table__, GraphConflictDisposition.__table__, ReviewAction.__table__],
+    )
+    Session = sessionmaker(bind=engine)
+    conflict = {
+        "id": "low-confidence-event-entity-supports",
+        "severity": "medium",
+        "conflict_type": "low_confidence_edge",
+        "title": "低置信关系",
+        "summary": "需要人工确认",
+        "node_ids": ["event", "entity"],
+        "edge_label": "supports",
+        "href": "/graph",
+        "actions": [],
+    }
+    with Session() as db:
+        db.add(User(id="user-conflict", username="conflict", password_hash="hash", display_name="Conflict"))
+        db.commit()
+        disposition = set_graph_conflict_disposition(
+            db,
+            user_id="user-conflict",
+            conflict_id=conflict["id"],
+            payload={"disposition": "keep", "note": "人工确认应保留", **conflict},
+        )
+        decorated = apply_graph_conflict_dispositions(db, user_id="user-conflict", conflicts=[conflict])
+        audit = db.query(ReviewAction).one()
+
+    assert disposition["disposition"] == "keep"
+    assert decorated[0]["is_active"] is False
+    assert decorated[0]["disposition_note"] == "人工确认应保留"
+    assert audit.status_before == "open"
+    assert audit.status_after == "keep"
+
+
+def test_find_graph_path_explains_relation_and_participation_hops() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[User.__table__, Event.__table__, Entity.__table__, EventEntity.__table__, Relation.__table__],
+    )
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        db.add(User(id="user-path", username="path", password_hash="hash", display_name="Path"))
+        db.add_all(
+            [
+                Event(id="event-a", user_id="user-path", title="事件 A", status="active", time_precision="day"),
+                Entity(
+                    id="entity-b",
+                    user_id="user-path",
+                    entity_type="person",
+                    canonical_name="人物 B",
+                    display_name="人物 B",
+                    alias_json=[],
+                    normalized_name="人物b",
+                    status="active",
+                ),
+                Entity(
+                    id="entity-c",
+                    user_id="user-path",
+                    entity_type="person",
+                    canonical_name="人物 C",
+                    display_name="人物 C",
+                    alias_json=[],
+                    normalized_name="人物c",
+                    status="active",
+                ),
+            ]
+        )
+        db.flush()
+        db.add(EventEntity(event_id="event-a", entity_id="entity-b", role="主持人", relation_type="hosts"))
+        db.add(
+            Relation(
+                id="relation-b-c",
+                user_id="user-path",
+                source_type="entity",
+                source_id="entity-b",
+                relation_type="supports",
+                target_type="entity",
+                target_id="entity-c",
+                evidence_count=2,
+                confidence_score=0.8,
+                meta_json={},
+            )
+        )
+        db.commit()
+
+        result = find_graph_path(
+            db,
+            user_id="user-path",
+            source_type="event",
+            source_id="event-a",
+            target_type="entity",
+            target_id="entity-c",
+            max_depth=3,
+        )
+
+    assert result["found"] is True
+    assert result["total_hops"] == 2
+    assert [item["label"] for item in result["nodes"]] == ["事件 A", "人物 B", "人物 C"]
+    assert "hosts" in result["edges"][0]["explanation"]
+    assert "2 条证据" in result["edges"][1]["explanation"]

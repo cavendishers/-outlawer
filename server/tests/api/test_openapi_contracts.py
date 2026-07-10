@@ -366,8 +366,12 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
     graph_workspace_schema = _response_data_schema("/api/v1/graph/workspace", "get")
     graph_node_detail_schema = _response_data_schema("/api/v1/graph/nodes/{node_type}/{node_id}", "get")
     graph_viewpoint_create_schema = _request_schema("/api/v1/graph-viewpoints", "post")
+    graph_viewpoint_update_schema = _request_schema("/api/v1/graph-viewpoints/{viewpoint_id}", "patch")
+    graph_viewpoint_delete_schema = _response_data_schema("/api/v1/graph-viewpoints/{viewpoint_id}", "delete")
     graph_viewpoint_list_schema = _response_data_schema("/api/v1/graph-viewpoints", "get")
     graph_viewpoint_create_response_schema = _response_data_schema("/api/v1/graph-viewpoints", "post")
+    graph_path_schema = _response_data_schema("/api/v1/graph/path", "get")
+    conflict_disposition_schema = _request_schema("/api/v1/graph/conflicts/{conflict_id}/disposition", "post")
 
     assert set(graph_workspace_schema["properties"]) == {
         "scope",
@@ -383,6 +387,9 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "recent_actions",
     }
     stats_schema = _resolve_schema(graph_workspace_schema["properties"]["stats"])
+    edge_schema = _resolve_schema(graph_workspace_schema["properties"]["edges"]["items"])
+    conflict_schema = _resolve_schema(graph_workspace_schema["properties"]["conflicts"]["items"])
+    action_log_schema = _resolve_schema(graph_workspace_schema["properties"]["recent_actions"]["items"])
     assert set(stats_schema["properties"]) >= {
         "conflict_count",
         "low_confidence_edge_count",
@@ -395,6 +402,17 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "timeline_context",
         "anchor_actions",
     }
+    assert set(edge_schema["properties"]) >= {
+        "id",
+        "relation_id",
+        "fact_type",
+        "source_type",
+        "target_type",
+        "evidence_count",
+        "is_editable",
+    }
+    assert set(conflict_schema["properties"]) >= {"actions", "disposition", "disposition_note", "is_active"}
+    assert "diff_summary" in action_log_schema["properties"]
     assert graph_viewpoint_create_schema["additionalProperties"] is False
     assert set(graph_viewpoint_create_schema["properties"]) == {
         "name",
@@ -414,6 +432,29 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
         "filters_json",
         "layout_json",
         "href",
+    }
+    assert graph_viewpoint_update_schema["additionalProperties"] is False
+    assert set(graph_viewpoint_update_schema["properties"]) == {"name", "description"}
+    assert set(graph_viewpoint_delete_schema["properties"]) == {"id", "status"}
+    assert set(graph_path_schema["properties"]) == {
+        "found",
+        "max_depth",
+        "total_hops",
+        "source",
+        "target",
+        "nodes",
+        "edges",
+        "explanation",
+    }
+    assert conflict_disposition_schema["additionalProperties"] is False
+    assert set(conflict_disposition_schema["properties"]) == {
+        "disposition",
+        "note",
+        "conflict_type",
+        "title",
+        "summary",
+        "node_ids",
+        "edge_label",
     }
 
 

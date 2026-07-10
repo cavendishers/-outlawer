@@ -42,11 +42,11 @@ But the product still feels like several adjacent tools rather than one graph-na
 
 Existing building blocks already in the codebase:
 
-- [`web/components/event-association-workspace.tsx`](/Users/hongan/Documents/fxxk/web/components/event-association-workspace.tsx)
-- [`web/components/entity-timeline-workspace.tsx`](/Users/hongan/Documents/fxxk/web/components/entity-timeline-workspace.tsx)
-- [`web/components/graph-overview-canvas.tsx`](/Users/hongan/Documents/fxxk/web/components/graph-overview-canvas.tsx)
-- [`web/app/events/[id]/page.tsx`](/Users/hongan/Documents/fxxk/web/app/events/[id]/page.tsx)
-- [`web/app/story/entity/[id]/page.tsx`](/Users/hongan/Documents/fxxk/web/app/story/entity/[id]/page.tsx)
+- [`web/components/event-association-workspace.tsx`](/Users/hongan/Documents/outlaywer/web/components/event-association-workspace.tsx)
+- [`web/components/entity-timeline-workspace.tsx`](/Users/hongan/Documents/outlaywer/web/components/entity-timeline-workspace.tsx)
+- [`web/components/graph-overview-canvas.tsx`](/Users/hongan/Documents/outlaywer/web/components/graph-overview-canvas.tsx)
+- [`web/app/events/[id]/page.tsx`](/Users/hongan/Documents/outlaywer/web/app/events/[id]/page.tsx)
+- [`web/app/story/entity/[id]/page.tsx`](/Users/hongan/Documents/outlaywer/web/app/story/entity/[id]/page.tsx)
 
 Current strengths:
 
@@ -212,9 +212,9 @@ Suggested location:
 
 These should be refactored into data/visual slices rather than duplicated:
 
-- [`web/components/event-association-workspace.tsx`](/Users/hongan/Documents/fxxk/web/components/event-association-workspace.tsx)
-- [`web/components/entity-timeline-workspace.tsx`](/Users/hongan/Documents/fxxk/web/components/entity-timeline-workspace.tsx)
-- [`web/components/graph-overview-canvas.tsx`](/Users/hongan/Documents/fxxk/web/components/graph-overview-canvas.tsx)
+- [`web/components/event-association-workspace.tsx`](/Users/hongan/Documents/outlaywer/web/components/event-association-workspace.tsx)
+- [`web/components/entity-timeline-workspace.tsx`](/Users/hongan/Documents/outlaywer/web/components/entity-timeline-workspace.tsx)
+- [`web/components/graph-overview-canvas.tsx`](/Users/hongan/Documents/outlaywer/web/components/graph-overview-canvas.tsx)
 
 The target is not to keep three isolated workspaces. The target is to extract:
 
@@ -453,6 +453,9 @@ Status update on `2026-04-20`:
 - inline governance forms now explain when the current neighborhood has no participant or relation targets available
 - long-running inline mutations now expose explicit `写入中...` feedback instead of ambiguous button labels
 - visible graph edges can now be spotlighted directly from the shared workspace, with endpoint pivot actions that move the flow beyond node-only inspection
+- saved viewpoints can now be renamed and deleted from the workspace
+- conflicts can be retained, postponed, or reopened without deleting canonical knowledge
+- event/entity path discovery now explains the shortest path one relationship hop at a time
 
 ### Slice F: Canvas-Native Navigation Polish
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.serializers import serialize_note
@@ -263,19 +263,25 @@ def build_evidence_groups(
     source_text: str,
 ) -> list[dict[str, Any]]:
     target_labels = resolve_evidence_target_labels(db, evidence_items)
+    relation_contexts = resolve_relation_evidence_contexts(db, evidence_items)
     groups: dict[tuple[str, str], dict[str, Any]] = {}
     for item in evidence_items:
         key = (item.target_type, item.target_id)
         target_label = target_labels.get(key) or fallback_target_label(item)
         if key not in groups:
+            relation_context = relation_contexts.get(key, {})
             groups[key] = {
                 "target_type": item.target_type,
                 "target_id": item.target_id,
                 "target_label": target_label,
                 "target_subtitle": target_subtitle_for_evidence(item, target_label),
                 "detail_href": detail_href_for_evidence(item),
-                "curation_href": curation_href_for_evidence(item),
-                "graph_href": graph_href_for_evidence(item),
+                "curation_href": relation_context.get("curation_href") or curation_href_for_evidence(item),
+                "graph_href": relation_context.get("graph_href") or graph_href_for_evidence(item),
+                "relation_id": relation_context.get("relation_id"),
+                "relation_type": relation_context.get("relation_type"),
+                "relation_owner_type": relation_context.get("owner_type"),
+                "relation_owner_id": relation_context.get("owner_id"),
                 "field_names": [],
                 "evidence_count": 0,
                 "average_confidence": None,
@@ -335,7 +341,8 @@ def resolve_evidence_target_labels(
 ) -> dict[tuple[str, str], str]:
     entity_ids = {item.target_id for item in evidence_items if item.target_type == "entity"}
     event_ids = {item.target_id for item in evidence_items if item.target_type == "event"}
-    relation_source_ids = {item.target_id for item in evidence_items if item.target_type == "relation"}
+    relation_reference_ids = {item.target_id for item in evidence_items if item.target_type == "relation"}
+    evidence_user_ids = {item.user_id for item in evidence_items if item.user_id}
     labels: dict[tuple[str, str], str] = {}
 
     if entity_ids:
@@ -346,8 +353,18 @@ def resolve_evidence_target_labels(
         for event in db.scalars(select(Event).where(Event.id.in_(event_ids))).all():
             labels[("event", event.id)] = event.title
 
-    if relation_source_ids:
-        relations = list(db.scalars(select(Relation).where(Relation.source_id.in_(relation_source_ids))).all())
+    if relation_reference_ids:
+        relations = list(
+            db.scalars(
+                select(Relation).where(
+                    Relation.user_id.in_(evidence_user_ids),
+                    or_(
+                        Relation.id.in_(relation_reference_ids),
+                        Relation.source_id.in_(relation_reference_ids),
+                    )
+                )
+            ).all()
+        )
         related_entity_ids = {
             relation.source_id
             for relation in relations
@@ -376,9 +393,57 @@ def resolve_evidence_target_labels(
         for relation in relations:
             source_label = node_labels.get((relation.source_type, relation.source_id), relation.source_id)
             target_label = node_labels.get((relation.target_type, relation.target_id), relation.target_id)
+            labels[("relation", relation.id)] = f"{source_label} -{relation.relation_type}-> {target_label}"
+            # Compatibility for evidence written before relation ids became
+            # first-class targets. Ambiguous legacy rows keep the first label.
             labels.setdefault(("relation", relation.source_id), f"{source_label} -{relation.relation_type}-> {target_label}")
 
     return labels
+
+
+def resolve_relation_evidence_contexts(
+    db: Session,
+    evidence_items: list[ExtractionEvidence],
+) -> dict[tuple[str, str], dict[str, str]]:
+    reference_ids = {item.target_id for item in evidence_items if item.target_type == "relation"}
+    user_ids = {item.user_id for item in evidence_items if item.user_id}
+    if not reference_ids:
+        return {}
+    relations = db.scalars(
+        select(Relation).where(
+            Relation.user_id.in_(user_ids),
+            or_(Relation.id.in_(reference_ids), Relation.source_id.in_(reference_ids))
+        )
+    ).all()
+    contexts: dict[tuple[str, str], dict[str, str]] = {}
+    legacy_candidates: dict[str, list[tuple[Relation, dict[str, str]]]] = {}
+    for relation in relations:
+        if relation.source_type in {"event", "entity"}:
+            owner_type, owner_id = relation.source_type, relation.source_id
+        elif relation.target_type in {"event", "entity"}:
+            owner_type, owner_id = relation.target_type, relation.target_id
+        else:
+            continue
+        context = {
+            "relation_id": relation.id,
+            "relation_type": relation.relation_type,
+            "owner_type": owner_type,
+            "owner_id": owner_id,
+            "curation_href": f"/curation/{'events' if owner_type == 'event' else 'entities'}/{owner_id}",
+            "graph_href": f"/graph?{owner_type}_id={owner_id}&active_node_id={owner_id}",
+        }
+        contexts[("relation", relation.id)] = context
+        legacy_candidates.setdefault(relation.source_id, []).append((relation, context))
+    legacy_field_names: dict[str, set[str]] = {}
+    for item in evidence_items:
+        if item.target_type == "relation" and ("relation", item.target_id) not in contexts:
+            legacy_field_names.setdefault(item.target_id, set()).add(item.field_name or "")
+    for source_id, candidates in legacy_candidates.items():
+        expected_types = legacy_field_names.get(source_id, set())
+        matched = [item for item in candidates if not expected_types or item[0].relation_type in expected_types]
+        if len(matched) == 1:
+            contexts[("relation", source_id)] = matched[0][1]
+    return contexts
 
 
 def fallback_target_label(item: ExtractionEvidence) -> str:

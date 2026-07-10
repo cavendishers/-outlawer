@@ -4,10 +4,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
-from app.domains.retrieval.note_query import get_note_analysis_workflow
+from app.domains.retrieval.note_query import (
+    get_note_analysis_workflow,
+    resolve_evidence_target_labels,
+    resolve_relation_evidence_contexts,
+)
 from app.models.ai_job import AIJob
 from app.models.asset_derivative import AssetDerivative
-from app.models.entity import Entity
+from app.models.entity import Entity, Relation
+from app.models.event import Event
 from app.models.extraction import ExtractionEvidence, ExtractionRun, ProjectionVersion
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
@@ -527,3 +532,68 @@ def test_get_note_analysis_workflow_builds_traceable_pipeline() -> None:
     ]
     assert workflow["runs"][0]["raw_result_json"]["summary"]["title"] == "启动会"
     assert workflow["steps"][2]["model_name"] == "deepseek-v4-pro"
+
+
+def test_relation_evidence_resolves_first_class_relation_id() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[User.__table__, Entity.__table__, Event.__table__, Relation.__table__],
+    )
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        db.add(User(id="user-rel", username="relation-user", password_hash="hash", display_name="Relation User"))
+        db.add(
+            Entity(
+                id="entity-rel",
+                user_id="user-rel",
+                entity_type="person",
+                canonical_name="张三",
+                display_name="张三",
+                alias_json=[],
+                normalized_name="张三",
+                status="active",
+            )
+        )
+        db.add(
+            Event(
+                id="event-rel",
+                user_id="user-rel",
+                title="启动会",
+                status="active",
+                time_precision="day",
+            )
+        )
+        db.add(
+            Relation(
+                id="relation-rel",
+                user_id="user-rel",
+                source_type="entity",
+                source_id="entity-rel",
+                relation_type="supports",
+                target_type="event",
+                target_id="event-rel",
+                evidence_count=1,
+                meta_json={"source": "llm_relation"},
+            )
+        )
+        db.commit()
+        evidence = ExtractionEvidence(
+            user_id="user-rel",
+            target_type="relation",
+            target_id="relation-rel",
+            field_name="supports",
+        )
+
+        labels = resolve_evidence_target_labels(db, [evidence])
+        contexts = resolve_relation_evidence_contexts(db, [evidence])
+
+    assert labels[("relation", "relation-rel")] == "张三 -supports-> 启动会"
+    assert contexts[("relation", "relation-rel")] == {
+        "relation_id": "relation-rel",
+        "relation_type": "supports",
+        "owner_type": "entity",
+        "owner_id": "entity-rel",
+        "curation_href": "/curation/entities/entity-rel",
+        "graph_href": "/graph?entity_id=entity-rel&active_node_id=entity-rel",
+    }

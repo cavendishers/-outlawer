@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GraphWorkspaceActionResponse(BaseModel):
@@ -31,11 +33,26 @@ class GraphWorkspaceNodeResponse(BaseModel):
 
 
 class GraphWorkspaceEdgeResponse(BaseModel):
+    id: str
+    relation_id: str | None = None
+    fact_type: str = "inferred"
     source_id: str
     target_id: str
+    source_type: str | None = None
+    target_type: str | None = None
     edge_type: str
     label: str
     weight: float
+    evidence_count: int = 0
+    is_editable: bool = False
+
+
+class GraphWorkspaceConflictActionResponse(BaseModel):
+    label: str
+    action_type: str
+    relation_id: str
+    owner_type: str
+    owner_id: str
 
 
 class GraphWorkspaceTimelineItemResponse(BaseModel):
@@ -75,6 +92,62 @@ class GraphWorkspaceConflictResponse(BaseModel):
     node_ids: list[str] = Field(default_factory=list)
     edge_label: str | None = None
     href: str
+    actions: list[GraphWorkspaceConflictActionResponse] = Field(default_factory=list)
+    disposition: str = "open"
+    disposition_note: str | None = None
+    is_active: bool = True
+
+
+class GraphConflictDispositionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    disposition: Literal["open", "keep", "snooze"]
+    note: str | None = None
+    conflict_type: str | None = None
+    title: str | None = None
+    summary: str | None = None
+    node_ids: list[str] = Field(default_factory=list)
+    edge_label: str | None = None
+
+
+class GraphConflictDispositionResponse(BaseModel):
+    id: str
+    conflict_id: str
+    disposition: str
+    note: str | None = None
+    updated_at: str | None = None
+
+
+class GraphPathNodeResponse(BaseModel):
+    id: str
+    node_type: str
+    label: str
+    href: str
+
+
+class GraphPathEdgeResponse(BaseModel):
+    source_type: str
+    source_id: str
+    target_type: str
+    target_id: str
+    label: str
+    fact_type: str
+    relation_id: str | None = None
+    evidence_count: int = 0
+    confidence: float | None = None
+    traversal_direction: str
+    explanation: str
+
+
+class GraphPathResponse(BaseModel):
+    found: bool
+    max_depth: int
+    total_hops: int
+    source: GraphPathNodeResponse
+    target: GraphPathNodeResponse
+    nodes: list[GraphPathNodeResponse] = Field(default_factory=list)
+    edges: list[GraphPathEdgeResponse] = Field(default_factory=list)
+    explanation: str
 
 
 class GraphWorkspaceActionLogResponse(BaseModel):
@@ -86,6 +159,7 @@ class GraphWorkspaceActionLogResponse(BaseModel):
     status_after: str | None = None
     created_at: str | None = None
     summary: str
+    diff_summary: str | None = None
 
 
 class GraphWorkspaceAppliedFiltersResponse(BaseModel):

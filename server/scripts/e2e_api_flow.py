@@ -20,6 +20,8 @@ from app.models.embedding import Embedding
 from app.models.entity import Entity, EntityAlias, EventEntity, NoteEntity, NoteEvent, Relation
 from app.models.event import Event, TimelineItem
 from app.models.extraction import ExtractionEvidence, ExtractionRun, MergeCandidate, ProjectionVersion
+from app.models.graph_conflict import GraphConflictDisposition
+from app.models.graph_viewpoint import GraphViewpoint
 from app.models.image_generation import ImageGeneration
 from app.models.note import Note, NoteChunk
 from app.models.raw_asset import RawAsset
@@ -156,6 +158,15 @@ def cleanup_created_records(created: dict[str, set[str]]) -> None:
         all_owner_ids = note_ids | event_ids | entity_ids
 
         delete_where_owner_ids(db, ReviewAction, ReviewAction.target_id, note_ids, ReviewAction.target_type == "note")
+        delete_where_owner_ids(
+            db,
+            ReviewAction,
+            ReviewAction.target_id,
+            created.get("graph_conflict_disposition_ids", set()),
+            ReviewAction.target_type == "graph_conflict",
+        )
+        delete_where_ids(db, GraphConflictDisposition, GraphConflictDisposition.id, created.get("graph_conflict_disposition_ids", set()))
+        delete_where_ids(db, GraphViewpoint, GraphViewpoint.id, created.get("graph_viewpoint_ids", set()))
         delete_where_owner_ids(db, AIJob, AIJob.id, job_ids)
         delete_where_owner_ids(db, ImageGeneration, ImageGeneration.job_id, job_ids)
         if note_ids:
@@ -283,6 +294,8 @@ def main() -> None:
         "job_ids": set(),
         "event_ids": set(),
         "entity_ids": set(),
+        "graph_viewpoint_ids": set(),
+        "graph_conflict_disposition_ids": set(),
     }
 
     try:
@@ -393,6 +406,80 @@ def main() -> None:
         assert "connected_nodes" in entity_node_detail
         overview_workspace = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers))
         assert overview_workspace["scope"] == "overview"
+        graph_path = assert_ok(
+            client.get(
+                f"{args.base_url}/graph/path",
+                headers=headers,
+                params={
+                    "source_type": "event",
+                    "source_id": event_id,
+                    "target_type": "entity",
+                    "target_id": entity_id,
+                    "max_depth": 4,
+                },
+            )
+        )
+        assert graph_path["found"] is True, graph_path
+        assert graph_path["total_hops"] >= 1, graph_path
+
+        viewpoint = assert_ok(
+            client.post(
+                f"{args.base_url}/graph-viewpoints",
+                headers=headers,
+                json={
+                    "name": f"{run_marker} 图谱视角",
+                    "scope": "event",
+                    "anchor_type": "event",
+                    "anchor_id": event_id,
+                    "filters_json": {"active_node_id": event_id},
+                },
+            )
+        )
+        created["graph_viewpoint_ids"].add(viewpoint["id"])
+        renamed_viewpoint = assert_ok(
+            client.patch(
+                f"{args.base_url}/graph-viewpoints/{viewpoint['id']}",
+                headers=headers,
+                json={"name": f"{run_marker} 已重命名视角"},
+            )
+        )
+        assert renamed_viewpoint["name"].endswith("已重命名视角")
+        deleted_viewpoint = assert_ok(
+            client.delete(f"{args.base_url}/graph-viewpoints/{viewpoint['id']}", headers=headers)
+        )
+        assert deleted_viewpoint["status"] == "deleted"
+        created["graph_viewpoint_ids"].discard(viewpoint["id"])
+
+        if overview_workspace["conflicts"]:
+            conflict = overview_workspace["conflicts"][0]
+            disposition_payload = {
+                "disposition": "keep",
+                "note": "E2E 保留确认",
+                "conflict_type": conflict["conflict_type"],
+                "title": conflict["title"],
+                "summary": conflict["summary"],
+                "node_ids": conflict["node_ids"],
+                "edge_label": conflict["edge_label"],
+            }
+            disposition = assert_ok(
+                client.post(
+                    f"{args.base_url}/graph/conflicts/{conflict['id']}/disposition",
+                    headers=headers,
+                    json=disposition_payload,
+                )
+            )
+            created["graph_conflict_disposition_ids"].add(disposition["id"])
+            assert disposition["disposition"] == "keep"
+            refreshed_workspace = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers))
+            refreshed_conflict = next(item for item in refreshed_workspace["conflicts"] if item["id"] == conflict["id"])
+            assert refreshed_conflict["is_active"] is False
+            assert_ok(
+                client.post(
+                    f"{args.base_url}/graph/conflicts/{conflict['id']}/disposition",
+                    headers=headers,
+                    json={**disposition_payload, "disposition": "open", "note": "E2E 重新打开"},
+                )
+            )
         track_projection_ids(created, note_id)
         operations_overview = assert_ok(client.get(f"{args.base_url}/operations/overview", headers=headers))
         assert operations_overview["jobs"]["total"] >= 1

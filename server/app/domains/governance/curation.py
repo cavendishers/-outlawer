@@ -598,6 +598,7 @@ def upsert_relation_for_owner(
             Relation.target_id == relation_shape["target_id"],
         )
     )
+    before = relation_snapshot(relation) if relation is not None else None
     if relation is None:
         relation = Relation(
             user_id=user_id,
@@ -613,15 +614,21 @@ def upsert_relation_for_owner(
         relation.meta_json = {"source": "curation"}
     db.add(relation)
     db.flush()
+    after = relation_snapshot(relation)
     log_curation_action(
         db,
         user_id=user_id,
         target_type="relation",
         target_id=relation.id,
-        action_type="add_relation",
-        status_before=None,
+        action_type="add_relation" if before is None else "upsert_relation",
+        status_before=before.get("relation_type") if before else None,
         status_after=relation.relation_type,
-        payload_json={"owner_type": owner_type, "owner_id": owner_id, **relation_shape},
+        payload_json={
+            "owner_type": owner_type,
+            "owner_id": owner_id,
+            "before": before,
+            "after": after,
+        },
     )
     db.commit()
     db.refresh(relation)
@@ -662,6 +669,7 @@ def update_relation_for_owner(
         relation_type=payload.get("relation_type") or relation.relation_type,
     )
 
+    before = relation_snapshot(relation)
     previous_relation_type = relation.relation_type
     relation.source_type = next_shape["source_type"]
     relation.source_id = next_shape["source_id"]
@@ -681,8 +689,8 @@ def update_relation_for_owner(
         payload_json={
             "owner_type": owner_type,
             "owner_id": owner_id,
-            "previous": current_shape,
-            "next": next_shape,
+            "before": before,
+            "after": relation_snapshot(relation),
         },
     )
     db.commit()
@@ -711,6 +719,7 @@ def remove_relation_for_owner(
         owner_id=owner_id,
         relation_id=relation_id,
     )
+    before = relation_snapshot(relation)
     log_curation_action(
         db,
         user_id=user_id,
@@ -719,7 +728,12 @@ def remove_relation_for_owner(
         action_type="remove_relation",
         status_before=relation.relation_type,
         status_after=None,
-        payload_json={"owner_type": owner_type, "owner_id": owner_id},
+        payload_json={
+            "owner_type": owner_type,
+            "owner_id": owner_id,
+            "before": before,
+            "after": None,
+        },
     )
     db.delete(relation)
     db.commit()
@@ -797,6 +811,19 @@ def relation_shape_for_owner(*, owner_type: str, owner_id: str, relation: Relati
             "target_id": relation.target_id,
         }
     raise ValueError("Relation does not belong to owner")
+
+
+def relation_snapshot(relation: Relation) -> dict[str, Any]:
+    return {
+        "source_type": relation.source_type,
+        "source_id": relation.source_id,
+        "relation_type": relation.relation_type,
+        "target_type": relation.target_type,
+        "target_id": relation.target_id,
+        "evidence_count": relation.evidence_count,
+        "confidence_score": relation.confidence_score,
+        "meta": relation.meta_json if isinstance(relation.meta_json, dict) else {},
+    }
 
 
 def get_owned_relation_for_owner(

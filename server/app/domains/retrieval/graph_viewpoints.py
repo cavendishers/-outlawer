@@ -45,6 +45,51 @@ def create_graph_viewpoint(
     return serialize_graph_viewpoint(viewpoint)
 
 
+def update_graph_viewpoint(
+    db: Session,
+    *,
+    user_id: str,
+    viewpoint_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    viewpoint = get_graph_viewpoint(db, user_id=user_id, viewpoint_id=viewpoint_id)
+    if "name" in payload:
+        name = str(payload.get("name") or "").strip()
+        if not name:
+            raise ValueError("Viewpoint name is required")
+        viewpoint.name = name[:120]
+    if "description" in payload:
+        viewpoint.description = clean_optional_string(payload.get("description"))
+    db.add(viewpoint)
+    db.commit()
+    db.refresh(viewpoint)
+    return serialize_graph_viewpoint(viewpoint)
+
+
+def delete_graph_viewpoint(
+    db: Session,
+    *,
+    user_id: str,
+    viewpoint_id: str,
+) -> dict[str, str]:
+    viewpoint = get_graph_viewpoint(db, user_id=user_id, viewpoint_id=viewpoint_id)
+    db.delete(viewpoint)
+    db.commit()
+    return {"id": viewpoint_id, "status": "deleted"}
+
+
+def get_graph_viewpoint(db: Session, *, user_id: str, viewpoint_id: str) -> GraphViewpoint:
+    viewpoint = db.scalar(
+        select(GraphViewpoint).where(
+            GraphViewpoint.id == viewpoint_id,
+            GraphViewpoint.user_id == user_id,
+        )
+    )
+    if viewpoint is None:
+        raise ValueError("Graph viewpoint not found")
+    return viewpoint
+
+
 def serialize_graph_viewpoint(viewpoint: GraphViewpoint) -> dict[str, Any]:
     return {
         "id": viewpoint.id,

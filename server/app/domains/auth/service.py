@@ -9,7 +9,7 @@ from app.models.user import User
 
 def authenticate_user(db: Session, username: str, password: str) -> tuple[User, str] | tuple[None, None]:
     user = db.scalar(select(User).where(User.username == username))
-    if not user or not verify_password(password, user.password_hash):
+    if not user or user.status != "active" or not verify_password(password, user.password_hash):
         return None, None
 
     user.last_login_at = datetime.now(UTC)

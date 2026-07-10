@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 60 * 24
+    bootstrap_admin_username: str | None = None
+    bootstrap_admin_password: str | None = None
+    bootstrap_admin_display_name: str = "Outlawer Admin"
 
     database_url: str = "postgresql+psycopg://outlawer:outlawer@postgres:5432/outlawer"
     redis_url: str = "redis://redis:6379/0"
@@ -84,6 +87,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.environment.lower() != "production":
+            return self
+        if self.secret_key in {"", "change-me", "dev-secret-key"}:
+            raise ValueError("SECRET_KEY must be set to a non-default value in production")
+        return self
 
 
 @lru_cache
