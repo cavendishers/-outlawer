@@ -140,6 +140,9 @@ sequenceDiagram
 - `DONE`: Phase 26 Slice G now adds backend-backed graph filters for node type, relation type, date range, edge weight, and anchor depth, with `/graph` preserving filter state in the URL.
 - `DONE`: Phase 30 graph governance adds saved graph viewpoints, inline node field correction, conflict hints, graph operation history, and operations-console graph quality metrics.
 - `DONE`: Graph viewpoints can be renamed or deleted, conflicts can be retained/postponed/reopened without destructive writes, and event/entity path discovery returns per-hop relationship explanations.
+- `DONE`: Manual entity/event creation, note/raw-asset evidence attachment, graph create-and-connect, and governance audit are available through explicit contracts and `/manual` plus `/graph` workflows.
+- `DONE`: Topic/case collections reference notes, raw assets, entities, events, and graph viewpoints without duplicating their canonical content.
+- `DONE`: Collection workbenches derive curated timelines from canonical event times, keep editable story text as a stylized view, and export Markdown or JSON.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
@@ -153,13 +156,11 @@ sequenceDiagram
 
 ## Next Development Direction
 
-The next major implementation direction should complete the manual knowledge-authoring loop:
+Phase 31–33 are complete. The next major direction should be selected from observed product use rather than assumed urgency:
 
-- create entities and events explicitly instead of requiring every canonical object to originate from extraction
-- create a missing node from graph context and connect it to the current event/entity in the same workflow
-- attach manual evidence to an existing note or raw asset while preserving the raw/derived/canonical separation
-- audit manual creation and evidence attachment with the same narrow contracts used by curation
-- defer extraction benchmarking, formal CI/release automation, and deeper operations analytics until those become active priorities
+- multi-user collection collaboration and permissions
+- deeper collection publishing formats only when a concrete destination is selected
+- extraction benchmarking, formal CI/release automation, deeper operations analytics, and freeform canvas editing remain deferred tracks
 
 ## Analysis Workflow
 

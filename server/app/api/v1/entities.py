@@ -4,9 +4,24 @@ from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
 from app.schemas.common import Envelope, PaginatedData
 from app.schemas.entity import EntityDetailResponse, EntityEventListResponse, EntityResponse
+from app.schemas.manual_authoring import ManualEntityCreateRequest, ManualEntityCreateResponse
+from app.domains.knowledge import manual_authoring
 from app.domains.retrieval import entity_query
 
 router = APIRouter()
+
+
+@router.post("", response_model=Envelope[ManualEntityCreateResponse], status_code=status.HTTP_201_CREATED)
+def create_entity(
+    payload: ManualEntityCreateRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    try:
+        return ok(manual_authoring.create_manual_entity(db, user_id=user.id, payload=payload.model_dump()))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("", response_model=Envelope[PaginatedData[EntityResponse]])

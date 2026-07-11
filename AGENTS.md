@@ -14,7 +14,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `30` are implemented and verified. Phase `30` includes first-class relation evidence, saved-view management, non-destructive conflict dispositions, and explained path discovery; broader freeform canvas editing remains optional. Phase `31` manual knowledge authoring is the next planned goal.
+- Phase `0` through Phase `33` are implemented and verified. Phase `31` adds manual entity/event creation, evidence attachment, and graph create-and-connect; Phase `32` adds topic/case collections; Phase `33` adds curated collection timelines, story compilation, and Markdown/JSON export. Broader freeform canvas editing remains optional.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.
@@ -23,6 +23,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 - Use [`server/scripts/e2e_review_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_review_flow.py) for entity/event review workflow verification.
 - Use [`server/scripts/e2e_curation_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_curation_flow.py) for event curation workflow verification.
 - Use [`server/scripts/e2e_entity_curation_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_entity_curation_flow.py) for entity curation workflow verification.
+- Use [`server/scripts/e2e_manual_collection_flow.py`](/Users/hongan/Documents/outlaywer/server/scripts/e2e_manual_collection_flow.py) for manual-authoring, collection, timeline, story, and export verification.
 - Use [`docs/operations.md`](/Users/hongan/Documents/outlaywer/docs/operations.md) for backup, restore, migration reset, and release smoke steps.
 
 ## Repository Structure

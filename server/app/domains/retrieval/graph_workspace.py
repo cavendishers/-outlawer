@@ -985,6 +985,10 @@ def list_graph_actions(db: Session, *, user_id: str, limit: int = 8) -> list[dic
                     "update_relation",
                     "remove_relation",
                     "set_conflict_disposition",
+                    "create_entity",
+                    "create_event",
+                    "create_manual_connection",
+                    "attach_manual_evidence",
                 ]
             ),
         )

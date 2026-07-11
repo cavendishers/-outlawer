@@ -590,6 +590,70 @@ Notes:
 - records event-to-event merge decisions after timeline and relation projections are updated
 - keeps merge reasoning available even after the merged event row is deleted
 
+### manual_knowledge_evidence
+
+```text
+id
+user_id
+target_type
+target_id
+note_id
+raw_asset_id
+excerpt
+curator_note
+provenance_type
+created_at
+updated_at
+```
+
+Notes:
+
+- targets canonical entities or events created manually or by extraction
+- exactly one owned note or raw asset is referenced as the evidence source
+- stores only curator-supplied excerpt and notes; it never overwrites raw or derived source text
+- creation and attachment actions are also recorded in `review_actions`
+
+### knowledge_collections
+
+```text
+id
+user_id
+title
+description
+collection_type
+status
+story_title
+story_summary
+story_body
+story_style
+created_at
+updated_at
+```
+
+Notes:
+
+- represents a topic or case workset owned by one user
+- story fields are a replaceable curated view and do not replace canonical note/event/entity text
+
+### knowledge_collection_items
+
+```text
+id
+collection_id
+item_type
+item_id
+sort_order
+curator_note
+created_at
+updated_at
+```
+
+Notes:
+
+- references note, raw asset, entity, event, or graph viewpoint records polymorphically
+- unique constraint on `(collection_id, item_type, item_id)` prevents duplicate membership
+- keeps ordering and curation context separate from the referenced object's source-of-truth record
+
 ### style_views
 
 ```text
@@ -628,6 +692,9 @@ Notes:
 - index on `timeline_items(user_id, sort_time)`
 - index on `ai_jobs(status, created_at)`
 - index on `merge_candidates(object_type, status, score)`
+- lookup indexes on manual evidence user, target type/id, note, and raw asset fields
+- lookup indexes on collection user, collection type, status, and collection-item target fields
+- unique index on `knowledge_collection_items(collection_id, item_type, item_id)`
 
 ## Vector Storage
 

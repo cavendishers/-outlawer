@@ -98,4 +98,5 @@ For product-level triage, open `/operations` in the web app. The operations cons
 1. `docker compose -f deploy/compose/docker-compose.prod.yml config` succeeds.
 2. migration job runs before API and worker.
 3. `python3 server/scripts/e2e_api_flow.py --phase full` passes against the target environment.
-4. homepage and API health endpoint return success.
+4. `python3 server/scripts/e2e_manual_collection_flow.py` passes when Phase 31–33 workflows are in release scope.
+5. homepage and API health endpoint return success.

@@ -76,6 +76,10 @@ For multimodal assets, the worker now sends image, audio, and video files to Ali
 - 图谱工作台支持事件/人物之间的最短路径发现，并逐跳解释参与关系、关系方向、证据数和置信度。
 - relation extraction evidence 现在指向真实关系记录，历史无歧义证据通过 Alembic 数据迁移回填；分析工作流可直接更新关系类型或删除关系，并保留 before/after 审计快照。
 - 生产前端镜像统一在容器内输出标准 `.next` 目录，Docker 构建上下文排除本地缓存与环境文件，生产 Compose 对数据库、MinIO、JWT 和 bootstrap admin 凭据执行缺失即失败校验。
+- `/manual` 现可显式创建人物或事件，并将现有笔记或原始素材作为只读证据引用；所有创建与证据绑定都会写入治理审计。
+- `/graph` 可从当前人物/事件直接创建缺失节点并在同一事务中建立参与关系或 canonical relation。
+- `/collections` 支持专题/案件集合，能够收录笔记、原始素材、人物、事件和保存视角，并维护策展顺序与备注。
+- 专题详情可按 canonical 事件时间生成策展时间线、编排故事草稿，并导出 Markdown 或 JSON。
 
 ## Quick Start
 
@@ -159,14 +163,15 @@ Verified on `2026-04-21`:
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_review_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_curation_flow.py`
 - `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_entity_curation_flow.py`
+- `docker compose -f deploy/compose/docker-compose.dev.yml exec -T api python scripts/e2e_manual_collection_flow.py`
 - frontend route smoke against `http://127.0.0.1:3000` and `http://localhost:3000` for home, auth, library, people, events, timeline, graph, tools, search, review, operations, inbox, and sample detail/curation routes
 
 ## Latest Release Verification
 
 Release-hardening and relation-governance verification completed on `2026-07-11`:
 
-- `python -m pytest tests/services tests/api` -> `91 passed` in a Python 3.12 container
-- clean PostgreSQL migration -> `20260711_02 (head)`
+- `python -m pytest tests/services tests/api` -> `96 passed` in a Python 3.12 container
+- PostgreSQL migration -> `20260711_03 (head)`
 - `cd web && npx tsc --noEmit` -> passed
 - `cd web && NODE_ENV=production npm run build` -> passed with Next.js `15.5.18`
 - `cd web && npm audit --omit=dev` -> `0 vulnerabilities`
@@ -174,6 +179,8 @@ Release-hardening and relation-governance verification completed on `2026-07-11`
 - production Compose rejects missing required credentials and validates with explicit credentials
 - full API, review, event-curation, and entity-curation e2e flows -> passed
 - authenticated browser smoke -> passed for analysis workflow, graph governance, explained paths, saved-view lifecycle, and operations
+- manual-authoring and collection e2e -> passed for evidence audit, graph create-and-connect, collection membership, curated timeline, story compilation, and Markdown/JSON export
+- authenticated production-browser smoke -> passed for `/manual`, `/collections`, `/collections/{id}`, and graph manual-node entry with no horizontal overflow or console errors
 
 ## Database Migration Rules
 

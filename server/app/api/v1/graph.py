@@ -4,6 +4,7 @@ from app.api.deps import DbSession, get_current_user
 from app.core.responses import ok
 from app.domains.retrieval import graph_paths, graph_workspace
 from app.domains.governance import graph_conflicts
+from app.domains.knowledge import manual_authoring
 from app.schemas.common import Envelope
 from app.schemas.graph import (
     GraphConflictDispositionRequest,
@@ -12,8 +13,22 @@ from app.schemas.graph import (
     GraphWorkspaceNodeDetailResponse,
     GraphWorkspaceResponse,
 )
+from app.schemas.manual_authoring import GraphManualNodeCreateRequest, GraphManualNodeCreateResponse
 
 router = APIRouter()
+
+
+@router.post("/manual-nodes", response_model=Envelope[GraphManualNodeCreateResponse], status_code=status.HTTP_201_CREATED)
+def create_graph_manual_node(
+    payload: GraphManualNodeCreateRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    try:
+        return ok(manual_authoring.create_graph_manual_node(db, user_id=user.id, payload=payload.model_dump()))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/path", response_model=Envelope[GraphPathResponse])

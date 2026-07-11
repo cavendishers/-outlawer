@@ -4,6 +4,7 @@ from app.api.v1 import (
     assets,
     auth,
     character_cards,
+    collections,
     curation,
     entities,
     events,
@@ -12,6 +13,7 @@ from app.api.v1 import (
     health,
     image_generations,
     jobs,
+    manual_knowledge,
     notes,
     operations,
     review,
@@ -25,6 +27,7 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(assets.router, prefix="/assets", tags=["assets"])
 api_router.include_router(character_cards.router, prefix="/character-cards", tags=["character-cards"])
+api_router.include_router(collections.router, prefix="/collections", tags=["collections"])
 api_router.include_router(notes.router, prefix="/notes", tags=["notes"])
 api_router.include_router(entities.router, prefix="/entities", tags=["entities"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
@@ -38,3 +41,4 @@ api_router.include_router(views.router, prefix="/views", tags=["views"])
 api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
 api_router.include_router(graph_viewpoints.router, prefix="/graph-viewpoints", tags=["graph-viewpoints"])
 api_router.include_router(image_generations.router, prefix="/image-generations", tags=["image-generations"])
+api_router.include_router(manual_knowledge.router, prefix="/manual-knowledge", tags=["manual-knowledge"])

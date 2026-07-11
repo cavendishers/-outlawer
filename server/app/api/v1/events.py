@@ -4,9 +4,24 @@ from app.core.pagination import normalize_page_params
 from app.core.responses import ok, paginated
 from app.schemas.common import Envelope, PaginatedData
 from app.schemas.event import EventDetailResponse, EventResponse
+from app.schemas.manual_authoring import ManualEventCreateRequest, ManualEventCreateResponse
+from app.domains.knowledge import manual_authoring
 from app.domains.retrieval import event_query
 
 router = APIRouter()
+
+
+@router.post("", response_model=Envelope[ManualEventCreateResponse], status_code=status.HTTP_201_CREATED)
+def create_event(
+    payload: ManualEventCreateRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    try:
+        return ok(manual_authoring.create_manual_event(db, user_id=user.id, payload=payload.model_dump()))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("", response_model=Envelope[PaginatedData[EventResponse]])

@@ -394,6 +394,45 @@ Responsibilities:
 - manage extra graph links through `relations`, including edit-in-place updates
 - keep timeline projection fields in sync when an event is manually corrected
 
+### Manual Knowledge Authoring
+
+- `POST /api/v1/entities`
+- `POST /api/v1/events`
+- `POST /api/v1/manual-knowledge/evidence`
+- `POST /api/v1/graph/manual-nodes`
+
+Responsibilities:
+
+- create canonical entities and events without requiring an extraction run
+- optionally attach one owned note or raw asset as manual evidence without modifying source content
+- create a missing event/entity from graph context and connect it to the active node in the same transaction
+- create `event_entities` for event/entity participation and `relations` for same-type or broader graph links
+- write explicit `review_actions` for object creation, evidence attachment, and connection creation
+
+### Topic And Case Collections
+
+- `GET /api/v1/collections`
+- `POST /api/v1/collections`
+- `GET /api/v1/collections/{collection_id}`
+- `PATCH /api/v1/collections/{collection_id}`
+- `DELETE /api/v1/collections/{collection_id}`
+- `POST /api/v1/collections/{collection_id}/items`
+- `PATCH /api/v1/collections/{collection_id}/items/{collection_item_id}`
+- `DELETE /api/v1/collections/{collection_id}/items/{collection_item_id}`
+- `GET /api/v1/collections/{collection_id}/timeline`
+- `PUT /api/v1/collections/{collection_id}/story`
+- `POST /api/v1/collections/{collection_id}/story/compile`
+- `GET /api/v1/collections/{collection_id}/export?format=markdown|json`
+
+Responsibilities:
+
+- keep collections user-owned and validate ownership of every referenced object
+- reference notes, raw assets, entities, events, and graph viewpoints without copying canonical content
+- preserve curator order and notes on membership records
+- derive the collection timeline from canonical event time fields
+- keep editable story text as a collection-derived view
+- return portable Markdown or JSON through the standard response envelope
+
 ### Jobs
 
 - `GET /api/v1/jobs`

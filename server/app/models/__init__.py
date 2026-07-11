@@ -1,6 +1,7 @@
 from app.models.ai_job import AIJob
 from app.models.asset_derivative import AssetDerivative
 from app.models.character_card import CharacterCard
+from app.models.collection import KnowledgeCollection, KnowledgeCollectionItem
 from app.models.embedding import Embedding
 from app.models.entity import Entity, EntityAlias, EventEntity, NoteEntity, NoteEvent, Relation
 from app.models.event import Event, TimelineItem
@@ -8,6 +9,7 @@ from app.models.extraction import ExtractionEvidence, ExtractionRun, MergeCandid
 from app.models.graph_conflict import GraphConflictDisposition
 from app.models.graph_viewpoint import GraphViewpoint
 from app.models.image_generation import ImageGeneration
+from app.models.manual_knowledge import ManualKnowledgeEvidence
 from app.models.note import Note, NoteChunk
 from app.models.raw_asset import RawAsset
 from app.models.review import EntityMergeHistory, EventMergeHistory, ReviewAction
@@ -18,6 +20,8 @@ __all__ = [
     "AIJob",
     "AssetDerivative",
     "CharacterCard",
+    "KnowledgeCollection",
+    "KnowledgeCollectionItem",
     "Embedding",
     "Entity",
     "EntityAlias",
@@ -31,6 +35,7 @@ __all__ = [
     "GraphViewpoint",
     "GraphConflictDisposition",
     "MergeCandidate",
+    "ManualKnowledgeEvidence",
     "Note",
     "NoteChunk",
     "NoteEntity",

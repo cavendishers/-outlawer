@@ -18,6 +18,8 @@ const knowledgeItems = [
 
 const secondaryItems = [
   { href: "/guide", label: "教程", match: ["/guide"] },
+  { href: "/manual", label: "手工创建", match: ["/manual"] },
+  { href: "/collections", label: "专题 / 案件", match: ["/collections"] },
   { href: "/graph", label: "图谱工作台", match: ["/graph"] },
   { href: "/review", label: "审核", match: ["/review"] },
   { href: "/operations", label: "运维", match: ["/operations"] },

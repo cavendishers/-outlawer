@@ -1396,13 +1396,13 @@ Additional Phase 28 status notes:
 
 ## Phase 31: Manual Knowledge Authoring Loop
 
-Status: `TODO`
+Status: `DONE`
 
 Goal:
 
 - let users create missing canonical knowledge directly while preserving source separation, provenance, narrow write contracts, and governance audit history
 
-Planned first slice:
+Delivered:
 
 - explicit manual-create request/response contracts for entities and events
 - graph-context create-and-connect flow for the active event/entity
@@ -1417,6 +1417,61 @@ Completion criteria:
 - manual evidence never overwrites raw assets or derived text
 - manually created knowledge appears in existing search, timeline, people/event, and graph read models
 - OpenAPI contracts, service tests, full API e2e, and authenticated browser smoke pass
+
+Verification completed:
+
+- PostgreSQL migration -> `20260711_03 (head)`
+- Python 3.12 service/API regression -> `96 passed`
+- `python scripts/e2e_manual_collection_flow.py` -> passed with fixture cleanup
+- `python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed
+- frontend typecheck and production build -> passed
+- authenticated production-browser smoke on `/manual` and `/graph` -> passed with create/audit and create-and-connect entry checks
+
+## Phase 32: Topic And Case Collections
+
+Status: `DONE`
+
+Goal:
+
+- organize notes, raw assets, entities, events, and graph viewpoints into user-owned topic/case worksets without duplicating canonical knowledge
+
+Delivered:
+
+- `knowledge_collections` and `knowledge_collection_items` with deterministic Alembic migration
+- explicit list/create/update/delete and item membership APIs under `/api/v1/collections`
+- polymorphic ownership validation for note, raw asset, entity, event, and saved graph viewpoint references
+- curator-controlled item ordering and notes
+- `/collections` list/create page and `/collections/{id}` workbench
+- review-action audit entries for collection creation, membership changes, and updates
+
+Verification completed:
+
+- collection service tests and OpenAPI contract tests -> passed
+- manual/collection e2e -> passed
+- authenticated production-browser create, open, and add-member flow -> passed
+
+## Phase 33: Curated Timeline And Story Output
+
+Status: `DONE`
+
+Goal:
+
+- turn a topic/case collection into an ordered event narrative and portable output while keeping canonical events and stylized text separate
+
+Delivered:
+
+- collection timeline endpoint ordered by canonical event `timeline_sort_time`
+- deterministic story compilation from event and non-event collection members
+- editable story title, summary, body, and style stored on the collection-derived view
+- Markdown and JSON export endpoints
+- topic detail UI for timeline reading, story editing/compilation, and export
+- audit actions for story updates and compilation
+
+Verification completed:
+
+- timeline/story/export service coverage -> passed
+- Markdown and JSON e2e assertions -> passed
+- authenticated production-browser story compilation -> passed with no console errors or horizontal overflow
 
 Deferred tracks:
 

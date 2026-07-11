@@ -458,6 +458,50 @@ def test_graph_workspace_endpoint_publishes_explicit_response_model() -> None:
     }
 
 
+def test_manual_authoring_endpoints_publish_explicit_contracts() -> None:
+    entity_create = _request_schema("/api/v1/entities", "post")
+    event_create = _request_schema("/api/v1/events", "post")
+    graph_create = _request_schema("/api/v1/graph/manual-nodes", "post")
+    evidence_create = _request_schema("/api/v1/manual-knowledge/evidence", "post")
+    graph_response = _response_data_schema("/api/v1/graph/manual-nodes", "post", status_code="201")
+
+    assert entity_create["additionalProperties"] is False
+    assert set(entity_create["required"]) == {"canonical_name"}
+    assert event_create["additionalProperties"] is False
+    assert set(event_create["required"]) == {"title"}
+    assert graph_create["additionalProperties"] is False
+    assert set(graph_create["required"]) == {"node_type", "name", "anchor_type", "anchor_id"}
+    assert evidence_create["additionalProperties"] is False
+    assert set(evidence_create["required"]) >= {"target_type", "target_id"}
+    assert set(graph_response["properties"]) == {
+        "node_type",
+        "node_id",
+        "label",
+        "connection_type",
+        "connection_id",
+        "evidence",
+        "graph_href",
+    }
+
+
+def test_collection_endpoints_publish_explicit_contracts() -> None:
+    create_schema = _request_schema("/api/v1/collections", "post")
+    detail_schema = _response_data_schema("/api/v1/collections/{collection_id}", "get")
+    item_schema = _request_schema("/api/v1/collections/{collection_id}/items", "post")
+    story_schema = _request_schema("/api/v1/collections/{collection_id}/story", "put")
+    timeline_schema = _response_data_schema("/api/v1/collections/{collection_id}/timeline", "get")
+    export_schema = _response_data_schema("/api/v1/collections/{collection_id}/export", "get")
+
+    assert create_schema["additionalProperties"] is False
+    assert create_schema["required"] == ["title"]
+    assert set(detail_schema["properties"]) >= {"id", "title", "items", "story", "item_count"}
+    assert item_schema["additionalProperties"] is False
+    assert set(item_schema["required"]) == {"item_type", "item_id"}
+    assert story_schema["additionalProperties"] is False
+    assert set(timeline_schema["properties"]) == {"collection_id", "items"}
+    assert set(export_schema["properties"]) == {"format", "filename", "mime_type", "content"}
+
+
 def test_operations_overview_endpoint_publishes_explicit_response_model() -> None:
     operations_schema = _response_data_schema("/api/v1/operations/overview", "get")
 

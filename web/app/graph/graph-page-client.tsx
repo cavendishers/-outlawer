@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { FormEvent, startTransition, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AuthGate } from "@/components/auth-gate";
@@ -279,6 +279,14 @@ type GraphPath = {
     explanation: string;
   }>;
   explanation: string;
+};
+
+type GraphManualNodeResult = {
+  node_type: "entity" | "event";
+  node_id: string;
+  label: string;
+  connection_type: string;
+  graph_href: string;
 };
 
 export function GraphPageClient() {
@@ -781,6 +789,30 @@ export function GraphPageClient() {
     }
   }
 
+  async function handleCreateManualNode(payload: {
+    node_type: "entity" | "event";
+    name: string;
+    subtype: string | null;
+    description: string | null;
+    relation_type: string | null;
+    role: string | null;
+  }): Promise<GraphManualNodeResult> {
+    if (!activeNode || (activeNode.node_type !== "entity" && activeNode.node_type !== "event")) {
+      throw new Error("请先选择一个人物或事件节点");
+    }
+    const result = await apiFetch<GraphManualNodeResult>("/graph/manual-nodes", {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload,
+        anchor_type: activeNode.node_type,
+        anchor_id: activeNode.id,
+      }),
+    });
+    setMutationMessage(`已创建并连接：${result.label}`);
+    router.push(result.graph_href);
+    return result;
+  }
+
   return (
     <AuthGate>
       <main className="space-y-6">
@@ -791,7 +823,9 @@ export function GraphPageClient() {
         ) : null}
 
         {workspace ? (
-          <GraphWorkspaceShell
+          <>
+            <GraphManualCreatePanel activeNode={activeNode} onCreate={handleCreateManualNode} />
+            <GraphWorkspaceShell
             title={workspace.title}
             description={workspace.description}
             scope={workspace.scope}
@@ -834,12 +868,75 @@ export function GraphPageClient() {
             graphPathBusy={graphPathBusy}
             graphPathError={graphPathError}
             onFindPath={handleFindPath}
-          />
+            />
+          </>
         ) : (
           <GraphPageLoadingPanel />
         )}
       </main>
     </AuthGate>
+  );
+}
+
+function GraphManualCreatePanel({
+  activeNode,
+  onCreate,
+}: {
+  activeNode: GraphWorkspaceData["nodes"][number] | null;
+  onCreate: (payload: {
+    node_type: "entity" | "event";
+    name: string;
+    subtype: string | null;
+    description: string | null;
+    relation_type: string | null;
+    role: string | null;
+  }) => Promise<GraphManualNodeResult>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [nodeType, setNodeType] = useState<"entity" | "event">("entity");
+  const [name, setName] = useState("");
+  const [subtype, setSubtype] = useState("");
+  const [description, setDescription] = useState("");
+  const [relationType, setRelationType] = useState("");
+  const [role, setRole] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await onCreate({ node_type: nodeType, name, subtype: subtype || null, description: description || null, relation_type: relationType || null, role: role || null });
+      setName("");
+      setDescription("");
+      setOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "创建并连接失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="border-4 border-ink bg-aqua p-4 shadow-brutal">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><p className="section-kicker">补齐图谱</p><p className="mt-1 font-bold">从当前节点“{activeNode?.label ?? "未选择"}”创建缺失知识，并在一个事务中完成连接。</p></div>
+        <button type="button" onClick={() => setOpen((value) => !value)} disabled={!activeNode} className="tool-action bg-neon disabled:opacity-50">{open ? "收起" : "创建缺失节点"}</button>
+      </div>
+      {open ? (
+        <form onSubmit={submit} className="mt-4 grid gap-3 border-2 border-ink bg-canvas p-4 md:grid-cols-2 xl:grid-cols-3">
+          <select value={nodeType} onChange={(event) => setNodeType(event.target.value as "entity" | "event")} className="brutal-input"><option value="entity">人物 / 实体</option><option value="event">事件</option></select>
+          <input required value={name} onChange={(event) => setName(event.target.value)} className="brutal-input" placeholder="节点名称" />
+          <input value={subtype} onChange={(event) => setSubtype(event.target.value)} className="brutal-input" placeholder={nodeType === "entity" ? "person" : "meeting"} />
+          <input value={relationType} onChange={(event) => setRelationType(event.target.value)} className="brutal-input" placeholder={activeNode?.node_type !== nodeType ? "participates_in" : "related_to"} />
+          <input value={role} onChange={(event) => setRole(event.target.value)} className="brutal-input" placeholder="参与角色（可选）" />
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="brutal-input min-h-20 md:col-span-2 xl:col-span-3" placeholder="节点说明" />
+          {error ? <p className="border-2 border-ink bg-ember p-3 font-bold text-red-950 md:col-span-2 xl:col-span-3">{error}</p> : null}
+          <button disabled={busy} className="brutal-action brutal-action-primary md:col-span-2 xl:col-span-3 disabled:opacity-50">{busy ? "创建中…" : "创建并连接"}</button>
+        </form>
+      ) : null}
+    </section>
   );
 }
 

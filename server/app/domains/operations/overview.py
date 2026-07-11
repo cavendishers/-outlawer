@@ -107,6 +107,10 @@ def get_operations_overview(db: Session, *, user_id: str) -> dict[str, Any]:
                     "update_relation",
                     "remove_relation",
                     "set_conflict_disposition",
+                    "create_entity",
+                    "create_event",
+                    "create_manual_connection",
+                    "attach_manual_evidence",
                 ]
             ),
         )

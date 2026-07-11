@@ -15,7 +15,7 @@ Current status as of `2026-07-11`:
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
 - Architecture V2 domain packaging is complete for the current modular-monolith boundary
-- the next product-depth gap is manual knowledge authoring; later work includes topic/case collections, curated outputs, optional graph-canvas expansion, AI quality, and back-office tooling
+- manual authoring, topic/case collections, curated timelines, and portable story output are delivered; remaining tracks are usage-driven collaboration/publishing depth, optional graph-canvas expansion, AI quality, and back-office tooling
 
 ## Status Legend
 
@@ -533,5 +533,5 @@ The graph-governance target is now delivered through the current product-depth s
 Reason:
 
 - broader freeform canvas editing remains optional rather than the automatic next phase
-- the next selected goal is `Phase 31: Manual Knowledge Authoring Loop`
-- users should be able to create a missing event/person, connect it from graph context, and attach manual evidence without requiring another extraction run
+- Phase 31–33 are delivered: manual knowledge authoring, graph create-and-connect, topic/case collections, curated timelines, story compilation, and Markdown/JSON export
+- the next goal should be selected from observed use; no deferred platform or AI track is automatically promoted
