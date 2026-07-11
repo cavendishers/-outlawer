@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.domains.retrieval import entity_query, event_query, timeline_query
 from app.domains.governance.graph_conflicts import apply_graph_conflict_dispositions
-from app.models.entity import Relation
+from app.models.collection import KnowledgeCollection, KnowledgeCollectionItem
+from app.models.entity import Entity, EventEntity, Relation
+from app.models.event import Event
 from app.models.review import ReviewAction
 
 
@@ -63,6 +65,7 @@ def get_graph_workspace(
     user_id: str,
     event_id: str | None = None,
     entity_id: str | None = None,
+    collection_id: str | None = None,
     node_types: str | None = None,
     relation_types: str | None = None,
     start: str | None = None,
@@ -78,7 +81,9 @@ def get_graph_workspace(
         min_weight=min_weight,
         depth=depth,
     )
-    if event_id:
+    if collection_id:
+        workspace = build_collection_workspace(db, user_id=user_id, collection_id=collection_id)
+    elif event_id:
         workspace = build_event_workspace(db, user_id=user_id, event_id=event_id)
     elif entity_id:
         workspace = build_entity_workspace(db, user_id=user_id, entity_id=entity_id)
@@ -96,6 +101,7 @@ def get_graph_node_detail(
     node_id: str,
     event_id: str | None = None,
     entity_id: str | None = None,
+    collection_id: str | None = None,
     node_types: str | None = None,
     relation_types: str | None = None,
     start: str | None = None,
@@ -108,6 +114,7 @@ def get_graph_node_detail(
         user_id=user_id,
         event_id=event_id if event_id else (node_id if node_type == "event" and not entity_id else None),
         entity_id=entity_id if entity_id else (node_id if node_type == "entity" and not event_id else None),
+        collection_id=collection_id,
         node_types=node_types,
         relation_types=relation_types,
         start=start,
@@ -647,6 +654,114 @@ def build_overview_workspace(db: Session, *, user_id: str) -> dict[str, Any]:
         anchor=anchor,
         nodes=nodes,
         edges=overview.get("edges", []),
+        timeline_focus=timeline_focus,
+    )
+
+
+def build_collection_workspace(db: Session, *, user_id: str, collection_id: str) -> dict[str, Any]:
+    collection = db.get(KnowledgeCollection, collection_id)
+    if collection is None or collection.user_id != user_id:
+        raise ValueError("Collection not found")
+    links = list(
+        db.scalars(
+            select(KnowledgeCollectionItem)
+            .where(
+                KnowledgeCollectionItem.collection_id == collection.id,
+                KnowledgeCollectionItem.item_type.in_(["event", "entity"]),
+            )
+            .order_by(KnowledgeCollectionItem.sort_order, KnowledgeCollectionItem.created_at)
+        ).all()
+    )
+    event_ids = [row.item_id for row in links if row.item_type == "event"]
+    entity_ids = [row.item_id for row in links if row.item_type == "entity"]
+    events = {
+        row.id: row
+        for row in db.scalars(select(Event).where(Event.user_id == user_id, Event.id.in_(event_ids))).all()
+    } if event_ids else {}
+    entities = {
+        row.id: row
+        for row in db.scalars(select(Entity).where(Entity.user_id == user_id, Entity.id.in_(entity_ids))).all()
+    } if entity_ids else {}
+    nodes: list[dict[str, Any]] = []
+    for link in links:
+        if link.item_type == "event" and link.item_id in events:
+            event = events[link.item_id]
+            nodes.append(
+                build_event_node(
+                    {
+                        "id": event.id,
+                        "title": event.title,
+                        "summary": event.summary,
+                        "event_type": event.event_type,
+                        "time_text": event.time_text,
+                        "location_text": event.location_text,
+                    },
+                    actions=[
+                        action("打开事件", f"/events/{event.id}", "open", "secondary"),
+                        action("进入校对", f"/curation/events/{event.id}", "curation", "primary"),
+                    ],
+                    context_lines=[link.curator_note or "专题事件", f"专题：{collection.title}"],
+                )
+            )
+        elif link.item_type == "entity" and link.item_id in entities:
+            entity = entities[link.item_id]
+            nodes.append(
+                build_entity_node(
+                    {
+                        "id": entity.id,
+                        "display_name": entity.display_name,
+                        "entity_type": entity.entity_type,
+                        "description": entity.description,
+                    },
+                    actions=[
+                        action("人物故事", f"/story/entity/{entity.id}", "open_story", "secondary"),
+                        action("人物校对", f"/curation/entities/{entity.id}", "curation", "primary"),
+                    ],
+                    context_lines=[link.curator_note or "专题人物", f"专题：{collection.title}"],
+                )
+            )
+    selected_event_ids = set(events)
+    selected_entity_ids = set(entities)
+    participant_rows = db.scalars(
+        select(EventEntity).where(
+            EventEntity.event_id.in_(selected_event_ids),
+            EventEntity.entity_id.in_(selected_entity_ids),
+        )
+    ).all() if selected_event_ids and selected_entity_ids else []
+    edges = [
+        {
+            "source_id": row.event_id,
+            "target_id": row.entity_id,
+            "edge_type": "participates_in",
+            "label": row.role or row.relation_type or "参与",
+            "weight": round(float(row.confidence_score or 1.0), 2),
+        }
+        for row in participant_rows
+    ]
+    ordered_events = sorted(events.values(), key=lambda row: (row.timeline_sort_time is None, row.timeline_sort_time))
+    timeline_focus = [
+        {
+            "id": row.id,
+            "event_id": row.id,
+            "title": row.title,
+            "display_time": row.time_text,
+            "href": f"/events/{row.id}",
+            "kind": "collection_event",
+        }
+        for row in ordered_events
+    ]
+    anchor = None
+    if nodes:
+        first = nodes[0]
+        first["is_anchor"] = True
+        anchor = {"id": first["id"], "node_type": first["node_type"], "label": first["label"], "subtitle": first["subtitle"], "href": first["href"]}
+    return workspace_payload(
+        scope="collection",
+        title=f"专题图谱：{collection.title}",
+        description="只展示当前专题收录的人物、事件及它们之间的 canonical 连接。",
+        anchor=anchor,
+        nodes=nodes,
+        edges=edges,
         timeline_focus=timeline_focus,
     )
 

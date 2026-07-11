@@ -63,6 +63,25 @@ def attach_manual_evidence(db: Session, *, user_id: str, payload: dict[str, Any]
     return serialize_manual_evidence(db, row)
 
 
+def list_manual_evidence(
+    db: Session, *, user_id: str, target_type: str, target_id: str
+) -> dict[str, Any]:
+    normalized_type = _clean_required(target_type, "Target type is required").lower()
+    _get_owned_target(db, user_id=user_id, target_type=normalized_type, target_id=target_id)
+    rows = list(
+        db.scalars(
+            select(ManualKnowledgeEvidence)
+            .where(
+                ManualKnowledgeEvidence.user_id == user_id,
+                ManualKnowledgeEvidence.target_type == normalized_type,
+                ManualKnowledgeEvidence.target_id == target_id,
+            )
+            .order_by(ManualKnowledgeEvidence.created_at.desc())
+        ).all()
+    )
+    return {"items": [serialize_manual_evidence(db, row) for row in rows], "total": len(rows)}
+
+
 def create_graph_manual_node(db: Session, *, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     node_type = _clean_required(payload.get("node_type"), "Node type is required").lower()
     anchor_type = _clean_required(payload.get("anchor_type"), "Anchor type is required").lower()

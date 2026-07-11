@@ -68,6 +68,11 @@ class ManualEvidenceResponse(BaseModel):
     created_at: str | None = None
 
 
+class ManualEvidenceListResponse(BaseModel):
+    items: list[ManualEvidenceResponse] = Field(default_factory=list)
+    total: int
+
+
 class ManualEntityCreateResponse(BaseModel):
     entity: EntityResponse
     evidence: ManualEvidenceResponse | None = None

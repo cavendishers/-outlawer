@@ -491,6 +491,10 @@ def test_collection_endpoints_publish_explicit_contracts() -> None:
     story_schema = _request_schema("/api/v1/collections/{collection_id}/story", "put")
     timeline_schema = _response_data_schema("/api/v1/collections/{collection_id}/timeline", "get")
     export_schema = _response_data_schema("/api/v1/collections/{collection_id}/export", "get")
+    candidate_schema = _response_data_schema("/api/v1/collections/{collection_id}/candidates", "get")
+    order_schema = _request_schema("/api/v1/collections/{collection_id}/items/order", "put")
+    bulk_remove_schema = _request_schema("/api/v1/collections/{collection_id}/items/bulk-remove", "post")
+    evidence_list_schema = _response_data_schema("/api/v1/manual-knowledge/evidence", "get")
 
     assert create_schema["additionalProperties"] is False
     assert create_schema["required"] == ["title"]
@@ -500,6 +504,10 @@ def test_collection_endpoints_publish_explicit_contracts() -> None:
     assert story_schema["additionalProperties"] is False
     assert set(timeline_schema["properties"]) == {"collection_id", "items"}
     assert set(export_schema["properties"]) == {"format", "filename", "mime_type", "content"}
+    assert set(candidate_schema["properties"]) >= {"items", "total", "page", "page_size"}
+    assert order_schema["additionalProperties"] is False and order_schema["required"] == ["item_ids"]
+    assert bulk_remove_schema["additionalProperties"] is False and bulk_remove_schema["required"] == ["item_ids"]
+    assert set(evidence_list_schema["properties"]) == {"items", "total"}
 
 
 def test_operations_overview_endpoint_publishes_explicit_response_model() -> None:

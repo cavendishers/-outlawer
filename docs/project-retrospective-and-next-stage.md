@@ -58,12 +58,13 @@ The project is now a working single-user MVP for an online AI-assisted knowledge
 
 ## Delivered Product-Depth Stage
 
-Phase 31–33 are now complete:
+Phase 31–34 are now complete:
 
 1. manual entity/event creation with explicit contracts, source evidence, and audit actions
 2. create-and-connect flow inside `/graph`
 3. topic/case collections for notes, raw assets, events, entities, and saved viewpoints
 4. curated collection timelines, editable story compilation, and Markdown/JSON export
+5. searchable collection intake, cross-surface add actions, evidence readback, member management, coverage signals, and collection-scoped graph views
 
 ## Next Selection Rule
 

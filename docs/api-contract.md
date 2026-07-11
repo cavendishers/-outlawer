@@ -399,6 +399,7 @@ Responsibilities:
 - `POST /api/v1/entities`
 - `POST /api/v1/events`
 - `POST /api/v1/manual-knowledge/evidence`
+- `GET /api/v1/manual-knowledge/evidence?target_type=entity|event&target_id=...`
 - `POST /api/v1/graph/manual-nodes`
 
 Responsibilities:
@@ -419,6 +420,9 @@ Responsibilities:
 - `POST /api/v1/collections/{collection_id}/items`
 - `PATCH /api/v1/collections/{collection_id}/items/{collection_item_id}`
 - `DELETE /api/v1/collections/{collection_id}/items/{collection_item_id}`
+- `GET /api/v1/collections/{collection_id}/candidates?q=...&item_type=...`
+- `PUT /api/v1/collections/{collection_id}/items/order`
+- `POST /api/v1/collections/{collection_id}/items/bulk-remove`
 - `GET /api/v1/collections/{collection_id}/timeline`
 - `PUT /api/v1/collections/{collection_id}/story`
 - `POST /api/v1/collections/{collection_id}/story/compile`
@@ -432,6 +436,10 @@ Responsibilities:
 - derive the collection timeline from canonical event time fields
 - keep editable story text as a collection-derived view
 - return portable Markdown or JSON through the standard response envelope
+- return searchable owned candidates while excluding objects already in the collection
+- expose derived member-type and manual-evidence coverage statistics
+- reorder all members deterministically and remove selected membership rows in one audited operation
+- allow `/api/v1/graph/workspace?collection_id=...` to render only collection-owned event/entity nodes and their canonical connections
 
 ### Jobs
 

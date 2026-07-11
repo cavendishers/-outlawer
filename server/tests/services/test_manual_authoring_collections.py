@@ -7,12 +7,17 @@ from app.core.database import Base
 from app.domains.collections.service import (
     add_collection_item,
     build_collection_timeline,
+    bulk_remove_collection_items,
     compile_collection_story,
     create_collection,
     export_collection,
     get_collection_detail,
+    list_collection_candidates,
+    reorder_collection_items,
 )
-from app.domains.knowledge.manual_authoring import create_graph_manual_node, create_manual_entity
+from app.domains.knowledge.manual_authoring import create_graph_manual_node, create_manual_entity, list_manual_evidence
+from app.domains.retrieval.graph_workspace import get_graph_workspace
+from app.core.pagination import PageParams
 from app.models.collection import KnowledgeCollection, KnowledgeCollectionItem
 from app.models.entity import Entity, EntityAlias, EventEntity, Relation
 from app.models.event import Event, TimelineItem
@@ -163,3 +168,91 @@ def test_collection_compiles_timeline_story_and_exports_markdown_and_json() -> N
     assert "## 时间线" in (story["body"] or "")
     assert "# 项目案件" in markdown["content"]
     assert '"collection"' in json_export["content"]
+
+
+def test_collection_candidates_stats_order_bulk_remove_and_evidence_readback() -> None:
+    with make_session() as db:
+        seed_user_and_note(db)
+        created = create_manual_entity(
+            db,
+            user_id="user-manual",
+            payload={
+                "canonical_name": "候选人物",
+                "entity_type": "person",
+                "evidence": {"note_id": "note-source", "excerpt": "候选人物出现在访谈中"},
+            },
+        )
+        entity_id = created["entity"]["id"]
+        collection = create_collection(db, user_id="user-manual", payload={"title": "候选专题"})
+        note_item = add_collection_item(
+            db,
+            user_id="user-manual",
+            collection_id=collection["id"],
+            payload={"item_type": "note", "item_id": "note-source"},
+        )
+
+        candidates, total = list_collection_candidates(
+            db,
+            user_id="user-manual",
+            collection_id=collection["id"],
+            query="候选",
+            item_type="entity",
+            params=PageParams(page=1, page_size=20),
+        )
+        entity_item = add_collection_item(
+            db,
+            user_id="user-manual",
+            collection_id=collection["id"],
+            payload={"item_type": "entity", "item_id": entity_id},
+        )
+        detail = get_collection_detail(db, user_id="user-manual", collection_id=collection["id"])
+        evidence = list_manual_evidence(db, user_id="user-manual", target_type="entity", target_id=entity_id)
+        reordered = reorder_collection_items(
+            db,
+            user_id="user-manual",
+            collection_id=collection["id"],
+            item_ids=[entity_item["id"], note_item["id"]],
+        )
+        removed = bulk_remove_collection_items(
+            db,
+            user_id="user-manual",
+            collection_id=collection["id"],
+            item_ids=[note_item["id"]],
+        )
+
+    assert total == 1 and candidates[0]["item_id"] == entity_id
+    assert detail["stats"]["by_type"] == {"note": 1, "entity": 1}
+    assert detail["stats"]["evidence_coverage"] == 1
+    assert next(item for item in detail["items"] if item["item_type"] == "entity")["has_evidence"] is True
+    assert evidence["total"] == 1 and evidence["items"][0]["source_title"] == "访谈笔记"
+    assert reordered["item_ids"][0] == entity_item["id"]
+    assert removed["removed_ids"] == [note_item["id"]]
+
+
+def test_collection_graph_scope_contains_only_selected_knowledge_nodes() -> None:
+    with make_session() as db:
+        seed_user_and_note(db)
+        entity = Entity(
+            id="entity-collection-graph",
+            user_id="user-manual",
+            entity_type="person",
+            canonical_name="专题人物",
+            display_name="专题人物",
+            alias_json=[],
+            normalized_name="专题人物",
+            status="active",
+        )
+        event = Event(id="event-collection-graph", user_id="user-manual", title="专题事件", status="active", time_precision="day")
+        db.add_all([entity, event])
+        db.flush()
+        db.add(EventEntity(event_id=event.id, entity_id=entity.id, relation_type="participates_in", display_order=0))
+        db.commit()
+        collection = create_collection(db, user_id="user-manual", payload={"title": "图谱专题"})
+        add_collection_item(db, user_id="user-manual", collection_id=collection["id"], payload={"item_type": "event", "item_id": event.id})
+        add_collection_item(db, user_id="user-manual", collection_id=collection["id"], payload={"item_type": "entity", "item_id": entity.id})
+
+        workspace = get_graph_workspace(db, user_id="user-manual", collection_id=collection["id"])
+
+    assert workspace["scope"] == "collection"
+    assert {node["id"] for node in workspace["nodes"]} == {event.id, entity.id}
+    assert workspace["edges"][0]["edge_type"] == "participates_in"

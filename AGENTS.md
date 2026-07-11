@@ -14,7 +14,7 @@ This repository is for an online AI-assisted knowledge base with multimodal inge
 
 ## Current Implementation Status
 
-- Phase `0` through Phase `33` are implemented and verified. Phase `31` adds manual entity/event creation, evidence attachment, and graph create-and-connect; Phase `32` adds topic/case collections; Phase `33` adds curated collection timelines, story compilation, and Markdown/JSON export. Broader freeform canvas editing remains optional.
+- Phase `0` through Phase `34` are implemented and verified. Phase `31` adds manual entity/event creation, evidence attachment, and graph create-and-connect; Phase `32` adds topic/case collections; Phase `33` adds curated collection timelines, story compilation, and Markdown/JSON export; Phase `34` removes UUID-driven workflow friction with searchable collection candidates, global add-to-collection actions, evidence readback, member ordering/bulk management, coverage statistics, and collection-scoped graph views. Broader freeform canvas editing remains optional.
 - Auth uses bearer tokens.
 - Dev deployment uses Docker Compose from `deploy/compose/docker-compose.dev.yml`.
 - Frontend dev container must run with `NODE_ENV=development` so Tailwind/PostCSS dev dependencies are available.

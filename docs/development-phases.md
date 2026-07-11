@@ -1473,6 +1473,35 @@ Verification completed:
 - Markdown and JSON e2e assertions -> passed
 - authenticated production-browser story compilation -> passed with no console errors or horizontal overflow
 
+## Phase 34: Knowledge Workflow Closure
+
+Status: `DONE`
+
+Goal:
+
+- remove UUID-driven friction from manual authoring and collection work so Phase 31–33 can support daily use instead of API-oriented demos
+
+Delivered:
+
+- searchable collection candidates for notes, raw assets, entities, events, and graph viewpoints, excluding existing members
+- multi-select collection intake with curator notes
+- reusable add-to-collection controls on note, entity, event, raw-asset operations, unified-search, graph-node, and saved-viewpoint surfaces
+- manual-evidence list API and evidence panels on entity/event detail and graph context
+- manual-create evidence source selectors backed by existing note/asset lists instead of raw UUID inputs
+- derived collection type counts and manual-evidence coverage statistics
+- deterministic member reordering, type/evidence filtering, and audited bulk membership removal
+- collection-scoped graph workspace that contains only selected entities/events plus participation and canonical-relation edges
+- story-export readiness hints for missing timeline nodes or evidence coverage
+
+Verification completed:
+
+- Python 3.12 service/API regression -> `98 passed`
+- collection/manual targeted service and OpenAPI tests -> passed
+- `python scripts/e2e_manual_collection_flow.py` -> passed with candidate, evidence, stats, reorder, bulk-remove, and collection-graph assertions
+- `python scripts/e2e_api_flow.py --phase full --job-timeout-seconds 240` -> passed
+- frontend typecheck and production build -> passed
+- authenticated production-browser smoke -> passed for source selection, searchable intake, evidence readback, stats, ordering, filtering, confirmed bulk removal, and collection graph with no console errors or horizontal overflow
+
 Deferred tracks:
 
 - extraction accuracy benchmarking and semantic embedding replacement

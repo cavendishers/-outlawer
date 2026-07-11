@@ -4,7 +4,9 @@ import { FormEvent, startTransition, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { GraphWorkspaceShell } from "@/components/graph-workspace-shell";
+import { ManualEvidencePanel } from "@/components/manual-evidence-panel";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
 
@@ -295,6 +297,7 @@ export function GraphPageClient() {
   const searchParams = useSearchParams();
   const eventId = searchParams?.get("event_id") ?? null;
   const entityId = searchParams?.get("entity_id") ?? null;
+  const collectionId = searchParams?.get("collection_id") ?? null;
   const activeNodeIdFromUrl = searchParams?.get("active_node_id") ?? null;
   const nodeTypesFilter = searchParams?.get("node_types") ?? "";
   const relationTypesFilter = searchParams?.get("relation_types") ?? "";
@@ -324,6 +327,7 @@ export function GraphPageClient() {
     const params = new URLSearchParams();
     if (eventId) params.set("event_id", eventId);
     if (entityId) params.set("entity_id", entityId);
+    if (collectionId) params.set("collection_id", collectionId);
     if (nodeTypesFilter) params.set("node_types", nodeTypesFilter);
     if (relationTypesFilter) params.set("relation_types", relationTypesFilter);
     if (startFilter) params.set("start", startFilter);
@@ -426,7 +430,7 @@ export function GraphPageClient() {
           setError(err instanceof Error ? err.message : "图谱工作台加载失败");
         });
       });
-  }, [depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
+  }, [collectionId, depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
 
   const activeNode = useMemo(() => {
     if (!workspace?.nodes.length) return null;
@@ -470,7 +474,7 @@ export function GraphPageClient() {
       .finally(() => {
         setNodeDetailLoading(false);
       });
-  }, [activeNode, depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
+  }, [activeNode, collectionId, depthFilter, endFilter, entityId, eventId, minWeightFilter, nodeTypesFilter, relationTypesFilter, startFilter]);
 
   useEffect(() => {
     if (!activeNode) {
@@ -509,6 +513,7 @@ export function GraphPageClient() {
     const params = new URLSearchParams(reset ? "" : (searchParams?.toString() ?? ""));
     if (eventId) params.set("event_id", eventId);
     if (entityId) params.set("entity_id", entityId);
+    if (collectionId) params.set("collection_id", collectionId);
     params.delete("active_node_id");
 
     const nextFilters: GraphWorkspaceAppliedFilters = {
@@ -825,6 +830,14 @@ export function GraphPageClient() {
         {workspace ? (
           <>
             <GraphManualCreatePanel activeNode={activeNode} onCreate={handleCreateManualNode} />
+            {activeNode && (activeNode.node_type === "entity" || activeNode.node_type === "event") ? (
+              <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+                <ManualEvidencePanel targetType={activeNode.node_type} targetId={activeNode.id} compact />
+                <div className="flex items-start justify-end">
+                  <AddToCollectionControl itemType={activeNode.node_type} itemId={activeNode.id} label={activeNode.label} />
+                </div>
+              </div>
+            ) : null}
             <GraphWorkspaceShell
             title={workspace.title}
             description={workspace.description}

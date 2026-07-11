@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
 import { apiFetch } from "@/lib/api";
 
 type CreatedResult = { label: string; routes: Record<string, string> };
+type EvidenceSourceOption = { id: string; title: string; meta: string };
 
 export default function ManualKnowledgePage() {
   const [kind, setKind] = useState<"entity" | "event">("entity");
@@ -14,22 +15,37 @@ export default function ManualKnowledgePage() {
   const [subtype, setSubtype] = useState("");
   const [description, setDescription] = useState("");
   const [eventTime, setEventTime] = useState("");
-  const [noteId, setNoteId] = useState("");
-  const [assetId, setAssetId] = useState("");
+  const [sourceType, setSourceType] = useState<"none" | "note" | "raw_asset">("none");
+  const [sourceId, setSourceId] = useState("");
+  const [noteOptions, setNoteOptions] = useState<EvidenceSourceOption[]>([]);
+  const [assetOptions, setAssetOptions] = useState<EvidenceSourceOption[]>([]);
   const [excerpt, setExcerpt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<CreatedResult | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<{ items: Array<{ id: string; title: string; status: string }> }>("/notes?page_size=100"),
+      apiFetch<{ items: Array<{ id: string; title: string; asset_type: string }> }>("/assets?page_size=100"),
+    ]).then(([notes, assets]) => {
+      setNoteOptions(notes.items.map((item) => ({ id: item.id, title: item.title, meta: item.status })));
+      setAssetOptions(assets.items.map((item) => ({ id: item.id, title: item.title, meta: item.asset_type })));
+    }).catch(() => {
+      setNoteOptions([]);
+      setAssetOptions([]);
+    });
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError("");
     setCreated(null);
-    const evidence = noteId.trim()
-      ? { note_id: noteId.trim(), excerpt: excerpt.trim() || null }
-      : assetId.trim()
-        ? { raw_asset_id: assetId.trim(), excerpt: excerpt.trim() || null }
+    const evidence = sourceType === "note" && sourceId
+      ? { note_id: sourceId, excerpt: excerpt.trim() || null }
+      : sourceType === "raw_asset" && sourceId
+        ? { raw_asset_id: sourceId, excerpt: excerpt.trim() || null }
         : null;
     try {
       if (kind === "entity") {
@@ -110,10 +126,10 @@ export default function ManualKnowledgePage() {
 
           <div className="mt-5 border-2 border-ink bg-canvas p-4">
             <p className="font-black">可选证据来源</p>
-            <p className="mt-1 text-sm font-bold text-muted">填写笔记 ID 或原始素材 ID，二者只选一个；系统只建立证据引用，不修改来源内容。</p>
+            <p className="mt-1 text-sm font-bold text-muted">从现有笔记或原始素材中选择来源；系统只建立证据引用，不修改来源内容。</p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <input value={noteId} onChange={(event) => { setNoteId(event.target.value); if (event.target.value) setAssetId(""); }} className="brutal-input" placeholder="笔记 ID" />
-              <input value={assetId} onChange={(event) => { setAssetId(event.target.value); if (event.target.value) setNoteId(""); }} className="brutal-input" placeholder="原始素材 ID" />
+              <select value={sourceType} onChange={(event) => { setSourceType(event.target.value as "none" | "note" | "raw_asset"); setSourceId(""); }} className="brutal-input"><option value="none">不绑定证据</option><option value="note">选择笔记</option><option value="raw_asset">选择原始素材</option></select>
+              <select value={sourceId} onChange={(event) => setSourceId(event.target.value)} disabled={sourceType === "none"} className="brutal-input disabled:opacity-50"><option value="">请选择来源</option>{(sourceType === "note" ? noteOptions : sourceType === "raw_asset" ? assetOptions : []).map((item) => <option key={item.id} value={item.id}>{item.title} · {item.meta}</option>)}</select>
               <textarea value={excerpt} onChange={(event) => setExcerpt(event.target.value)} className="brutal-input min-h-20 md:col-span-2" placeholder="证据摘录或定位说明" />
             </div>
           </div>

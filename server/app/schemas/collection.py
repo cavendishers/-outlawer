@@ -34,6 +34,18 @@ class CollectionItemUpdateRequest(BaseModel):
     curator_note: str | None = None
 
 
+class CollectionItemOrderRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_ids: list[str]
+
+
+class CollectionItemsBulkRemoveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_ids: list[str]
+
+
 class CollectionStoryUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -52,6 +64,7 @@ class CollectionItemResponse(BaseModel):
     href: str
     sort_order: int
     curator_note: str | None = None
+    has_evidence: bool = False
     created_at: str | None = None
 
 
@@ -62,6 +75,14 @@ class CollectionStoryResponse(BaseModel):
     style: str
 
 
+class CollectionStatsResponse(BaseModel):
+    total: int = 0
+    by_type: dict[str, int] = Field(default_factory=dict)
+    evidence_eligible_count: int = 0
+    evidence_linked_count: int = 0
+    evidence_coverage: float = 0
+
+
 class CollectionResponse(BaseModel):
     id: str
     title: str
@@ -70,6 +91,7 @@ class CollectionResponse(BaseModel):
     status: str
     item_count: int = 0
     story: CollectionStoryResponse
+    stats: CollectionStatsResponse
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -86,6 +108,25 @@ class CollectionDeletedResponse(BaseModel):
 class CollectionItemDeletedResponse(BaseModel):
     id: str
     status: str
+
+
+class CollectionItemsBulkRemovedResponse(BaseModel):
+    removed_ids: list[str] = Field(default_factory=list)
+    status: str
+
+
+class CollectionItemOrderResponse(BaseModel):
+    item_ids: list[str] = Field(default_factory=list)
+    status: str
+
+
+class CollectionCandidateResponse(BaseModel):
+    item_type: str
+    item_id: str
+    label: str
+    subtitle: str | None = None
+    meta: str | None = None
+    href: str
 
 
 class CollectionTimelineItemResponse(BaseModel):

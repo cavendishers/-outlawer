@@ -80,6 +80,8 @@ For multimodal assets, the worker now sends image, audio, and video files to Ali
 - `/graph` 可从当前人物/事件直接创建缺失节点并在同一事务中建立参与关系或 canonical relation。
 - `/collections` 支持专题/案件集合，能够收录笔记、原始素材、人物、事件和保存视角，并维护策展顺序与备注。
 - 专题详情可按 canonical 事件时间生成策展时间线、编排故事草稿，并导出 Markdown 或 JSON。
+- Phase 34 让专题收录改为名称/摘要搜索与多选操作，并在笔记、人物、事件、原始资产、搜索结果、图谱节点和保存视角提供“加入专题”快捷动作。
+- 人物、事件和图谱节点现在可以回看手工证据；专题支持成员筛选、上下排序、批量移除、证据覆盖率和 collection-scoped graph。
 
 ## Quick Start
 
@@ -170,7 +172,7 @@ Verified on `2026-04-21`:
 
 Release-hardening and relation-governance verification completed on `2026-07-11`:
 
-- `python -m pytest tests/services tests/api` -> `96 passed` in a Python 3.12 container
+- `python -m pytest tests/services tests/api` -> `98 passed` in a Python 3.12 container
 - PostgreSQL migration -> `20260711_03 (head)`
 - `cd web && npx tsc --noEmit` -> passed
 - `cd web && NODE_ENV=production npm run build` -> passed with Next.js `15.5.18`
@@ -181,6 +183,7 @@ Release-hardening and relation-governance verification completed on `2026-07-11`
 - authenticated browser smoke -> passed for analysis workflow, graph governance, explained paths, saved-view lifecycle, and operations
 - manual-authoring and collection e2e -> passed for evidence audit, graph create-and-connect, collection membership, curated timeline, story compilation, and Markdown/JSON export
 - authenticated production-browser smoke -> passed for `/manual`, `/collections`, `/collections/{id}`, and graph manual-node entry with no horizontal overflow or console errors
+- Phase 34 production-browser smoke -> passed for named evidence selection, candidate search/intake, evidence readback, coverage metrics, ordering, evidence filters, confirmed bulk removal, and collection-scoped graph
 
 ## Database Migration Rules
 

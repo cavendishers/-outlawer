@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
 
@@ -574,11 +575,12 @@ export default function OperationsPage() {
                 <div className="surface-inset border-4 border-ink p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xl font-black">{selectedAsset.title}</p>
-                    {selectedAsset.raw_url ? (
-                      <a href={selectedAsset.raw_url} className="brutal-action text-sm" target="_blank" rel="noreferrer">
-                        原始文件
-                      </a>
-                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <AddToCollectionControl itemType="raw_asset" itemId={selectedAsset.id} label={selectedAsset.title} />
+                      {selectedAsset.raw_url ? (
+                        <a href={selectedAsset.raw_url} className="brutal-action text-sm" target="_blank" rel="noreferrer">原始文件</a>
+                      ) : null}
+                    </div>
                   </div>
                   <p className="mt-3 break-all text-sm font-bold">
                     {selectedAsset.asset_type} / {selectedAsset.mime_type ?? "text"} / {selectedAsset.object_key ?? "内联文本"}

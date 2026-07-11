@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { EntityTimelineWorkspace } from "@/components/entity-timeline-workspace";
 import { EntityJourneyMap } from "@/components/entity-journey-map";
 import { Panel } from "@/components/panel";
+import { ManualEvidencePanel } from "@/components/manual-evidence-panel";
 import { apiFetch } from "@/lib/api";
 
 type EntityDetail = {
@@ -138,6 +140,7 @@ export default function EntityStoryPage() {
                 >
                   {cardCreating ? "生成中..." : "人物卡"}
                 </button>
+                <AddToCollectionControl itemType="entity" itemId={entity.id} label={entity.display_name} />
               </div>
             ) : null}
           </div>
@@ -148,6 +151,8 @@ export default function EntityStoryPage() {
             {error}
           </Panel>
         ) : null}
+
+        {entity ? <ManualEvidencePanel targetType="entity" targetId={entity.id} /> : null}
 
         <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <Panel className="p-6" tone="story" intensity="quiet">

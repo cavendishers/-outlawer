@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
 
@@ -104,6 +105,12 @@ function labelForResultType(resultType: string): string {
   if (resultType === "event") return "事件";
   if (resultType === "similar_note") return "相似卷宗";
   return "卷宗";
+}
+
+function collectionItemTypeForResult(resultType: string): "note" | "entity" | "event" {
+  if (resultType === "entity") return "entity";
+  if (resultType === "event") return "event";
+  return "note";
 }
 
 export default function SearchPage() {
@@ -299,8 +306,7 @@ export default function SearchPage() {
               {results.top_hits.length ? (
                 <div className="space-y-3">
                   {results.top_hits.map((hit) => (
-                    <Link key={`${hit.result_type}-${hit.id}`} href={hit.href} className="block">
-                      <article className="group dense-record md:grid-cols-[10rem_1fr]">
+                      <article key={`${hit.result_type}-${hit.id}`} className="group dense-record md:grid-cols-[10rem_1fr]">
                         <div className={`dense-record-side ${toneForHit(hit.result_type) === "info" ? "bg-aqua" : toneForHit(hit.result_type) === "time" ? "bg-gold" : toneForHit(hit.result_type) === "story" ? "bg-peach" : "bg-canvas"}`}>
                           <p className="text-xs font-black tracking-[0.12em]">类型</p>
                           <p className="mt-3 text-lg font-black leading-tight">{labelForResultType(hit.result_type)}</p>
@@ -319,14 +325,12 @@ export default function SearchPage() {
                               ))}
                             </div>
                           </div>
-                          <div className="flex items-start justify-start md:justify-end">
-                            <span className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny">
-                              查看
-                            </span>
+                          <div className="flex flex-wrap items-start justify-start gap-2 md:justify-end">
+                            <Link href={hit.href} className="border-2 border-ink bg-canvas px-3 py-2 text-sm font-black shadow-brutalTiny">查看</Link>
+                            <AddToCollectionControl itemType={collectionItemTypeForResult(hit.result_type)} itemId={hit.id} label={hit.label} />
                           </div>
                         </div>
                       </article>
-                    </Link>
                   ))}
                 </div>
               ) : (

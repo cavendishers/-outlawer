@@ -6,13 +6,18 @@ from app.core.responses import ok, paginated
 from app.domains.collections import service
 from app.schemas.collection import (
     CollectionCreateRequest,
+    CollectionCandidateResponse,
     CollectionDeletedResponse,
     CollectionDetailResponse,
     CollectionExportResponse,
     CollectionItemCreateRequest,
     CollectionItemDeletedResponse,
     CollectionItemResponse,
+    CollectionItemOrderRequest,
+    CollectionItemOrderResponse,
     CollectionItemUpdateRequest,
+    CollectionItemsBulkRemoveRequest,
+    CollectionItemsBulkRemovedResponse,
     CollectionResponse,
     CollectionStoryResponse,
     CollectionStoryUpdateRequest,
@@ -51,6 +56,31 @@ def get_knowledge_collection(collection_id: str, db: DbSession, user=Depends(get
         return ok(service.get_collection_detail(db, user_id=user.id, collection_id=collection_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/{collection_id}/candidates", response_model=Envelope[PaginatedData[CollectionCandidateResponse]])
+def list_knowledge_collection_candidates(
+    collection_id: str,
+    db: DbSession,
+    q: str | None = None,
+    item_type: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    user=Depends(get_current_user),
+) -> dict:
+    params = normalize_page_params(page, page_size)
+    try:
+        rows, total = service.list_collection_candidates(
+            db,
+            user_id=user.id,
+            collection_id=collection_id,
+            query=q,
+            item_type=item_type,
+            params=params,
+        )
+        return paginated(items=rows, total=total, page=params.page, page_size=params.page_size)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.patch("/{collection_id}", response_model=Envelope[CollectionDetailResponse])
@@ -116,6 +146,36 @@ def remove_knowledge_collection_item(
     return _write(
         lambda: service.remove_collection_item(
             db, user_id=user.id, collection_id=collection_id, collection_item_id=collection_item_id
+        ),
+        db,
+    )
+
+
+@router.put("/{collection_id}/items/order", response_model=Envelope[CollectionItemOrderResponse])
+def reorder_knowledge_collection_items(
+    collection_id: str,
+    payload: CollectionItemOrderRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    return _write(
+        lambda: service.reorder_collection_items(
+            db, user_id=user.id, collection_id=collection_id, item_ids=payload.item_ids
+        ),
+        db,
+    )
+
+
+@router.post("/{collection_id}/items/bulk-remove", response_model=Envelope[CollectionItemsBulkRemovedResponse])
+def bulk_remove_knowledge_collection_items(
+    collection_id: str,
+    payload: CollectionItemsBulkRemoveRequest,
+    db: DbSession,
+    user=Depends(get_current_user),
+) -> dict:
+    return _write(
+        lambda: service.bulk_remove_collection_items(
+            db, user_id=user.id, collection_id=collection_id, item_ids=payload.item_ids
         ),
         db,
     )

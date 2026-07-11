@@ -15,7 +15,7 @@ Current status as of `2026-07-11`:
 - core MVP flow is implemented
 - Docker deployment, migrations, async jobs, and e2e verification are in place
 - Architecture V2 domain packaging is complete for the current modular-monolith boundary
-- manual authoring, topic/case collections, curated timelines, and portable story output are delivered; remaining tracks are usage-driven collaboration/publishing depth, optional graph-canvas expansion, AI quality, and back-office tooling
+- manual authoring, topic/case collections, curated timelines, portable story output, and the Phase 34 daily-use workflow closure are delivered; remaining tracks are usage-driven collaboration/publishing depth, optional graph-canvas expansion, AI quality, and back-office tooling
 
 ## Status Legend
 
@@ -533,5 +533,5 @@ The graph-governance target is now delivered through the current product-depth s
 Reason:
 
 - broader freeform canvas editing remains optional rather than the automatic next phase
-- Phase 31–33 are delivered: manual knowledge authoring, graph create-and-connect, topic/case collections, curated timelines, story compilation, and Markdown/JSON export
+- Phase 31–34 are delivered: manual knowledge authoring, graph create-and-connect, topic/case collections, curated timelines, story/export, searchable intake, evidence readback, member management, and collection-scoped graph views
 - the next goal should be selected from observed use; no deferred platform or AI track is automatically promoted

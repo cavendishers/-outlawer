@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { Panel } from "@/components/panel";
 
 type GraphAction = {
@@ -622,6 +623,7 @@ function GraphViewpointCard({
         <Link href={viewpoint.href} className="brutal-action brutal-action-secondary text-xs">
           打开
         </Link>
+        <AddToCollectionControl itemType="graph_viewpoint" itemId={viewpoint.id} label={viewpoint.name} />
         <button
           type="button"
           onClick={() => void onRename(viewpoint.id, name)}

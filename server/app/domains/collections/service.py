@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.serializers import isoformat
@@ -12,6 +12,7 @@ from app.models.collection import KnowledgeCollection, KnowledgeCollectionItem
 from app.models.entity import Entity
 from app.models.event import Event
 from app.models.graph_viewpoint import GraphViewpoint
+from app.models.manual_knowledge import ManualKnowledgeEvidence
 from app.models.note import Note
 from app.models.raw_asset import RawAsset
 from app.models.review import ReviewAction
@@ -31,8 +32,7 @@ def list_collections(
 ) -> tuple[list[dict[str, Any]], int]:
     query = select(KnowledgeCollection).where(KnowledgeCollection.user_id == user_id).order_by(KnowledgeCollection.updated_at.desc())
     rows, total = paginate_query(db, query, params)
-    counts = _item_counts(db, [row.id for row in rows])
-    return [serialize_collection(row, item_count=counts.get(row.id, 0)) for row in rows], total
+    return [serialize_collection(row, stats=build_collection_stats(db, user_id=user_id, collection_id=row.id)) for row in rows], total
 
 
 def create_collection(db: Session, *, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -49,7 +49,7 @@ def create_collection(db: Session, *, user_id: str, payload: dict[str, Any]) -> 
     _audit(db, user_id=user_id, target_type="collection", target_id=row.id, action_type="create_collection", payload={"title": row.title})
     db.commit()
     db.refresh(row)
-    return serialize_collection(row, item_count=0)
+    return serialize_collection(row, stats=_empty_collection_stats())
 
 
 def get_collection_detail(db: Session, *, user_id: str, collection_id: str) -> dict[str, Any]:
@@ -61,7 +61,10 @@ def get_collection_detail(db: Session, *, user_id: str, collection_id: str) -> d
             .order_by(KnowledgeCollectionItem.sort_order, KnowledgeCollectionItem.created_at)
         ).all()
     )
-    return {**serialize_collection(row, item_count=len(items)), "items": [serialize_collection_item(db, user_id=user_id, row=item) for item in items]}
+    return {
+        **serialize_collection(row, stats=build_collection_stats(db, user_id=user_id, collection_id=row.id, items=items)),
+        "items": [serialize_collection_item(db, user_id=user_id, row=item) for item in items],
+    }
 
 
 def update_collection(db: Session, *, user_id: str, collection_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -154,6 +157,48 @@ def remove_collection_item(
     return {"id": collection_item_id, "status": "deleted"}
 
 
+def reorder_collection_items(
+    db: Session, *, user_id: str, collection_id: str, item_ids: list[str]
+) -> dict[str, Any]:
+    get_owned_collection(db, user_id=user_id, collection_id=collection_id)
+    rows = list(db.scalars(select(KnowledgeCollectionItem).where(KnowledgeCollectionItem.collection_id == collection_id)).all())
+    current_ids = {row.id for row in rows}
+    if len(item_ids) != len(set(item_ids)) or set(item_ids) != current_ids:
+        raise ValueError("Item order must include every collection item exactly once")
+    by_id = {row.id: row for row in rows}
+    for index, item_id in enumerate(item_ids):
+        by_id[item_id].sort_order = index
+        db.add(by_id[item_id])
+    _audit(db, user_id=user_id, target_type="collection", target_id=collection_id, action_type="reorder_collection_items", payload={"item_ids": item_ids})
+    db.commit()
+    return {"item_ids": item_ids, "status": "updated"}
+
+
+def bulk_remove_collection_items(
+    db: Session, *, user_id: str, collection_id: str, item_ids: list[str]
+) -> dict[str, Any]:
+    get_owned_collection(db, user_id=user_id, collection_id=collection_id)
+    requested = set(item_ids)
+    if not requested:
+        raise ValueError("At least one collection item is required")
+    rows = list(
+        db.scalars(
+            select(KnowledgeCollectionItem).where(
+                KnowledgeCollectionItem.collection_id == collection_id,
+                KnowledgeCollectionItem.id.in_(requested),
+            )
+        ).all()
+    )
+    if {row.id for row in rows} != requested:
+        raise ValueError("One or more collection items were not found")
+    for row in rows:
+        db.delete(row)
+    removed_ids = [row.id for row in rows]
+    _audit(db, user_id=user_id, target_type="collection", target_id=collection_id, action_type="bulk_remove_collection_items", payload={"item_ids": removed_ids})
+    db.commit()
+    return {"removed_ids": removed_ids, "status": "deleted"}
+
+
 def update_collection_story(db: Session, *, user_id: str, collection_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     row = get_owned_collection(db, user_id=user_id, collection_id=collection_id)
     row.story_title = _optional(payload.get("title"))
@@ -163,7 +208,7 @@ def update_collection_story(db: Session, *, user_id: str, collection_id: str, pa
     db.add(row)
     _audit(db, user_id=user_id, target_type="collection", target_id=row.id, action_type="update_collection_story", payload={"style": row.story_style})
     db.commit()
-    return serialize_collection(row, item_count=_item_counts(db, [row.id]).get(row.id, 0))["story"]
+    return serialize_collection(row, stats=build_collection_stats(db, user_id=user_id, collection_id=row.id))["story"]
 
 
 def compile_collection_story(db: Session, *, user_id: str, collection_id: str) -> dict[str, Any]:
@@ -182,7 +227,35 @@ def compile_collection_story(db: Session, *, user_id: str, collection_id: str) -
     db.add(row)
     _audit(db, user_id=user_id, target_type="collection", target_id=row.id, action_type="compile_collection_story", payload={"item_count": len(detail["items"]), "timeline_count": len(timeline)})
     db.commit()
-    return serialize_collection(row, item_count=len(detail["items"]))["story"]
+    return serialize_collection(row, stats=detail["stats"])["story"]
+
+
+def list_collection_candidates(
+    db: Session,
+    *,
+    user_id: str,
+    collection_id: str,
+    query: str | None,
+    item_type: str | None,
+    params: PageParams,
+) -> tuple[list[dict[str, Any]], int]:
+    get_owned_collection(db, user_id=user_id, collection_id=collection_id)
+    allowed_types = [item_type] if item_type else list(ITEM_MODELS)
+    if any(value not in ITEM_MODELS for value in allowed_types):
+        raise ValueError("Unsupported collection item type")
+    existing = {
+        (row.item_type, row.item_id)
+        for row in db.scalars(select(KnowledgeCollectionItem).where(KnowledgeCollectionItem.collection_id == collection_id)).all()
+    }
+    cleaned_query = (query or "").strip()
+    candidates: list[dict[str, Any]] = []
+    for candidate_type in allowed_types:
+        candidates.extend(_query_candidates_for_type(db, user_id=user_id, item_type=candidate_type, query=cleaned_query))
+    candidates = [item for item in candidates if (item["item_type"], item["item_id"]) not in existing]
+    candidates.sort(key=lambda item: (item["item_type"], item["label"].lower()))
+    total = len(candidates)
+    start = (params.page - 1) * params.page_size
+    return candidates[start : start + params.page_size], total
 
 
 def build_collection_timeline(db: Session, *, user_id: str, collection_id: str) -> dict[str, Any]:
@@ -247,23 +320,113 @@ def get_owned_collection(db: Session, *, user_id: str, collection_id: str) -> Kn
     return row
 
 
-def serialize_collection(row: KnowledgeCollection, *, item_count: int) -> dict[str, Any]:
+def serialize_collection(row: KnowledgeCollection, *, stats: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row.id,
         "title": row.title,
         "description": row.description,
         "collection_type": row.collection_type,
         "status": row.status,
-        "item_count": item_count,
+        "item_count": stats["total"],
         "story": {"title": row.story_title, "summary": row.story_summary, "body": row.story_body, "style": row.story_style},
+        "stats": stats,
         "created_at": isoformat(row.created_at),
         "updated_at": isoformat(row.updated_at),
     }
 
 
+def build_collection_stats(
+    db: Session,
+    *,
+    user_id: str,
+    collection_id: str,
+    items: list[KnowledgeCollectionItem] | None = None,
+) -> dict[str, Any]:
+    rows = items if items is not None else list(
+        db.scalars(select(KnowledgeCollectionItem).where(KnowledgeCollectionItem.collection_id == collection_id)).all()
+    )
+    by_type: dict[str, int] = {}
+    eligible: list[KnowledgeCollectionItem] = []
+    for row in rows:
+        by_type[row.item_type] = by_type.get(row.item_type, 0) + 1
+        if row.item_type in {"entity", "event"}:
+            eligible.append(row)
+    linked_targets = set()
+    if eligible:
+        target_ids = [row.item_id for row in eligible]
+        linked_targets = {
+            (target_type, target_id)
+            for target_type, target_id in db.execute(
+                select(ManualKnowledgeEvidence.target_type, ManualKnowledgeEvidence.target_id).where(
+                    ManualKnowledgeEvidence.user_id == user_id,
+                    ManualKnowledgeEvidence.target_id.in_(target_ids),
+                )
+            ).all()
+        }
+    linked_count = sum(1 for row in eligible if (row.item_type, row.item_id) in linked_targets)
+    eligible_count = len(eligible)
+    return {
+        "total": len(rows),
+        "by_type": by_type,
+        "evidence_eligible_count": eligible_count,
+        "evidence_linked_count": linked_count,
+        "evidence_coverage": round(linked_count / eligible_count, 4) if eligible_count else 0,
+    }
+
+
+def _empty_collection_stats() -> dict[str, Any]:
+    return {"total": 0, "by_type": {}, "evidence_eligible_count": 0, "evidence_linked_count": 0, "evidence_coverage": 0}
+
+
+def _query_candidates_for_type(
+    db: Session, *, user_id: str, item_type: str, query: str
+) -> list[dict[str, Any]]:
+    model = ITEM_MODELS[item_type]
+    statement = select(model).where(model.user_id == user_id)
+    if query:
+        pattern = f"%{query}%"
+        if item_type == "note":
+            statement = statement.where(or_(Note.title.ilike(pattern), Note.summary.ilike(pattern)))
+        elif item_type == "raw_asset":
+            statement = statement.where(or_(RawAsset.title.ilike(pattern), RawAsset.asset_type.ilike(pattern)))
+        elif item_type == "entity":
+            statement = statement.where(or_(Entity.display_name.ilike(pattern), Entity.canonical_name.ilike(pattern), Entity.description.ilike(pattern)))
+        elif item_type == "event":
+            statement = statement.where(or_(Event.title.ilike(pattern), Event.summary.ilike(pattern), Event.description.ilike(pattern)))
+        else:
+            statement = statement.where(or_(GraphViewpoint.name.ilike(pattern), GraphViewpoint.description.ilike(pattern)))
+    rows = list(db.scalars(statement.order_by(model.updated_at.desc()).limit(50)).all())
+    return [_candidate_presentation(item_type, row) for row in rows]
+
+
+def _candidate_presentation(item_type: str, target: Any) -> dict[str, Any]:
+    label, subtitle, href = _item_presentation(item_type, target)
+    meta = None
+    if item_type == "event":
+        meta = target.time_text or target.event_type
+    elif item_type == "entity":
+        meta = target.entity_type
+    elif item_type == "raw_asset":
+        meta = target.asset_type
+    elif item_type == "note":
+        meta = target.category
+    else:
+        meta = target.scope
+    return {"item_type": item_type, "item_id": target.id, "label": label, "subtitle": subtitle, "meta": meta, "href": href}
+
+
 def serialize_collection_item(db: Session, *, user_id: str, row: KnowledgeCollectionItem) -> dict[str, Any]:
     target = _resolve_owned_item(db, user_id=user_id, item_type=row.item_type, item_id=row.item_id)
     label, subtitle, href = _item_presentation(row.item_type, target)
+    has_evidence = False
+    if row.item_type in {"entity", "event"}:
+        has_evidence = db.scalar(
+            select(ManualKnowledgeEvidence.id).where(
+                ManualKnowledgeEvidence.user_id == user_id,
+                ManualKnowledgeEvidence.target_type == row.item_type,
+                ManualKnowledgeEvidence.target_id == row.item_id,
+            ).limit(1)
+        ) is not None
     return {
         "id": row.id,
         "item_type": row.item_type,
@@ -273,6 +436,7 @@ def serialize_collection_item(db: Session, *, user_id: str, row: KnowledgeCollec
         "href": href,
         "sort_order": row.sort_order,
         "curator_note": row.curator_note,
+        "has_evidence": has_evidence,
         "created_at": isoformat(row.created_at),
     }
 

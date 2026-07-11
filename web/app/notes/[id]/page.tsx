@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { Panel } from "@/components/panel";
 import { apiFetch } from "@/lib/api";
 
@@ -310,6 +311,7 @@ export default function NotePage() {
                 <Link href="/review" className="tool-action bg-canvas">
                   审核队列
                 </Link>
+                {note ? <AddToCollectionControl itemType="note" itemId={note.id} label={note.title} /> : null}
               </div>
             ) : null}
           </div>

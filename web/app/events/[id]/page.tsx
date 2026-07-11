@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGate } from "@/components/auth-gate";
+import { AddToCollectionControl } from "@/components/add-to-collection-control";
 import { EventAssociationWorkspace } from "@/components/event-association-workspace";
 import { EventConstellation } from "@/components/event-constellation";
 import { Panel } from "@/components/panel";
+import { ManualEvidencePanel } from "@/components/manual-evidence-panel";
 import { apiFetch } from "@/lib/api";
 
 type EventDetail = {
@@ -90,6 +92,7 @@ export default function EventDetailPage() {
                 <Link href={`/graph?event_id=${event.id}`} className="tool-action bg-canvas">
                   图谱视图
                 </Link>
+                <AddToCollectionControl itemType="event" itemId={event.id} label={event.title} />
               </div>
             ) : null}
           </div>
@@ -100,6 +103,8 @@ export default function EventDetailPage() {
             {error}
           </Panel>
         ) : null}
+
+        {event ? <ManualEvidencePanel targetType="event" targetId={event.id} /> : null}
 
         <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <Panel className="p-6" tone="quiet" intensity="quiet">

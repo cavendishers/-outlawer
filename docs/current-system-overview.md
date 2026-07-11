@@ -143,6 +143,7 @@ sequenceDiagram
 - `DONE`: Manual entity/event creation, note/raw-asset evidence attachment, graph create-and-connect, and governance audit are available through explicit contracts and `/manual` plus `/graph` workflows.
 - `DONE`: Topic/case collections reference notes, raw assets, entities, events, and graph viewpoints without duplicating their canonical content.
 - `DONE`: Collection workbenches derive curated timelines from canonical event times, keep editable story text as a stylized view, and export Markdown or JSON.
+- `DONE`: Phase 34 replaces UUID entry with searchable collection candidates, adds add-to-collection actions across knowledge surfaces, exposes manual-evidence readback, and supports member ordering, bulk removal, evidence coverage, and collection-scoped graph workspaces.
 - `DONE`: Current visual token system and brutalist page styling pass.
 
 ## Unimplemented Or Partial Capabilities By Priority
@@ -156,7 +157,7 @@ sequenceDiagram
 
 ## Next Development Direction
 
-Phase 31–33 are complete. The next major direction should be selected from observed product use rather than assumed urgency:
+Phase 31–34 are complete. The next major direction should be selected from observed product use rather than assumed urgency:
 
 - multi-user collection collaboration and permissions
 - deeper collection publishing formats only when a concrete destination is selected

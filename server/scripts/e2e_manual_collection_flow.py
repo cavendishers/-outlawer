@@ -137,11 +137,30 @@ def main() -> None:
             )
         )
         ids["collection_id"] = collection["id"]
+        candidates = assert_ok(
+            client.get(
+                f"{args.base_url}/collections/{ids['collection_id']}/candidates",
+                headers=headers,
+                params={"item_type": "entity", "q": f"手工人物-{marker}"},
+            )
+        )
+        assert candidates["total"] == 1 and candidates["items"][0]["item_id"] == ids["entity_id"]
+        collection_item_ids: list[str] = []
         for item_type, item_id in (("note", ids["note_id"]), ("entity", ids["entity_id"]), ("event", ids["event_id"])):
-            assert_ok(client.post(f"{args.base_url}/collections/{ids['collection_id']}/items", headers=headers, json={"item_type": item_type, "item_id": item_id, "curator_note": f"收录 {item_type}"}))
+            item = assert_ok(client.post(f"{args.base_url}/collections/{ids['collection_id']}/items", headers=headers, json={"item_type": item_type, "item_id": item_id, "curator_note": f"收录 {item_type}"}))
+            collection_item_ids.append(item["id"])
 
         detail = assert_ok(client.get(f"{args.base_url}/collections/{ids['collection_id']}", headers=headers))
         assert detail["item_count"] == 3
+        assert detail["stats"]["by_type"] == {"note": 1, "entity": 1, "event": 1}
+        assert detail["stats"]["evidence_coverage"] == 0.5
+        evidence = assert_ok(client.get(f"{args.base_url}/manual-knowledge/evidence", headers=headers, params={"target_type": "entity", "target_id": ids["entity_id"]}))
+        assert evidence["total"] == 1 and evidence["items"][0]["note_id"] == ids["note_id"]
+        reordered = assert_ok(client.put(f"{args.base_url}/collections/{ids['collection_id']}/items/order", headers=headers, json={"item_ids": list(reversed(collection_item_ids))}))
+        assert reordered["item_ids"][0] == collection_item_ids[-1]
+        collection_graph = assert_ok(client.get(f"{args.base_url}/graph/workspace", headers=headers, params={"collection_id": ids["collection_id"]}))
+        assert collection_graph["scope"] == "collection"
+        assert {item["id"] for item in collection_graph["nodes"]} == {ids["entity_id"], ids["event_id"]}
         timeline = assert_ok(client.get(f"{args.base_url}/collections/{ids['collection_id']}/timeline", headers=headers))
         assert timeline["items"][0]["event_id"] == ids["event_id"]
         story = assert_ok(client.post(f"{args.base_url}/collections/{ids['collection_id']}/story/compile", headers=headers))
@@ -150,6 +169,8 @@ def main() -> None:
         json_export = assert_ok(client.get(f"{args.base_url}/collections/{ids['collection_id']}/export?format=json", headers=headers))
         assert markdown["filename"].endswith(".md") and "收录对象" in markdown["content"]
         assert json_export["filename"].endswith(".json") and '"timeline"' in json_export["content"]
+        removed = assert_ok(client.post(f"{args.base_url}/collections/{ids['collection_id']}/items/bulk-remove", headers=headers, json={"item_ids": [collection_item_ids[0]]}))
+        assert removed["removed_ids"] == [collection_item_ids[0]]
         print("Manual authoring, collection, timeline, story, and export e2e flow passed.")
     finally:
         cleanup(ids)
